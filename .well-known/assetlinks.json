@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "io.github.nrazaniemail_ship_it.twa",
+        "sha256_cert_fingerprints": ["2A:34:D3:12:76:11:15:56:DB:A2:3F:20:EB:F7:B9:5C:63:C8:92:C7:49:87:ED:84:19:43:BB:11:45:7E:A5:9E"]
+      }
+    }]
