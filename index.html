@@ -832,7 +832,7 @@ function groupProfitabilityMulti(trades, arrFn) {
     return Object.entries(map).map(([name, value]) => ({ name, value: Math.round(value * 100) / 100 })).sort((a, b) => b.value - a.value);
 }
 /* ---- "سودآورترین شرایط معامله" و «احتمال موفقیت محاسباتی» ---- */
-const CALC_PROB_PARAMS = [
+const CALC_PROB_STATIC_PARAMS = [
     { key: "fractal", label: "فراکتال", multi: false, get: t => t.fractal || undefined },
     { key: "mainTrend", label: "جهت روند اصلی", multi: false, get: t => t.mainTrendDirection === "bullish" ? "صعودی" : t.mainTrendDirection === "bearish" ? "نزولی" : undefined },
     { key: "dailyTrend", label: "جهت روند روزانه", multi: false, get: t => t.dailyTrendDirection === "bullish" ? "صعودی" : t.dailyTrendDirection === "bearish" ? "نزولی" : t.dailyTrendDirection === "neutral" ? "خنثی" : undefined },
@@ -844,12 +844,38 @@ const CALC_PROB_PARAMS = [
     { key: "trig", label: "نقطه ورود", multi: false, get: t => t.trig || undefined },
     { key: "target", label: "حد سود (TP)", multi: false, get: t => t.target || undefined },
     { key: "stop", label: "حد ضرر (SL)", multi: false, get: t => t.stop || undefined },
+    { key: "rr", label: "R-multiple", multi: false, get: t => {
+            const v = t.rrReward;
+            if (v === null || v === undefined || v === "")
+                return undefined;
+            const n = typeof v === "string" ? parseFloat(v) : v;
+            return isNaN(n) ? undefined : `1:${n}`;
+        } },
     { key: "systems", label: "سیستم‌های معاملاتی تایم اصلی", multi: true, get: t => t.systems || [] },
     { key: "entryTimeSystems", label: "سیستم‌های معاملاتی تایم ورود", multi: true, get: t => t.entryTimeSystems || [] },
     { key: "reversalPatterns", label: "الگوی کندل برگشتی تایم ورود", multi: true, get: t => (t.reversalPatterns && t.reversalPatterns.length) ? t.reversalPatterns : (t.reversalPattern ? [t.reversalPattern] : []) },
     { key: "psychology", label: "روانشناسی", multi: true, get: t => t.psychology || [] },
 ];
-const DEFAULT_CALC_PROB_WEIGHTS = Object.fromEntries(CALC_PROB_PARAMS.map(p => [p.key, 10]));
+function buildCalcProbParams(config, dst) {
+    const sessionParam = {
+        key: "session", label: "سشن یا رویداد معاملاتی", multi: false,
+        get: t => {
+            if (t.tags && t.tags.length)
+                return t.tags[0].label;
+            if (t.time) {
+                const [hh, mi] = String(t.time).split(":").map(Number);
+                if (!isNaN(hh) && !isNaN(mi)) {
+                    const tg = tagsForMinutes(config, hh * 60 + mi, dst);
+                    return tg.length ? tg[0].label : undefined;
+                }
+            }
+            return undefined;
+        },
+    };
+    return [...CALC_PROB_STATIC_PARAMS, sessionParam];
+}
+const CALC_PROB_PARAM_KEYS = [...CALC_PROB_STATIC_PARAMS.map(p => p.key), "session"];
+const DEFAULT_CALC_PROB_WEIGHTS = Object.fromEntries(CALC_PROB_PARAM_KEYS.map(k => [k, 10]));
 function normalizeProfitScores(groups) {
     if (!groups.length)
         return { map: {}, best: null };
@@ -859,8 +885,8 @@ function normalizeProfitScores(groups) {
     groups.forEach(g => { map[g.name] = (max === min) ? 1 : (g.value - min) / (max - min); });
     return { map, best: groups[0] };
 }
-function computeConditionStats(closedTrades) {
-    return CALC_PROB_PARAMS.map(p => {
+function computeConditionStats(closedTrades, calcProbParams) {
+    return calcProbParams.map(p => {
         const groups = p.multi ? groupProfitabilityMulti(closedTrades, p.get) : groupProfitability(closedTrades, p.get);
         const { map, best } = normalizeProfitScores(groups);
         return { ...p, groups, scoreMap: map, best };
@@ -1764,7 +1790,8 @@ function App() {
         return map;
     }, [trades]);
     const openTrades = trades.filter(t => t.status === "open");
-    const conditionStats = useMemo(() => computeConditionStats(closedTrades), [trades]);
+    const calcProbParams = useMemo(() => buildCalcProbParams(config, now.dst), [config, now.dst]);
+    const conditionStats = useMemo(() => computeConditionStats(closedTrades, calcProbParams), [trades, calcProbParams]);
     const calcSuccessProbResult = useMemo(() => openForm ? computeCalculatedSuccessProb(openForm, conditionStats, calcProbWeights) : null, [openForm, conditionStats, calcProbWeights]);
     const todayClosed = closedTrades.filter(t => t.date === todayStr);
     const dailyPnl = todayClosed.reduce((s, t) => s + (t.pnl || 0), 0);
@@ -4160,7 +4187,7 @@ function App() {
                     React.createElement("button", { onClick: () => setShowCalcProbWeights(false) },
                         React.createElement(X, { size: 16, color: "#6B7280" }))),
                 React.createElement("p", { className: "text-[11px] mb-3", style: { color: "#6B7280" } }, "\u0628\u0647 \u0647\u0631 \u067E\u0627\u0631\u0627\u0645\u062A\u0631 \u06CC\u06A9 \u0648\u0632\u0646 (\u0647\u0631\u0686\u0642\u062F\u0631 \u0628\u062E\u0648\u0627\u06CC\u060C \u0645\u062B\u0644\u0627\u064B \u06F0 \u062A\u0627 \u06F1\u06F0\u06F0) \u0628\u062F\u0647. \u0647\u0631\u0686\u06CC \u0648\u0632\u0646 \u06CC\u06A9 \u067E\u0627\u0631\u0627\u0645\u062A\u0631 \u0628\u06CC\u0634\u062A\u0631 \u0628\u0627\u0634\u0647\u060C \u062A\u0627\u062B\u06CC\u0631\u0634 \u0631\u0648\u06CC \u062F\u0631\u0635\u062F \u0646\u0647\u0627\u06CC\u06CC \u0628\u06CC\u0634\u062A\u0631\u0647. \u0648\u0632\u0646 \u0635\u0641\u0631 \u06CC\u0639\u0646\u06CC \u0627\u0648\u0646 \u067E\u0627\u0631\u0627\u0645\u062A\u0631 \u0627\u0635\u0644\u0627\u064B \u062F\u0631 \u0645\u062D\u0627\u0633\u0628\u0647 \u0644\u062D\u0627\u0638 \u0646\u0634\u0647."),
-                React.createElement("div", { className: "grid grid-cols-1 gap-2 mb-4" }, CALC_PROB_PARAMS.map(p => (React.createElement("div", { key: p.key, className: "flex items-center justify-between gap-2 rounded-lg px-3 py-2", style: { background: "#1A1F27" } },
+                React.createElement("div", { className: "grid grid-cols-1 gap-2 mb-4" }, calcProbParams.map(p => (React.createElement("div", { key: p.key, className: "flex items-center justify-between gap-2 rounded-lg px-3 py-2", style: { background: "#1A1F27" } },
                     React.createElement("span", { className: "text-[12px]", style: { color: "#E8EAED" } }, p.label),
                     React.createElement("input", { type: "number", min: "0", inputMode: "numeric", value: calcProbWeights[p.key] ?? 10, onChange: e => {
                             const v = e.target.value === "" ? "" : Math.max(0, parseInt(e.target.value, 10) || 0);
