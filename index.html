@@ -83,7 +83,7 @@ function makeIcon(emoji) {
     return /* @__PURE__ */ React.createElement("span", { className, style: { fontSize: size, color, lineHeight: 1, display: "inline-flex", ...style } }, emoji);
   };
 }
-const Clock = makeIcon("⏱"), TrendingUp = makeIcon("📈"), TrendingDown = makeIcon("📉"), Plus = makeIcon("➕"), Trash2 = makeIcon("🗑️"), ChevronDown = makeIcon("▾"), ChevronUp = makeIcon("▴"), Target = makeIcon("🎯"), X = makeIcon("✕"), Check = makeIcon("✓"), Wallet = makeIcon("💰"), Hash = makeIcon("#️⃣"), Flame = makeIcon("🔥"), Snowflake = makeIcon("❄️"), AlertTriangle = makeIcon("⚠️"), SettingsIcon = makeIcon("⚙️"), Download = makeIcon("⬇️"), Bell = makeIcon("🔔"), BellOff = makeIcon("🔕"), PiggyBank = makeIcon("🐖"), Coffee = makeIcon("☕"), MoreHorizontal = makeIcon("⋯"), LineChartIcon = makeIcon("📈"), ListChecks = makeIcon("☑️"), Flag = makeIcon("🚩"), BarChart3 = makeIcon("📊"), FileSpreadsheet = makeIcon("📑"), Newspaper = makeIcon("📰"), Edit3 = makeIcon("✏️");
+const Clock = makeIcon("⏱"), TrendingUp = makeIcon("📈"), TrendingDown = makeIcon("📉"), Plus = makeIcon("➕"), Trash2 = makeIcon("🗑️"), ChevronDown = makeIcon("▾"), ChevronUp = makeIcon("▴"), Target = makeIcon("🎯"), X = makeIcon("✕"), Check = makeIcon("✓"), Wallet = makeIcon("💰"), Hash = makeIcon("#️⃣"), Flame = makeIcon("🔥"), Snowflake = makeIcon("❄️"), AlertTriangle = makeIcon("⚠️"), SettingsIcon = makeIcon("⚙️"), Download = makeIcon("⬇️"), Bell = makeIcon("🔔"), BellOff = makeIcon("🔕"), PiggyBank = makeIcon("🐖"), Coffee = makeIcon("☕"), MoreHorizontal = makeIcon("⋯"), LineChartIcon = makeIcon("📈"), ListChecks = makeIcon("☑️"), Flag = makeIcon("🚩"), BarChart3 = makeIcon("📊"), FileSpreadsheet = makeIcon("📑"), Newspaper = makeIcon("📰"), Edit3 = makeIcon("✏️"), Heart = makeIcon("🙏");
 function findChild(children, Comp) {
   let found = null;
   React.Children.forEach(children, (c) => {
@@ -862,9 +862,9 @@ function relFromTrend(mainTrend, direction) {
     return "against";
 }
 const DEFAULT_TRIG_OPTIONS = ["SF", "EQ", "OTE/L", "OTE", "OTE/H"];
+const DEFAULT_WAVE_OPTIONS = ["اول", "دوم", "سوم", "چهارم", "پنجم"];
 const DEFAULT_TARGET_OPTIONS = ["tp", "tp1", "tp2", "tp3", "LRL", "M60", "M240", "K", "SB"];
 const DEFAULT_STOP_OPTIONS = ["ITL/H", "FVG", "IFVG", "OB", "Disp.", "STL/H", "0.5FVG", "K", "SB"];
-const WAVE_OPTIONS = ["اول", "دوم", "سوم", "چهارم", "پنجم"];
 const DEFAULT_FRACTAL_OPTIONS = ["D-H1", "H4-M15", "H1-M5", "M15-M5"];
 const DEFAULT_REVERSAL_PATTERN_OPTIONS = ["پین‌بار", "انگالفینگ", "دوجی", "هارامی", "ستاره صبحگاهی", "ستاره عصرگاهی", "چکش", "مرد آویزان"];
 const DEFAULT_RR_OPTIONS = ["0.8", "0.9", "1", "1.5", "2", "2.5", "3", "3.5", "4", "4.5"];
@@ -1035,6 +1035,10 @@ function Field({ label, children }) {
         React.createElement("label", { className: "text-[11px] block mb-1", style: { color: "#6B7280" } }, label),
         React.createElement("div", { className: "rounded-lg px-3 py-2", style: { background: "#1A1F27", border: "1px solid #262C36" } }, children)));
 }
+function hlLabel(text) {
+    const parts = String(text).split(/(اصلی|ورود)/g);
+    return parts.map((p, i) => (p === "اصلی" || p === "ورود") ? React.createElement("b", { key: i, style: { color: "#FB923C" } }, p) : p);
+}
 function ToggleGroup({ value, options, onChange, activeColor }) {
     const color = activeColor || "#D4A64A";
     return (React.createElement("div", { className: "flex gap-2" }, options.map(o => (React.createElement("button", { key: o.key, type: "button", onClick: () => onChange(o.key), className: "flex-1 py-2 rounded-lg text-sm", style: { background: value === o.key ? `${color}22` : "#1A1F27", color: value === o.key ? color : "#6B7280" } }, o.label)))));
@@ -1053,16 +1057,20 @@ function progressColor(p) {
         return "#FACC15";
     return "#34D399";
 }
-function GoalsLayer({ title, activeAccount, list, newText, setNewText, onAdd, onUpdateText, onUpdateProgress, onDelete, onMove, onExport, askDeleteConfirm }) {
+function GoalsLayer({ title, activeAccount, list, newText, setNewText, onAdd, onUpdateText, onUpdateProgress, onDelete, onMove, onExport, askDeleteConfirm, itemLabel }) {
+    const noun = itemLabel || "هدف";
     return (React.createElement("div", { className: "px-4 mt-4" },
         React.createElement("h2", { className: "text-sm font-semibold mb-2", style: { color: "#E8EAED" } }, title),
         !activeAccount ? (React.createElement("div", { className: "rounded-xl p-4 text-center text-sm mb-4", style: { background: "#12161C", color: "#6B7280" } }, "\u0627\u0648\u0644 \u0627\u0632 \u062A\u0628 \u0698\u0648\u0631\u0646\u0627\u0644 \u06CC\u06A9 \u062D\u0633\u0627\u0628 \u0627\u06CC\u062C\u0627\u062F \u06A9\u0646.")) : (React.createElement(React.Fragment, null,
             React.createElement("div", { className: "flex gap-2 mb-4" },
                 React.createElement("div", { className: "flex-1 rounded-lg px-3 py-2", style: { background: "#1A1F27", border: "1px solid #262C36" } },
-                    React.createElement("input", { type: "text", value: newText, onChange: e => setNewText(e.target.value), placeholder: "\u06CC\u06A9 \u0647\u062F\u0641 \u062C\u062F\u06CC\u062F \u0628\u0646\u0648\u06CC\u0633...", className: "w-full bg-transparent outline-none text-sm", style: { color: "#E8EAED" } })),
+                    React.createElement("input", { type: "text", value: newText, onChange: e => setNewText(e.target.value), placeholder: `یک ${noun} جدید بنویس...`, className: "w-full bg-transparent outline-none text-sm", style: { color: "#E8EAED" } })),
                 React.createElement("button", { onClick: onAdd, className: "px-4 rounded-lg text-sm", style: { background: "#D4A64A", color: "#0B0E11" } },
                     React.createElement(Plus, { size: 16 }))),
-            list.length === 0 ? (React.createElement("div", { className: "rounded-xl p-6 text-center text-sm mb-4", style: { background: "#12161C", color: "#6B7280" } }, "\u0647\u0646\u0648\u0632 \u0647\u062F\u0641\u06CC \u062B\u0628\u062A \u0646\u0634\u062F\u0647.")) : (React.createElement("div", { className: "grid grid-cols-1 gap-2 mb-4" }, list.map((g, i) => (React.createElement("div", { key: g.id, className: "rounded-xl p-3 flex items-center gap-2", style: { background: "#12161C", border: "1px solid #1F242C" } },
+            list.length === 0 ? (React.createElement("div", { className: "rounded-xl p-6 text-center text-sm mb-4", style: { background: "#12161C", color: "#6B7280" } },
+                "\u0647\u0646\u0648\u0632 ",
+                noun,
+                "\u06CC \u062B\u0628\u062A \u0646\u0634\u062F\u0647.")) : (React.createElement("div", { className: "grid grid-cols-1 gap-2 mb-4" }, list.map((g, i) => (React.createElement("div", { key: g.id, className: "rounded-xl p-3 flex items-center gap-2", style: { background: "#12161C", border: "1px solid #1F242C" } },
                 React.createElement("div", { className: "flex items-center gap-0.5 shrink-0" },
                     React.createElement("button", { onClick: () => onMove(g.id, -1), disabled: i === 0, className: "p-1", style: { opacity: i === 0 ? 0.3 : 1 } },
                         React.createElement(ChevronUp, { size: 18, color: "#6B7280" })),
@@ -1078,7 +1086,7 @@ function GoalsLayer({ title, activeAccount, list, newText, setNewText, onAdd, on
                             onUpdateProgress(g.id, v);
                         }, className: "bg-transparent outline-none text-[12px] font-bold text-center mono", style: { color: progressColor(g.progress), width: 40, fontFamily: "JetBrains Mono, monospace", padding: "6px 2px" } }),
                     React.createElement("span", { className: "text-[11px] pl-1.5 pr-0.5", style: { color: progressColor(g.progress) } }, "\u066A")),
-                React.createElement("button", { onClick: () => askDeleteConfirm("این هدف حذف بشه؟", () => onDelete(g.id)), className: "shrink-0" },
+                React.createElement("button", { onClick: () => askDeleteConfirm(`این ${noun} حذف بشه؟`, () => onDelete(g.id)), className: "shrink-0" },
                     React.createElement(Trash2, { size: 14, color: "#6B7280" }))))))),
             React.createElement("button", { onClick: onExport, className: "w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-medium mb-4", style: { background: "#12161C", color: "#E8EAED", border: "1px solid #1F242C" } },
                 React.createElement(Download, { size: 16 }),
@@ -1103,6 +1111,7 @@ function App() {
     const [newTradingSystemName, setNewTradingSystemName] = useState("");
     const [fractalOptions, setFractalOptions] = useState(DEFAULT_FRACTAL_OPTIONS);
     const [trigOptions, setTrigOptions] = useState(DEFAULT_TRIG_OPTIONS);
+    const [waveOptions, setWaveOptions] = useState(DEFAULT_WAVE_OPTIONS);
     const [targetOptions, setTargetOptions] = useState(DEFAULT_TARGET_OPTIONS);
     const [stopOptions, setStopOptions] = useState(DEFAULT_STOP_OPTIONS);
     const [reversalPatternOptions, setReversalPatternOptions] = useState(DEFAULT_REVERSAL_PATTERN_OPTIONS);
@@ -1114,6 +1123,7 @@ function App() {
     const [fractalEditMode, setFractalEditMode] = useState(false);
     const [systemsEditMode, setSystemsEditMode] = useState(false);
     const [trigEditMode, setTrigEditMode] = useState(false);
+    const [waveEditMode, setWaveEditMode] = useState(false);
     const [targetEditMode, setTargetEditMode] = useState(false);
     const [stopEditMode, setStopEditMode] = useState(false);
     const [reversalPatternEditMode, setReversalPatternEditMode] = useState(false);
@@ -1127,6 +1137,7 @@ function App() {
     const [newEntryTimeSystemText, setNewEntryTimeSystemText] = useState("");
     const [entryTimeSystemsEditMode, setEntryTimeSystemsEditMode] = useState(false);
     const [newTrigText, setNewTrigText] = useState("");
+    const [newWaveText, setNewWaveText] = useState("");
     const [newTargetText, setNewTargetText] = useState("");
     const [newStopText, setNewStopText] = useState("");
     const [newReversalPatternText, setNewReversalPatternText] = useState("");
@@ -1243,6 +1254,12 @@ function App() {
                 const r = await window.storage.get("namello_trig_options_v1");
                 if (r)
                     setTrigOptions(JSON.parse(r.value));
+            }
+            catch (e) { }
+            try {
+                const r = await window.storage.get("namello_wave_options_v1");
+                if (r)
+                    setWaveOptions(JSON.parse(r.value));
             }
             catch (e) { }
             try {
@@ -1458,6 +1475,10 @@ function App() {
         await window.storage.set("namello_trig_options_v1", JSON.stringify(next));
     }
     catch (e) { } }, []);
+    const persistWaveOptions = useCallback(async (next) => { setWaveOptions(next); try {
+        await window.storage.set("namello_wave_options_v1", JSON.stringify(next));
+    }
+    catch (e) { } }, []);
     const persistTargetOptions = useCallback(async (next) => { setTargetOptions(next); try {
         await window.storage.set("namello_target_options_v1", JSON.stringify(next));
     }
@@ -1660,6 +1681,12 @@ function App() {
     /* ---------------- journal derived ---------------- */
     const derived = useMemo(() => computeDerived(trades, accSettings), [trades, accSettings]);
     const closedTrades = trades.filter(t => t.status === "closed");
+    const closedTradeNumberById = useMemo(() => {
+        const asc = closedTrades.slice().sort((a, b) => `${a.date}T${a.time}`.localeCompare(`${b.date}T${b.time}`));
+        const map = {};
+        asc.forEach((t, i) => { map[t.id] = i + 1; });
+        return map;
+    }, [trades]);
     const openTrades = trades.filter(t => t.status === "open");
     const todayClosed = closedTrades.filter(t => t.date === todayStr);
     const dailyPnl = todayClosed.reduce((s, t) => s + (t.pnl || 0), 0);
@@ -1674,15 +1701,32 @@ function App() {
     const growthMilestone = accSettings.startingBalance > 0 ? Math.floor((derived.currentBalance - accSettings.startingBalance) / (accSettings.startingBalance * 0.5)) : 0;
     const growthAlarm = growthMilestone >= 1 && growthMilestone > (accSettings.growthMilestoneAcked || 0);
     function ackGrowth() { persistAccSettings({ ...accSettings, growthMilestoneAcked: growthMilestone }); }
-    function addAccount() {
+    async function addAccount() {
         const code = newAccCode.trim();
         if (!/^\d{6,10}$/.test(code)) {
             setAccCodeError("کد حساب باید بین ۶ تا ۱۰ رقم باشد.");
             return;
         }
         setAccCodeError("");
-        if (!accounts.includes(code))
+        const isNewAccount = !accounts.includes(code);
+        if (isNewAccount) {
             persistAccounts([...accounts, code]);
+            // یک حساب کاملاً جدید: تنظیمات و تعاریف حساب فعلی (مدیریت مالی/پارامترهای سفارشی، استراتژی، اهداف معامله‌گری، اهداف زندگی، شکر گزاری) برای حساب جدید هم کپی می‌شه.
+            // معاملات (ترید‌ها) عمداً کپی نمی‌شن؛ حساب جدید همیشه با ترید خالی شروع می‌شه.
+            if (activeAccount) {
+                try {
+                    await Promise.all([
+                        window.storage.set(`namello_settings_${code}`, JSON.stringify(accSettings)),
+                        window.storage.set(`namello_strategies_${code}`, JSON.stringify(strategies)),
+                        window.storage.set(`namello_goals_${code}`, JSON.stringify(goals)),
+                        window.storage.set(`namello_lifegoals_${code}`, JSON.stringify(lifeGoals)),
+                        window.storage.set(`namello_gratitude_${code}`, JSON.stringify(gratitude)),
+                        window.storage.set(`namello_customparams_${code}`, JSON.stringify(customParams)),
+                    ]);
+                }
+                catch (e) { }
+            }
+        }
         persistActiveAccount(code);
         setNewAccCode("");
     }
@@ -1761,6 +1805,11 @@ function App() {
                 persistTrigOptions([...trigOptions, v]);
             showToast(`گزینه‌ی Trig «${v}» اضافه شد.`);
         }
+        if (listName === "wave") {
+            if (!waveOptions.includes(v))
+                persistWaveOptions([...waveOptions, v]);
+            showToast(`گزینه‌ی موج «${v}» اضافه شد.`);
+        }
         if (listName === "target") {
             if (!targetOptions.includes(v))
                 persistTargetOptions([...targetOptions, v]);
@@ -1776,6 +1825,7 @@ function App() {
     function removePair(name) { persistPairs(pairs.filter(p => p !== name)); }
     function removeFractalOption(name) { persistFractalOptions(fractalOptions.filter(x => x !== name)); }
     function removeTrigOption(name) { persistTrigOptions(trigOptions.filter(x => x !== name)); }
+    function removeWaveOption(name) { persistWaveOptions(waveOptions.filter(x => x !== name)); }
     function removeTargetOption(name) { persistTargetOptions(targetOptions.filter(x => x !== name)); }
     function removeStopOption(name) { persistStopOptions(stopOptions.filter(x => x !== name)); }
     function removeReversalPatternOption(name) { persistReversalPatternOptions(reversalPatternOptions.filter(x => x !== name)); }
@@ -1809,6 +1859,8 @@ function App() {
     }
     function renameTrigOption(index, text) { renameOptionAt(trigOptions, persistTrigOptions, index, text); }
     function moveTrigOption(index, dir) { moveOptionAt(trigOptions, persistTrigOptions, index, dir); }
+    function renameWaveOption(index, text) { renameOptionAt(waveOptions, persistWaveOptions, index, text); }
+    function moveWaveOption(index, dir) { moveOptionAt(waveOptions, persistWaveOptions, index, dir); }
     function renameTargetOption(index, text) { renameOptionAt(targetOptions, persistTargetOptions, index, text); }
     function moveTargetOption(index, dir) { moveOptionAt(targetOptions, persistTargetOptions, index, dir); }
     function renameStopOption(index, text) { renameOptionAt(stopOptions, persistStopOptions, index, text); }
@@ -1850,6 +1902,14 @@ function App() {
         if (!trigOptions.includes(v))
             persistTrigOptions([...trigOptions, v]);
         setNewTrigText("");
+    }
+    function addWaveOptionInline() {
+        const v = newWaveText.trim();
+        if (!v)
+            return;
+        if (!waveOptions.includes(v))
+            persistWaveOptions([...waveOptions, v]);
+        setNewWaveText("");
     }
     function addTargetOptionInline() {
         const v = newTargetText.trim();
@@ -2320,7 +2380,7 @@ function App() {
         const aoa = [["تاریخ ثبت", "مورد", "پیشرفت (%)"], ...gratitude.map(g => [g.date, g.text, g.progress || 0])];
         const ws = XLSX.utils.aoa_to_sheet(aoa);
         const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "سپاسگزاری");
+        XLSX.utils.book_append_sheet(wb, ws, "شکر گزاری");
         XLSX.writeFile(wb, `namello-gratitude-${activeAccount}-${todayStr}.xlsx`);
     }
     /* ---------------- financial management ---------------- */
@@ -2690,7 +2750,7 @@ function App() {
         XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([["تاریخ ثبت", "استراتژی"], ...strategies.map(s => [s.date, s.text])]), "استراتژی معاملاتی");
         XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([["تاریخ ثبت", "هدف", "پیشرفت (%)"], ...goals.map(g => [g.date, g.text, g.progress || 0])]), "اهداف معامله گری");
         XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([["تاریخ ثبت", "هدف", "پیشرفت (%)"], ...lifeGoals.map(g => [g.date, g.text, g.progress || 0])]), "اهداف زندگی");
-        XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([["تاریخ ثبت", "مورد", "پیشرفت (%)"], ...gratitude.map(g => [g.date, g.text, g.progress || 0])]), "سپاسگزاری");
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([["تاریخ ثبت", "مورد", "پیشرفت (%)"], ...gratitude.map(g => [g.date, g.text, g.progress || 0])]), "شکر گزاری");
         const mk2 = (name, data) => XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([["پارامتر", "سودآوری"], ...data.map(d => [d.name, d.value])]), name.slice(0, 31));
         mk2("تحلیل-لات", byLot);
         mk2("تحلیل-روزهفته", byWeekday);
@@ -3020,23 +3080,21 @@ function App() {
                 React.createElement("div", { className: "flex items-center justify-between mb-1.5" },
                     React.createElement("div", { className: "flex items-center gap-2" },
                         t.direction === "buy" ? React.createElement(TrendingUp, { size: 15, color: "#34D399" }) : React.createElement(TrendingDown, { size: 15, color: "#F87171" }),
-                        React.createElement("span", { className: "text-sm font-semibold", style: { color: "#E8EAED" } }, t.pair),
+                        React.createElement("span", { className: "w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0 mono", style: { background: "#D4A64A22", color: "#D4A64A", fontFamily: "JetBrains Mono, monospace" } }, closedTradeNumberById[t.id] ?? "-"),
                         React.createElement("button", { onClick: () => openEditTrade(t), className: "p-1" },
                             React.createElement(Edit3, { size: 13, color: "#6B7280" })),
                         React.createElement("span", { className: "text-[11px]", style: { color: t.direction === "buy" ? "#34D399" : "#F87171" } }, t.direction === "buy" ? "خرید" : "فروش"),
-                        React.createElement("span", { className: "text-[10px] px-1.5 py-0.5 rounded-full", style: { background: "#1A1F27", color: "#6B7280" } },
-                            "\u062A\u0631\u06CC\u062F #",
-                            derived.byId[t.id]?.dailyIndex ?? "-",
-                            " \u0627\u0645\u0631\u0648\u0632"),
                         t.closeType && React.createElement("span", { className: "text-[10px] px-1.5 py-0.5 rounded-full", style: { background: (t.closeType === "sl" || t.closeType === "حد ضرر (SL)") ? "#F8717122" : (t.closeType === "tp" || t.closeType === "حد سود (TP)") ? "#34D39922" : "#1A1F27", color: (t.closeType === "sl" || t.closeType === "حد ضرر (SL)") ? "#F87171" : (t.closeType === "tp" || t.closeType === "حد سود (TP)") ? "#34D399" : "#8B93A1" } }, closeTypeLabel(t)),
                         t.durationMinutes !== null && t.durationMinutes !== undefined && React.createElement("span", { className: "text-[10px] px-1.5 py-0.5 rounded-full flex items-center gap-1", style: { background: "#60A5FA22", color: "#60A5FA" } },
                             React.createElement(Clock, { size: 10 }),
                             " ",
                             formatDurationFa(t.durationMinutes))),
-                    React.createElement("div", { className: "flex items-center gap-1" },
+                    React.createElement("div", { className: "flex items-center gap-2" },
                         React.createElement("button", { onClick: () => askDeleteConfirm("این معامله حذف بشه؟", () => deleteTrade(t.id)), className: "p-1" },
                             React.createElement(Trash2, { size: 14, color: "#6B7280" })))),
                 React.createElement("div", { className: "text-[11px] mb-1.5", style: { color: "#8B93A1", fontFamily: "JetBrains Mono, monospace" } },
+                    t.pair,
+                    " \u2014 ",
                     t.date,
                     " (",
                     weekdayFromDateStr(t.date),
@@ -3290,7 +3348,7 @@ function App() {
                         React.createElement(Trash2, { size: 14, color: "#6B7280" }))))))))))),
         tab === "goals" && (React.createElement(GoalsLayer, { title: "\u0627\u0647\u062F\u0627\u0641 \u0645\u0639\u0627\u0645\u0644\u0647 \u06AF\u0631\u06CC", activeAccount: activeAccount, list: goals, newText: newGoalText, setNewText: setNewGoalText, onAdd: addGoalRow, onUpdateText: updateGoalRow, onUpdateProgress: updateGoalProgress, onDelete: deleteGoalRow, onMove: moveGoalRow, onExport: exportGoals, askDeleteConfirm: askDeleteConfirm })),
         tab === "lifegoals" && (React.createElement(GoalsLayer, { title: "\u0627\u0647\u062F\u0627\u0641 \u0632\u0646\u062F\u06AF\u06CC", activeAccount: activeAccount, list: lifeGoals, newText: newLifeGoalText, setNewText: setNewLifeGoalText, onAdd: addLifeGoalRow, onUpdateText: updateLifeGoalRow, onUpdateProgress: updateLifeGoalProgress, onDelete: deleteLifeGoalRow, onMove: moveLifeGoalRow, onExport: exportLifeGoals, askDeleteConfirm: askDeleteConfirm })),
-        tab === "gratitude" && (React.createElement(GoalsLayer, { title: "\u0633\u067E\u0627\u0633\u06AF\u0632\u0627\u0631\u06CC", activeAccount: activeAccount, list: gratitude, newText: newGratitudeText, setNewText: setNewGratitudeText, onAdd: addGratitudeRow, onUpdateText: updateGratitudeRow, onUpdateProgress: updateGratitudeProgress, onDelete: deleteGratitudeRow, onMove: moveGratitudeRow, onExport: exportGratitude, askDeleteConfirm: askDeleteConfirm })),
+        tab === "gratitude" && (React.createElement(GoalsLayer, { title: "\u0634\u06A9\u0631 \u06AF\u0632\u0627\u0631\u06CC", activeAccount: activeAccount, list: gratitude, newText: newGratitudeText, setNewText: setNewGratitudeText, onAdd: addGratitudeRow, onUpdateText: updateGratitudeRow, onUpdateProgress: updateGratitudeProgress, onDelete: deleteGratitudeRow, onMove: moveGratitudeRow, onExport: exportGratitude, askDeleteConfirm: askDeleteConfirm, itemLabel: "\u0645\u062A\u0646" })),
         tab === "analysis" && (React.createElement("div", { className: "px-4 mt-4" },
             React.createElement("h2", { className: "text-sm font-semibold mb-2", style: { color: "#E8EAED" } }, "\u062A\u062D\u0644\u06CC\u0644 \u0622\u0645\u0627\u0631\u06CC \u2014 \u0633\u0648\u062F\u0622\u0648\u0631\u062A\u0631\u06CC\u0646 \u067E\u0627\u0631\u0627\u0645\u062A\u0631\u0647\u0627"),
             closedTrades.length === 0 ? (React.createElement("div", { className: "rounded-xl p-6 text-center text-sm mb-4", style: { background: "#12161C", color: "#6B7280" } }, "\u0628\u0631\u0627\u06CC \u062A\u062D\u0644\u06CC\u0644\u060C \u062D\u062F\u0627\u0642\u0644 \u0686\u0646\u062F \u0645\u0639\u0627\u0645\u0644\u0647\u200C\u06CC \u0628\u0633\u062A\u0647\u200C\u0634\u062F\u0647 \u0644\u0627\u0632\u0645 \u0627\u0633\u062A.")) : (React.createElement(React.Fragment, null,
@@ -3407,7 +3465,7 @@ function App() {
             { key: "strategy", label: "استراتژی", Icon: ListChecks },
             { key: "goals", label: "اهداف معامله گری", Icon: Flag },
             { key: "lifegoals", label: "اهداف زندگی", Icon: Flag },
-            { key: "gratitude", label: "سپاسگزاری", Icon: Flag },
+            { key: "gratitude", label: "شکر گزاری", Icon: Heart },
             { key: "analysis", label: "تحلیل", Icon: LineChartIcon },
             { key: "exportall", label: "خروجی کل", Icon: FileSpreadsheet },
         ].map(({ key, label, Icon }) => (React.createElement("button", { key: key, onClick: () => setTab(key), className: "flex flex-col items-center gap-1 py-2.5 shrink-0", style: { width: 68, color: tab === key ? "#D4A64A" : "#6B7280" } },
@@ -3561,11 +3619,11 @@ function App() {
                     React.createElement(ToggleGroup, { value: openForm.dailyTrendDirection, options: DAILY_DIRECTION_OPTIONS, onChange: v => setOpenForm({ ...openForm, dailyTrendDirection: v }) })),
                 React.createElement(Field, { label: "\u062C\u0647\u062A \u06A9\u0646\u062F\u0644 \u0631\u0648\u0632\u0627\u0646\u0647" },
                     React.createElement(ToggleGroup, { value: openForm.dailyCandleDirection, options: DAILY_DIRECTION_OPTIONS, onChange: v => setOpenForm({ ...openForm, dailyCandleDirection: v }) })),
-                React.createElement(Field, { label: "\u062C\u0647\u062A \u0631\u0648\u0646\u062F \u0627\u0635\u0644\u06CC" },
+                React.createElement(Field, { label: hlLabel("جهت روند اصلی") },
                     React.createElement("div", { className: "flex gap-2" },
                         React.createElement("button", { onClick: () => setOpenForm(f => ({ ...f, mainTrendDirection: "bullish", tradeDirectionRel: relFromTrend("bullish", f.direction) })), className: "flex-1 py-2 rounded-lg text-sm", style: { background: openForm.mainTrendDirection === "bullish" ? "#34D39922" : "#1A1F27", color: openForm.mainTrendDirection === "bullish" ? "#34D399" : "#6B7280" } }, "\u0635\u0639\u0648\u062F\u06CC"),
                         React.createElement("button", { onClick: () => setOpenForm(f => ({ ...f, mainTrendDirection: "bearish", tradeDirectionRel: relFromTrend("bearish", f.direction) })), className: "flex-1 py-2 rounded-lg text-sm", style: { background: openForm.mainTrendDirection === "bearish" ? "#F8717122" : "#1A1F27", color: openForm.mainTrendDirection === "bearish" ? "#F87171" : "#6B7280" } }, "\u0646\u0632\u0648\u0644\u06CC"))),
-                React.createElement(Field, { label: "\u0633\u06CC\u0633\u062A\u0645\u200C\u0647\u0627\u06CC \u0645\u0639\u0627\u0645\u0644\u0627\u062A\u06CC \u062A\u0627\u06CC\u0645 \u0627\u0635\u0644\u06CC (\u0686\u0646\u062F \u062A\u0627 \u0647\u0645 \u0645\u06CC\u200C\u062A\u0648\u0646\u06CC \u0627\u0646\u062A\u062E\u0627\u0628 \u06A9\u0646\u06CC)" },
+                React.createElement(Field, { label: hlLabel("سیستم‌های معاملاتی تایم اصلی (چند تا هم می‌تونی انتخاب کنی)") },
                     React.createElement("div", { style: { position: "relative", paddingTop: 6 } },
                         React.createElement("button", { type: "button", onClick: () => setSystemsEditMode(m => !m), style: { position: "absolute", top: -6, left: -6, zIndex: 1, background: systemsEditMode ? "#F8717122" : "#1A1F27", border: `1px solid ${systemsEditMode ? "#F8717155" : "#262C36"}`, borderRadius: 8, padding: 4 }, "aria-label": "\u062D\u0630\u0641 \u0633\u06CC\u0633\u062A\u0645\u200C\u0647\u0627" },
                             React.createElement(Trash2, { size: 11, color: systemsEditMode ? "#F87171" : "#6B7280" })),
@@ -3589,15 +3647,31 @@ function App() {
                             React.createElement("input", { type: "text", value: newSystemText, onChange: e => setNewSystemText(e.target.value), onKeyDown: e => e.key === "Enter" && addSystemOptionInline(), placeholder: "\u0633\u06CC\u0633\u062A\u0645 \u062C\u062F\u06CC\u062F...", className: "flex-1 rounded-lg px-2.5 py-1.5 text-[12px] bg-transparent outline-none", style: { color: "#E8EAED", border: "1px solid #262C36" } }),
                             React.createElement("button", { type: "button", onClick: addSystemOptionInline, className: "flex items-center gap-1 px-3 py-1.5 rounded-lg text-[12px]", style: { background: "#1A1F27", color: "#D4A64A" } },
                                 React.createElement(Plus, { size: 12 }))))),
-                React.createElement(Field, { label: "\u062C\u0647\u062A \u0631\u0648\u0646\u062F \u062A\u0627\u06CC\u0645 \u0648\u0631\u0648\u062F" },
+                React.createElement(Field, { label: hlLabel("جهت روند تایم ورود") },
                     React.createElement("div", { className: "flex gap-2" },
                         React.createElement("button", { onClick: () => setOpenForm({ ...openForm, marketBias: "bullish" }), className: "flex-1 py-2 rounded-lg text-sm", style: { background: openForm.marketBias === "bullish" ? "#34D39922" : "#1A1F27", color: openForm.marketBias === "bullish" ? "#34D399" : "#6B7280" } }, "\u0635\u0639\u0648\u062F\u06CC"),
                         React.createElement("button", { onClick: () => setOpenForm({ ...openForm, marketBias: "bearish" }), className: "flex-1 py-2 rounded-lg text-sm", style: { background: openForm.marketBias === "bearish" ? "#F8717122" : "#1A1F27", color: openForm.marketBias === "bearish" ? "#F87171" : "#6B7280" } }, "\u0646\u0632\u0648\u0644\u06CC"))),
-                React.createElement(Field, { label: "\u0628\u0627\u0632\u0627\u0631 \u062A\u0627\u06CC\u0645 \u0648\u0631\u0648\u062F" },
+                React.createElement(Field, { label: hlLabel("بازار تایم ورود") },
                     React.createElement("div", { className: "flex gap-2" }, [["trend", "روند"], ["range", "رنج"], ["volatile", "پرنوسان"]].map(([val, label]) => (React.createElement("button", { key: val, onClick: () => setOpenForm({ ...openForm, marketCondition: val }), className: "flex-1 py-2 rounded-lg text-[13px]", style: { background: openForm.marketCondition === val ? "#D4A64A22" : "#1A1F27", color: openForm.marketCondition === val ? "#D4A64A" : "#6B7280" } }, label))))),
-                React.createElement(Field, { label: "\u0645\u0648\u062C \u062A\u0627\u06CC\u0645 \u0648\u0631\u0648\u062F" },
-                    React.createElement("div", { className: "flex gap-1.5 overflow-x-auto pb-1" }, WAVE_OPTIONS.map(opt => (React.createElement("button", { key: opt, onClick: () => setOpenForm({ ...openForm, wave: opt }), className: "px-3 py-2 rounded-lg text-[13px] shrink-0", style: { background: openForm.wave === opt ? "#D4A64A22" : "#1A1F27", color: openForm.wave === opt ? "#D4A64A" : "#6B7280" } }, opt))))),
-                React.createElement(Field, { label: "\u0633\u06CC\u0633\u062A\u0645\u200C\u0647\u0627\u06CC \u0645\u0639\u0627\u0645\u0644\u0627\u062A\u06CC \u062A\u0627\u06CC\u0645 \u0648\u0631\u0648\u062F (\u0686\u0646\u062F \u062A\u0627 \u0647\u0645 \u0645\u06CC\u200C\u062A\u0648\u0646\u06CC \u0627\u0646\u062A\u062E\u0627\u0628 \u06A9\u0646\u06CC)" },
+                React.createElement(Field, { label: hlLabel("موج تایم ورود") },
+                    React.createElement("div", { style: { position: "relative", paddingTop: 6 } },
+                        React.createElement("button", { type: "button", onClick: () => setWaveEditMode(m => !m), style: { position: "absolute", top: -6, left: -6, zIndex: 1, background: waveEditMode ? "#F8717122" : "#1A1F27", border: `1px solid ${waveEditMode ? "#F8717155" : "#262C36"}`, borderRadius: 8, padding: 4 }, "aria-label": "\u062D\u0630\u0641 \u06AF\u0632\u06CC\u0646\u0647\u200C\u0647\u0627" },
+                            React.createElement(Trash2, { size: 11, color: waveEditMode ? "#F87171" : "#6B7280" })),
+                        React.createElement("div", { className: "flex flex-wrap gap-1.5" }, waveOptions.map((opt, i) => waveEditMode ? (React.createElement("span", { key: i, className: "flex items-center gap-1 px-2 py-1.5 rounded-lg text-[12px]", style: { background: "#1A1F27", border: "1px solid #262C36" } },
+                            React.createElement("button", { type: "button", onClick: () => moveWaveOption(i, -1), disabled: i === 0, style: { opacity: i === 0 ? 0.3 : 1 } },
+                                React.createElement(ChevronUp, { size: 12, color: "#6B7280" })),
+                            React.createElement("button", { type: "button", onClick: () => moveWaveOption(i, 1), disabled: i === waveOptions.length - 1, style: { opacity: i === waveOptions.length - 1 ? 0.3 : 1 } },
+                                React.createElement(ChevronDown, { size: 12, color: "#6B7280" })),
+                            React.createElement("input", { value: opt, onChange: e => renameWaveOption(i, e.target.value), className: "bg-transparent outline-none text-[12px]", style: { color: "#E8EAED", width: Math.max(3, opt.length) + "ch" } }),
+                            React.createElement("button", { type: "button", onClick: () => { removeWaveOption(opt); if (openForm.wave === opt)
+                                    setOpenForm(f => ({ ...f, wave: "" })); } },
+                                React.createElement(X, { size: 10, color: "#F87171" })))) : (React.createElement("span", { key: i, className: "flex items-center gap-1 px-3 py-2 rounded-lg text-[13px] shrink-0", style: { background: openForm.wave === opt ? "#D4A64A22" : "#1A1F27", color: openForm.wave === opt ? "#D4A64A" : "#6B7280" } },
+                            React.createElement("button", { type: "button", onClick: () => setOpenForm({ ...openForm, wave: opt }) }, opt))))),
+                        React.createElement("div", { className: "flex gap-1.5 mt-1.5" },
+                            React.createElement("input", { type: "text", value: newWaveText, onChange: e => setNewWaveText(e.target.value), onKeyDown: e => e.key === "Enter" && addWaveOptionInline(), placeholder: "\u0645\u0648\u062C \u062C\u062F\u06CC\u062F...", className: "flex-1 rounded-lg px-2.5 py-1.5 text-[12px] bg-transparent outline-none", style: { color: "#E8EAED", border: "1px solid #262C36" } }),
+                            React.createElement("button", { type: "button", onClick: addWaveOptionInline, className: "flex items-center gap-1 px-3 py-1.5 rounded-lg text-[12px]", style: { background: "#1A1F27", color: "#D4A64A" } },
+                                React.createElement(Plus, { size: 12 }))))),
+                React.createElement(Field, { label: hlLabel("سیستم‌های معاملاتی تایم ورود (چند تا هم می‌تونی انتخاب کنی)") },
                     React.createElement("div", { style: { position: "relative", paddingTop: 6 } },
                         React.createElement("button", { type: "button", onClick: () => setEntryTimeSystemsEditMode(m => !m), style: { position: "absolute", top: -6, left: -6, zIndex: 1, background: entryTimeSystemsEditMode ? "#F8717122" : "#1A1F27", border: `1px solid ${entryTimeSystemsEditMode ? "#F8717155" : "#262C36"}`, borderRadius: 8, padding: 4 }, "aria-label": "\u062D\u0630\u0641 \u0633\u06CC\u0633\u062A\u0645\u200C\u0647\u0627" },
                             React.createElement(Trash2, { size: 11, color: entryTimeSystemsEditMode ? "#F87171" : "#6B7280" })),
@@ -3633,7 +3707,7 @@ function App() {
                         React.createElement("button", { onClick: () => setOpenForm({ ...openForm, tradeDirectionRel: "with" }), className: "flex-1 py-2 rounded-lg text-sm", style: { background: openForm.tradeDirectionRel === "with" ? "#60A5FA22" : "#1A1F27", color: openForm.tradeDirectionRel === "with" ? "#60A5FA" : "#6B7280" } }, "\u062C\u0647\u062A \u0631\u0648\u0646\u062F \u0627\u0635\u0644\u06CC"),
                         React.createElement("button", { onClick: () => setOpenForm({ ...openForm, tradeDirectionRel: "against" }), className: "flex-1 py-2 rounded-lg text-sm", style: { background: openForm.tradeDirectionRel === "against" ? "#FBBF2422" : "#1A1F27", color: openForm.tradeDirectionRel === "against" ? "#FBBF24" : "#6B7280" } }, "\u062E\u0644\u0627\u0641 \u0631\u0648\u0646\u062F \u0627\u0635\u0644\u06CC")),
                     React.createElement("p", { className: "text-[10px] mt-1", style: { color: "#6B7280" } }, "\u0628\u0631 \u0627\u0633\u0627\u0633 \u00AB\u062C\u0647\u062A \u0631\u0648\u0646\u062F \u0627\u0635\u0644\u06CC\u00BB \u0648 \u00AB\u062E\u0631\u06CC\u062F/\u0641\u0631\u0648\u0634\u00BB \u062E\u0648\u062F\u06A9\u0627\u0631 \u0627\u0646\u062A\u062E\u0627\u0628 \u0645\u06CC\u200C\u0634\u0647\u061B \u0627\u06AF\u0647 \u0644\u0627\u0632\u0645 \u0628\u0648\u062F \u062F\u0633\u062A\u06CC \u0647\u0645 \u0645\u06CC\u200C\u062A\u0648\u0646\u06CC \u0639\u0648\u0636\u0634 \u06A9\u0646\u06CC.")),
-                React.createElement(Field, { label: "\u0627\u0644\u06AF\u0648\u06CC \u06A9\u0646\u062F\u0644 \u0628\u0631\u06AF\u0634\u062A\u06CC \u062A\u0627\u06CC\u0645 \u0648\u0631\u0648\u062F (\u0686\u0646\u062F \u062A\u0627 \u0647\u0645 \u0645\u06CC\u200C\u062A\u0648\u0646\u06CC \u0627\u0646\u062A\u062E\u0627\u0628 \u06A9\u0646\u06CC)" },
+                React.createElement(Field, { label: hlLabel("الگوی کندل برگشتی تایم ورود (چند تا هم می‌تونی انتخاب کنی)") },
                     React.createElement("div", { style: { position: "relative", paddingTop: 6 } },
                         React.createElement("button", { type: "button", onClick: () => setReversalPatternEditMode(m => !m), style: { position: "absolute", top: -6, left: -6, zIndex: 1, background: reversalPatternEditMode ? "#F8717122" : "#1A1F27", border: `1px solid ${reversalPatternEditMode ? "#F8717155" : "#262C36"}`, borderRadius: 8, padding: 4 }, "aria-label": "\u062D\u0630\u0641 \u06AF\u0632\u06CC\u0646\u0647\u200C\u0647\u0627" },
                             React.createElement(Trash2, { size: 11, color: reversalPatternEditMode ? "#F87171" : "#6B7280" })),
@@ -3654,7 +3728,7 @@ function App() {
                             React.createElement("input", { type: "text", value: newReversalPatternText, onChange: e => setNewReversalPatternText(e.target.value), onKeyDown: e => e.key === "Enter" && addReversalPatternOptionInline(), placeholder: "\u0627\u0644\u06AF\u0648\u06CC \u062C\u062F\u06CC\u062F...", className: "flex-1 rounded-lg px-2.5 py-1.5 text-[12px] bg-transparent outline-none", style: { color: "#E8EAED", border: "1px solid #262C36" } }),
                             React.createElement("button", { type: "button", onClick: addReversalPatternOptionInline, className: "flex items-center gap-1 px-3 py-1.5 rounded-lg text-[12px]", style: { background: "#1A1F27", color: "#A855F7" } },
                                 React.createElement(Plus, { size: 12 }))))),
-                React.createElement(Field, { label: "\u0646\u0642\u0637\u0647 \u0648\u0631\u0648\u062F" },
+                React.createElement(Field, { label: hlLabel("نقطه ورود (به اشباع استوک دیفالت توجه شود.)") },
                     React.createElement("div", { style: { position: "relative", paddingTop: 6 } },
                         React.createElement("button", { type: "button", onClick: () => setTrigEditMode(m => !m), style: { position: "absolute", top: -6, left: -6, zIndex: 1, background: trigEditMode ? "#F8717122" : "#1A1F27", border: `1px solid ${trigEditMode ? "#F8717155" : "#262C36"}`, borderRadius: 8, padding: 4 }, "aria-label": "\u062D\u0630\u0641 \u06AF\u0632\u06CC\u0646\u0647\u200C\u0647\u0627" },
                             React.createElement(Trash2, { size: 11, color: trigEditMode ? "#F87171" : "#6B7280" })),
@@ -3732,7 +3806,7 @@ function App() {
                     derived.currentBalance.toFixed(2),
                     ")")),
                 React.createElement("div", { className: "grid grid-cols-2 gap-2 mb-2" },
-                    React.createElement(Field, { label: "\u0642\u06CC\u0645\u062A \u0648\u0631\u0648\u062F (\u0627\u062E\u062A\u06CC\u0627\u0631\u06CC)" },
+                    React.createElement(Field, { label: hlLabel("قیمت ورود (اختیاری)") },
                         React.createElement("input", { type: "number", inputMode: "decimal", value: openForm.entry, onChange: e => setOpenForm({ ...openForm, entry: e.target.value }), className: "w-full bg-transparent outline-none text-sm mono", style: { color: "#E8EAED", fontFamily: "JetBrains Mono, monospace" } })),
                     React.createElement(Field, { label: `حجم (لات) — پیشنهادی: ${derived.nextLot}` },
                         React.createElement("input", { type: "text", inputMode: "decimal", value: openForm.lot, onChange: e => setOpenForm({ ...openForm, lot: e.target.value }), className: "w-full bg-transparent outline-none text-sm mono", style: { color: "#E8EAED", fontFamily: "JetBrains Mono, monospace" } }))),
@@ -3890,7 +3964,7 @@ function App() {
                 React.createElement(Field, { label: "\u0628\u0627\u0632\u0627\u0631 \u062A\u0627\u06CC\u0645 \u0648\u0631\u0648\u062F" },
                     React.createElement(ToggleGroup, { value: editForm.marketCondition, options: [{ key: "trend", label: "روند" }, { key: "range", label: "رنج" }, { key: "volatile", label: "پرنوسان" }], onChange: v => onEditFieldChange("marketCondition", v) })),
                 React.createElement(Field, { label: "\u0645\u0648\u062C \u062A\u0627\u06CC\u0645 \u0648\u0631\u0648\u062F" },
-                    React.createElement(ChipGroup, { value: editForm.wave, options: WAVE_OPTIONS, onChange: v => onEditFieldChange("wave", v) })),
+                    React.createElement(ChipGroup, { value: editForm.wave, options: waveOptions, onChange: v => onEditFieldChange("wave", v) })),
                 React.createElement(Field, { label: "\u062E\u0631\u06CC\u062F/\u0641\u0631\u0648\u0634" },
                     React.createElement(ToggleGroup, { value: editForm.direction, options: [{ key: "buy", label: "خرید" }, { key: "sell", label: "فروش" }], onChange: v => onEditFieldChange("direction", v), activeColor: "#34D399" })),
                 React.createElement(Field, { label: "\u0627\u0644\u06AF\u0648\u06CC \u06A9\u0646\u062F\u0644 \u0628\u0631\u06AF\u0634\u062A\u06CC \u062A\u0627\u06CC\u0645 \u0648\u0631\u0648\u062F (\u0686\u0646\u062F \u062A\u0627 \u0647\u0645 \u0645\u06CC\u200C\u062A\u0648\u0646\u06CC \u0627\u0646\u062A\u062E\u0627\u0628 \u06A9\u0646\u06CC)" },
