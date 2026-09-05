@@ -899,11 +899,11 @@ const PARAM_DEFS = {
     session: { label: "سشن معاملاتی", get: t => sessionLabelOf(t) },
     trend: { label: "جهت ترید", get: t => t.tradeDirectionRel === "with" ? "جهت روند اصلی" : t.tradeDirectionRel === "against" ? "خلاف روند اصلی" : "—" },
     rr: { label: "R-multiple", get: t => (t.rrReward !== null && t.rrReward !== undefined) ? `1:${t.rrReward}` : "—" },
-    bias: { label: "جهت روند میانی", get: t => t.marketBias === "bullish" ? "صعودی" : t.marketBias === "bearish" ? "نزولی" : "—" },
-    condition: { label: "بازار روند میانی", get: t => t.marketCondition === "trend" ? "روند" : t.marketCondition === "range" ? "رنج" : t.marketCondition === "volatile" ? "پرنوسان" : "—" },
-    trig: { label: "Trig", get: t => t.trig || "—" },
-    target: { label: "Target", get: t => t.target || "—" },
-    stop: { label: "Stop", get: t => t.stop || "—" },
+    bias: { label: "جهت روند تایم ورود", get: t => t.marketBias === "bullish" ? "صعودی" : t.marketBias === "bearish" ? "نزولی" : "—" },
+    condition: { label: "بازار تایم ورود", get: t => t.marketCondition === "trend" ? "روند" : t.marketCondition === "range" ? "رنج" : t.marketCondition === "volatile" ? "پرنوسان" : "—" },
+    trig: { label: "نقطه ورود", get: t => t.trig || "—" },
+    target: { label: "حد سود (TP)", get: t => t.target || "—" },
+    stop: { label: "حد ضرر (SL)", get: t => t.stop || "—" },
     news: { label: "خبر", get: t => t.newsName || "بدون خبر" },
 };
 function build3DData(trades, paramAKey, paramBKey) {
@@ -2150,7 +2150,7 @@ function App() {
             return;
         }
         const asc = sortAsc(filtered);
-        const header = ["شماره ترید روز", "تاریخ", "روز هفته", "ساعت ورود", "جفت‌ارز", "جهت", "فراکتال", "جهت روند اصلی", "جهت روند", "بایاس بازار", "بازار روند میانی", "سیستم معاملاتی", "قیمت ورود", "قیمت خروج", "پیپ", "حجم (لات)", "R:R", "ریسک (%)", "Trig", "Target", "Stop", "خبر", "سود/ضرر", "نوع بستن معامله", "مدت معامله", "موجودی پس از ترید", "سشن/کیل‌زون فعال", "یادداشت"];
+        const header = ["شماره ترید روز", "تاریخ", "روز هفته", "ساعت ورود", "جفت‌ارز", "جهت", "فراکتال", "جهت روند اصلی", "جهت روند", "بایاس بازار", "بازار تایم ورود", "سیستم معاملاتی", "قیمت ورود", "قیمت خروج", "پیپ", "حجم (لات)", "R:R", "ریسک (%)", "نقطه ورود", "حد سود (TP)", "حد ضرر (SL)", "خبر", "سود/ضرر", "نوع بستن معامله", "مدت معامله", "موجودی پس از ترید", "سشن/کیل‌زون فعال", "یادداشت"];
         const rows = asc.map(t => [
             derived.byId[t.id]?.dailyIndex ?? "", t.date, weekdayFromDateStr(t.date), t.time, t.pair,
             t.direction === "buy" ? "خرید" : "فروش", t.fractal || "", t.mainTrendDirection === "bullish" ? "صعودی" : t.mainTrendDirection === "bearish" ? "نزولی" : "", t.tradeDirectionRel === "with" ? "جهت روند اصلی" : t.tradeDirectionRel === "against" ? "خلاف روند اصلی" : "",
@@ -2670,7 +2670,7 @@ function App() {
     function exportAll() {
         const wb = XLSX.utils.book_new();
         const allClosedAsc = sortAsc(closedTrades);
-        const jHeader = ["شماره ترید روز", "تاریخ", "روز هفته", "ساعت ورود", "جفت‌ارز", "جهت", "فراکتال", "جهت روند اصلی", "جهت روند", "بایاس بازار", "بازار روند میانی", "سیستم معاملاتی", "قیمت ورود", "قیمت خروج", "پیپ", "حجم (لات)", "R:R", "ریسک (%)", "Trig", "Target", "Stop", "خبر", "سود/ضرر", "نوع بستن معامله", "موجودی پس از ترید", "سشن/کیل‌زون فعال", "یادداشت"];
+        const jHeader = ["شماره ترید روز", "تاریخ", "روز هفته", "ساعت ورود", "جفت‌ارز", "جهت", "فراکتال", "جهت روند اصلی", "جهت روند", "بایاس بازار", "بازار تایم ورود", "سیستم معاملاتی", "قیمت ورود", "قیمت خروج", "پیپ", "حجم (لات)", "R:R", "ریسک (%)", "نقطه ورود", "حد سود (TP)", "حد ضرر (SL)", "خبر", "سود/ضرر", "نوع بستن معامله", "موجودی پس از ترید", "سشن/کیل‌زون فعال", "یادداشت"];
         const jRows = allClosedAsc.map(t => [
             derived.byId[t.id]?.dailyIndex ?? "", t.date, weekdayFromDateStr(t.date), t.time, t.pair, t.direction === "buy" ? "خرید" : "فروش", t.fractal || "", t.mainTrendDirection === "bullish" ? "صعودی" : t.mainTrendDirection === "bearish" ? "نزولی" : "", t.tradeDirectionRel === "with" ? "جهت روند اصلی" : t.tradeDirectionRel === "against" ? "خلاف روند اصلی" : "",
             t.marketBias === "bullish" ? "صعودی" : t.marketBias === "bearish" ? "نزولی" : "", t.marketCondition === "trend" ? "روند" : t.marketCondition === "range" ? "رنج" : t.marketCondition === "volatile" ? "پرنوسان" : "",
@@ -2996,6 +2996,8 @@ function App() {
                         React.createElement("div", { className: "flex items-center gap-2" },
                             t.direction === "buy" ? React.createElement(TrendingUp, { size: 15, color: "#34D399" }) : React.createElement(TrendingDown, { size: 15, color: "#F87171" }),
                             React.createElement("span", { className: "text-sm font-semibold", style: { color: "#E8EAED" } }, t.pair),
+                            React.createElement("button", { onClick: () => openEditTrade(t), className: "p-1" },
+                                React.createElement(Edit3, { size: 13, color: "#6B7280" })),
                             React.createElement("span", { className: "text-[10px] px-2 py-0.5 rounded-full", style: { background: "#FBBF2422", color: "#FBBF24" } }, "\u0628\u0627\u0632")),
                         React.createElement("button", { onClick: () => askDeleteConfirm("این معامله حذف بشه؟", () => deleteTrade(t.id)), className: "p-1" },
                             React.createElement(Trash2, { size: 14, color: "#6B7280" }))),
@@ -3330,16 +3332,16 @@ function App() {
                         { label: "بایاس بازار", data: byBias },
                         { label: "فراکتال", data: byFractal },
                         { label: "جهت روند اصلی", data: byMainTrend },
-                        { label: "بازار روند میانی", data: byCondition },
-                        { label: "Trig", data: byTrig },
-                        { label: "Target", data: byTarget },
-                        { label: "Stop", data: byStop },
+                        { label: "بازار تایم ورود", data: byCondition },
+                        { label: "نقطه ورود", data: byTrig },
+                        { label: "حد سود (TP)", data: byTarget },
+                        { label: "حد ضرر (SL)", data: byStop },
                         { label: "خبر هم‌زمان", data: byNews },
                         { label: "سیستم معاملاتی", data: bySystem },
                         { label: "روز هفته", data: byWeekday },
                         { label: "حجم (لات)", data: byLot },
                         { label: "R-multiple", data: byRR },
-                        { label: "الگوی کندل برگشتی روند اصلی", data: byReversalPattern },
+                        { label: "الگوی کندل برگشتی تایم ورود", data: byReversalPattern },
                         { label: "احتمال موفقیت", data: bySuccessProb },
                         { label: "روانشناسی", data: byPsychology },
                         { label: "مدت معامله", data: byDuration },
@@ -3369,9 +3371,9 @@ function App() {
                     { title: "سودآوری بر اساس فراکتال", data: byFractal },
                     { title: "سودآوری بر اساس جهت روند اصلی", data: byMainTrend },
                     { title: "سودآوری بر اساس بازار روند میانی", data: byCondition },
-                    { title: "سودآوری بر اساس Trig", data: byTrig },
-                    { title: "سودآوری بر اساس Target", data: byTarget },
-                    { title: "سودآوری بر اساس Stop", data: byStop },
+                    { title: "سودآوری بر اساس نقطه ورود", data: byTrig },
+                    { title: "سودآوری بر اساس حد سود (TP)", data: byTarget },
+                    { title: "سودآوری بر اساس حد ضرر (SL)", data: byStop },
                     { title: "سودآوری بر اساس خبر هم‌زمان", data: byNews },
                     { title: "سودآوری بر اساس مدت معامله", data: byDuration },
                     { title: "ترکیب سیستم + روز هفته", data: bySystemWeekday },
@@ -3563,7 +3565,7 @@ function App() {
                     React.createElement("div", { className: "flex gap-2" },
                         React.createElement("button", { onClick: () => setOpenForm(f => ({ ...f, mainTrendDirection: "bullish", tradeDirectionRel: relFromTrend("bullish", f.direction) })), className: "flex-1 py-2 rounded-lg text-sm", style: { background: openForm.mainTrendDirection === "bullish" ? "#34D39922" : "#1A1F27", color: openForm.mainTrendDirection === "bullish" ? "#34D399" : "#6B7280" } }, "\u0635\u0639\u0648\u062F\u06CC"),
                         React.createElement("button", { onClick: () => setOpenForm(f => ({ ...f, mainTrendDirection: "bearish", tradeDirectionRel: relFromTrend("bearish", f.direction) })), className: "flex-1 py-2 rounded-lg text-sm", style: { background: openForm.mainTrendDirection === "bearish" ? "#F8717122" : "#1A1F27", color: openForm.mainTrendDirection === "bearish" ? "#F87171" : "#6B7280" } }, "\u0646\u0632\u0648\u0644\u06CC"))),
-                React.createElement(Field, { label: "\u0633\u06CC\u0633\u062A\u0645\u200C\u0647\u0627\u06CC \u0645\u0639\u0627\u0645\u0644\u0627\u062A\u06CC (\u0686\u0646\u062F \u062A\u0627 \u0647\u0645 \u0645\u06CC\u200C\u062A\u0648\u0646\u06CC \u0627\u0646\u062A\u062E\u0627\u0628 \u06A9\u0646\u06CC)" },
+                React.createElement(Field, { label: "\u0633\u06CC\u0633\u062A\u0645\u200C\u0647\u0627\u06CC \u0645\u0639\u0627\u0645\u0644\u0627\u062A\u06CC \u062A\u0627\u06CC\u0645 \u0627\u0635\u0644\u06CC (\u0686\u0646\u062F \u062A\u0627 \u0647\u0645 \u0645\u06CC\u200C\u062A\u0648\u0646\u06CC \u0627\u0646\u062A\u062E\u0627\u0628 \u06A9\u0646\u06CC)" },
                     React.createElement("div", { style: { position: "relative", paddingTop: 6 } },
                         React.createElement("button", { type: "button", onClick: () => setSystemsEditMode(m => !m), style: { position: "absolute", top: -6, left: -6, zIndex: 1, background: systemsEditMode ? "#F8717122" : "#1A1F27", border: `1px solid ${systemsEditMode ? "#F8717155" : "#262C36"}`, borderRadius: 8, padding: 4 }, "aria-label": "\u062D\u0630\u0641 \u0633\u06CC\u0633\u062A\u0645\u200C\u0647\u0627" },
                             React.createElement(Trash2, { size: 11, color: systemsEditMode ? "#F87171" : "#6B7280" })),
@@ -3587,13 +3589,13 @@ function App() {
                             React.createElement("input", { type: "text", value: newSystemText, onChange: e => setNewSystemText(e.target.value), onKeyDown: e => e.key === "Enter" && addSystemOptionInline(), placeholder: "\u0633\u06CC\u0633\u062A\u0645 \u062C\u062F\u06CC\u062F...", className: "flex-1 rounded-lg px-2.5 py-1.5 text-[12px] bg-transparent outline-none", style: { color: "#E8EAED", border: "1px solid #262C36" } }),
                             React.createElement("button", { type: "button", onClick: addSystemOptionInline, className: "flex items-center gap-1 px-3 py-1.5 rounded-lg text-[12px]", style: { background: "#1A1F27", color: "#D4A64A" } },
                                 React.createElement(Plus, { size: 12 }))))),
-                React.createElement(Field, { label: "\u062C\u0647\u062A \u0631\u0648\u0646\u062F \u0645\u06CC\u0627\u0646\u06CC" },
+                React.createElement(Field, { label: "\u062C\u0647\u062A \u0631\u0648\u0646\u062F \u062A\u0627\u06CC\u0645 \u0648\u0631\u0648\u062F" },
                     React.createElement("div", { className: "flex gap-2" },
                         React.createElement("button", { onClick: () => setOpenForm({ ...openForm, marketBias: "bullish" }), className: "flex-1 py-2 rounded-lg text-sm", style: { background: openForm.marketBias === "bullish" ? "#34D39922" : "#1A1F27", color: openForm.marketBias === "bullish" ? "#34D399" : "#6B7280" } }, "\u0635\u0639\u0648\u062F\u06CC"),
                         React.createElement("button", { onClick: () => setOpenForm({ ...openForm, marketBias: "bearish" }), className: "flex-1 py-2 rounded-lg text-sm", style: { background: openForm.marketBias === "bearish" ? "#F8717122" : "#1A1F27", color: openForm.marketBias === "bearish" ? "#F87171" : "#6B7280" } }, "\u0646\u0632\u0648\u0644\u06CC"))),
-                React.createElement(Field, { label: "\u0628\u0627\u0632\u0627\u0631 \u0631\u0648\u0646\u062F \u0645\u06CC\u0627\u0646\u06CC" },
+                React.createElement(Field, { label: "\u0628\u0627\u0632\u0627\u0631 \u062A\u0627\u06CC\u0645 \u0648\u0631\u0648\u062F" },
                     React.createElement("div", { className: "flex gap-2" }, [["trend", "روند"], ["range", "رنج"], ["volatile", "پرنوسان"]].map(([val, label]) => (React.createElement("button", { key: val, onClick: () => setOpenForm({ ...openForm, marketCondition: val }), className: "flex-1 py-2 rounded-lg text-[13px]", style: { background: openForm.marketCondition === val ? "#D4A64A22" : "#1A1F27", color: openForm.marketCondition === val ? "#D4A64A" : "#6B7280" } }, label))))),
-                React.createElement(Field, { label: "\u0645\u0648\u062C \u0631\u0648\u0646\u062F \u0645\u06CC\u0627\u0646\u06CC" },
+                React.createElement(Field, { label: "\u0645\u0648\u062C \u062A\u0627\u06CC\u0645 \u0648\u0631\u0648\u062F" },
                     React.createElement("div", { className: "flex gap-1.5 overflow-x-auto pb-1" }, WAVE_OPTIONS.map(opt => (React.createElement("button", { key: opt, onClick: () => setOpenForm({ ...openForm, wave: opt }), className: "px-3 py-2 rounded-lg text-[13px] shrink-0", style: { background: openForm.wave === opt ? "#D4A64A22" : "#1A1F27", color: openForm.wave === opt ? "#D4A64A" : "#6B7280" } }, opt))))),
                 React.createElement(Field, { label: "\u0633\u06CC\u0633\u062A\u0645\u200C\u0647\u0627\u06CC \u0645\u0639\u0627\u0645\u0644\u0627\u062A\u06CC \u062A\u0627\u06CC\u0645 \u0648\u0631\u0648\u062F (\u0686\u0646\u062F \u062A\u0627 \u0647\u0645 \u0645\u06CC\u200C\u062A\u0648\u0646\u06CC \u0627\u0646\u062A\u062E\u0627\u0628 \u06A9\u0646\u06CC)" },
                     React.createElement("div", { style: { position: "relative", paddingTop: 6 } },
@@ -3631,7 +3633,7 @@ function App() {
                         React.createElement("button", { onClick: () => setOpenForm({ ...openForm, tradeDirectionRel: "with" }), className: "flex-1 py-2 rounded-lg text-sm", style: { background: openForm.tradeDirectionRel === "with" ? "#60A5FA22" : "#1A1F27", color: openForm.tradeDirectionRel === "with" ? "#60A5FA" : "#6B7280" } }, "\u062C\u0647\u062A \u0631\u0648\u0646\u062F \u0627\u0635\u0644\u06CC"),
                         React.createElement("button", { onClick: () => setOpenForm({ ...openForm, tradeDirectionRel: "against" }), className: "flex-1 py-2 rounded-lg text-sm", style: { background: openForm.tradeDirectionRel === "against" ? "#FBBF2422" : "#1A1F27", color: openForm.tradeDirectionRel === "against" ? "#FBBF24" : "#6B7280" } }, "\u062E\u0644\u0627\u0641 \u0631\u0648\u0646\u062F \u0627\u0635\u0644\u06CC")),
                     React.createElement("p", { className: "text-[10px] mt-1", style: { color: "#6B7280" } }, "\u0628\u0631 \u0627\u0633\u0627\u0633 \u00AB\u062C\u0647\u062A \u0631\u0648\u0646\u062F \u0627\u0635\u0644\u06CC\u00BB \u0648 \u00AB\u062E\u0631\u06CC\u062F/\u0641\u0631\u0648\u0634\u00BB \u062E\u0648\u062F\u06A9\u0627\u0631 \u0627\u0646\u062A\u062E\u0627\u0628 \u0645\u06CC\u200C\u0634\u0647\u061B \u0627\u06AF\u0647 \u0644\u0627\u0632\u0645 \u0628\u0648\u062F \u062F\u0633\u062A\u06CC \u0647\u0645 \u0645\u06CC\u200C\u062A\u0648\u0646\u06CC \u0639\u0648\u0636\u0634 \u06A9\u0646\u06CC.")),
-                React.createElement(Field, { label: "\u0627\u0644\u06AF\u0648\u06CC \u06A9\u0646\u062F\u0644 \u0628\u0631\u06AF\u0634\u062A\u06CC \u0631\u0648\u0646\u062F \u0627\u0635\u0644\u06CC (\u0686\u0646\u062F \u062A\u0627 \u0647\u0645 \u0645\u06CC\u200C\u062A\u0648\u0646\u06CC \u0627\u0646\u062A\u062E\u0627\u0628 \u06A9\u0646\u06CC)" },
+                React.createElement(Field, { label: "\u0627\u0644\u06AF\u0648\u06CC \u06A9\u0646\u062F\u0644 \u0628\u0631\u06AF\u0634\u062A\u06CC \u062A\u0627\u06CC\u0645 \u0648\u0631\u0648\u062F (\u0686\u0646\u062F \u062A\u0627 \u0647\u0645 \u0645\u06CC\u200C\u062A\u0648\u0646\u06CC \u0627\u0646\u062A\u062E\u0627\u0628 \u06A9\u0646\u06CC)" },
                     React.createElement("div", { style: { position: "relative", paddingTop: 6 } },
                         React.createElement("button", { type: "button", onClick: () => setReversalPatternEditMode(m => !m), style: { position: "absolute", top: -6, left: -6, zIndex: 1, background: reversalPatternEditMode ? "#F8717122" : "#1A1F27", border: `1px solid ${reversalPatternEditMode ? "#F8717155" : "#262C36"}`, borderRadius: 8, padding: 4 }, "aria-label": "\u062D\u0630\u0641 \u06AF\u0632\u06CC\u0646\u0647\u200C\u0647\u0627" },
                             React.createElement(Trash2, { size: 11, color: reversalPatternEditMode ? "#F87171" : "#6B7280" })),
@@ -3652,7 +3654,7 @@ function App() {
                             React.createElement("input", { type: "text", value: newReversalPatternText, onChange: e => setNewReversalPatternText(e.target.value), onKeyDown: e => e.key === "Enter" && addReversalPatternOptionInline(), placeholder: "\u0627\u0644\u06AF\u0648\u06CC \u062C\u062F\u06CC\u062F...", className: "flex-1 rounded-lg px-2.5 py-1.5 text-[12px] bg-transparent outline-none", style: { color: "#E8EAED", border: "1px solid #262C36" } }),
                             React.createElement("button", { type: "button", onClick: addReversalPatternOptionInline, className: "flex items-center gap-1 px-3 py-1.5 rounded-lg text-[12px]", style: { background: "#1A1F27", color: "#A855F7" } },
                                 React.createElement(Plus, { size: 12 }))))),
-                React.createElement(Field, { label: "Trig" },
+                React.createElement(Field, { label: "\u0646\u0642\u0637\u0647 \u0648\u0631\u0648\u062F" },
                     React.createElement("div", { style: { position: "relative", paddingTop: 6 } },
                         React.createElement("button", { type: "button", onClick: () => setTrigEditMode(m => !m), style: { position: "absolute", top: -6, left: -6, zIndex: 1, background: trigEditMode ? "#F8717122" : "#1A1F27", border: `1px solid ${trigEditMode ? "#F8717155" : "#262C36"}`, borderRadius: 8, padding: 4 }, "aria-label": "\u062D\u0630\u0641 \u06AF\u0632\u06CC\u0646\u0647\u200C\u0647\u0627" },
                             React.createElement(Trash2, { size: 11, color: trigEditMode ? "#F87171" : "#6B7280" })),
@@ -3670,7 +3672,7 @@ function App() {
                             React.createElement("input", { type: "text", value: newTrigText, onChange: e => setNewTrigText(e.target.value), onKeyDown: e => e.key === "Enter" && addTrigOptionInline(), placeholder: "Trig \u062C\u062F\u06CC\u062F...", className: "flex-1 rounded-lg px-2.5 py-1.5 text-[12px] bg-transparent outline-none", style: { color: "#E8EAED", border: "1px solid #262C36" } }),
                             React.createElement("button", { type: "button", onClick: addTrigOptionInline, className: "flex items-center gap-1 px-3 py-1.5 rounded-lg text-[12px]", style: { background: "#1A1F27", color: "#60A5FA" } },
                                 React.createElement(Plus, { size: 12 }))))),
-                React.createElement(Field, { label: "Target" },
+                React.createElement(Field, { label: "\u062D\u062F \u0633\u0648\u062F (TP)" },
                     React.createElement("div", { style: { position: "relative", paddingTop: 6 } },
                         React.createElement("button", { type: "button", onClick: () => setTargetEditMode(m => !m), style: { position: "absolute", top: -6, left: -6, zIndex: 1, background: targetEditMode ? "#F8717122" : "#1A1F27", border: `1px solid ${targetEditMode ? "#F8717155" : "#262C36"}`, borderRadius: 8, padding: 4 }, "aria-label": "\u062D\u0630\u0641 \u06AF\u0632\u06CC\u0646\u0647\u200C\u0647\u0627" },
                             React.createElement(Trash2, { size: 11, color: targetEditMode ? "#F87171" : "#6B7280" })),
@@ -3688,7 +3690,7 @@ function App() {
                             React.createElement("input", { type: "text", value: newTargetText, onChange: e => setNewTargetText(e.target.value), onKeyDown: e => e.key === "Enter" && addTargetOptionInline(), placeholder: "Target \u062C\u062F\u06CC\u062F...", className: "flex-1 rounded-lg px-2.5 py-1.5 text-[12px] bg-transparent outline-none", style: { color: "#E8EAED", border: "1px solid #262C36" } }),
                             React.createElement("button", { type: "button", onClick: addTargetOptionInline, className: "flex items-center gap-1 px-3 py-1.5 rounded-lg text-[12px]", style: { background: "#1A1F27", color: "#34D399" } },
                                 React.createElement(Plus, { size: 12 }))))),
-                React.createElement(Field, { label: "Stop" },
+                React.createElement(Field, { label: "\u062D\u062F \u0636\u0631\u0631 (SL)" },
                     React.createElement("div", { style: { position: "relative", paddingTop: 6 } },
                         React.createElement("button", { type: "button", onClick: () => setStopEditMode(m => !m), style: { position: "absolute", top: -6, left: -6, zIndex: 1, background: stopEditMode ? "#F8717122" : "#1A1F27", border: `1px solid ${stopEditMode ? "#F8717155" : "#262C36"}`, borderRadius: 8, padding: 4 }, "aria-label": "\u062D\u0630\u0641 \u06AF\u0632\u06CC\u0646\u0647\u200C\u0647\u0627" },
                             React.createElement(Trash2, { size: 11, color: stopEditMode ? "#F87171" : "#6B7280" })),
@@ -3857,7 +3859,7 @@ function App() {
                         React.createElement("input", { type: "time", value: editForm.time, onChange: e => onEditFieldChange("time", e.target.value), className: "w-full bg-transparent outline-none text-sm", style: { color: "#E8EAED" } }))),
                 React.createElement(Field, { label: "\u062C\u0641\u062A\u200C\u0627\u0631\u0632" },
                     React.createElement("select", { value: editForm.pair, onChange: e => onEditFieldChange("pair", e.target.value), className: "w-full bg-transparent outline-none text-sm", style: { color: "#E8EAED" } }, pairs.map(p => (React.createElement("option", { key: p, value: p, style: { background: "#1A1F27" } }, p))))),
-                React.createElement(Field, { label: "\u0633\u06CC\u0633\u062A\u0645\u200C\u0647\u0627\u06CC \u0645\u0639\u0627\u0645\u0644\u0627\u062A\u06CC (\u0686\u0646\u062F \u062A\u0627 \u0647\u0645 \u0645\u06CC\u200C\u062A\u0648\u0646\u06CC \u0627\u0646\u062A\u062E\u0627\u0628 \u06A9\u0646\u06CC)" },
+                React.createElement(Field, { label: "\u0633\u06CC\u0633\u062A\u0645\u200C\u0647\u0627\u06CC \u0645\u0639\u0627\u0645\u0644\u0627\u062A\u06CC \u062A\u0627\u06CC\u0645 \u0627\u0635\u0644\u06CC (\u0686\u0646\u062F \u062A\u0627 \u0647\u0645 \u0645\u06CC\u200C\u062A\u0648\u0646\u06CC \u0627\u0646\u062A\u062E\u0627\u0628 \u06A9\u0646\u06CC)" },
                     React.createElement("div", { className: "flex flex-wrap gap-1.5" }, systems.map(s => {
                         const active = (editForm.systems || []).includes(s);
                         return (React.createElement("button", { key: s, type: "button", onClick: () => {
@@ -3883,15 +3885,15 @@ function App() {
                     React.createElement(ToggleGroup, { value: editForm.dailyTrendDirection, options: DAILY_DIRECTION_OPTIONS, onChange: v => onEditFieldChange("dailyTrendDirection", v) })),
                 React.createElement(Field, { label: "\u062C\u0647\u062A \u0631\u0648\u0646\u062F \u0627\u0635\u0644\u06CC" },
                     React.createElement(ToggleGroup, { value: editForm.mainTrendDirection, options: [{ key: "bullish", label: "صعودی" }, { key: "bearish", label: "نزولی" }], onChange: v => onEditFieldChange("mainTrendDirection", v), activeColor: "#34D399" })),
-                React.createElement(Field, { label: "\u062C\u0647\u062A \u0631\u0648\u0646\u062F \u0645\u06CC\u0627\u0646\u06CC" },
+                React.createElement(Field, { label: "\u062C\u0647\u062A \u0631\u0648\u0646\u062F \u062A\u0627\u06CC\u0645 \u0648\u0631\u0648\u062F" },
                     React.createElement(ToggleGroup, { value: editForm.marketBias, options: [{ key: "bullish", label: "صعودی" }, { key: "bearish", label: "نزولی" }], onChange: v => onEditFieldChange("marketBias", v), activeColor: "#34D399" })),
-                React.createElement(Field, { label: "\u0628\u0627\u0632\u0627\u0631 \u0631\u0648\u0646\u062F \u0645\u06CC\u0627\u0646\u06CC" },
+                React.createElement(Field, { label: "\u0628\u0627\u0632\u0627\u0631 \u062A\u0627\u06CC\u0645 \u0648\u0631\u0648\u062F" },
                     React.createElement(ToggleGroup, { value: editForm.marketCondition, options: [{ key: "trend", label: "روند" }, { key: "range", label: "رنج" }, { key: "volatile", label: "پرنوسان" }], onChange: v => onEditFieldChange("marketCondition", v) })),
-                React.createElement(Field, { label: "\u0645\u0648\u062C \u0631\u0648\u0646\u062F \u0645\u06CC\u0627\u0646\u06CC" },
+                React.createElement(Field, { label: "\u0645\u0648\u062C \u062A\u0627\u06CC\u0645 \u0648\u0631\u0648\u062F" },
                     React.createElement(ChipGroup, { value: editForm.wave, options: WAVE_OPTIONS, onChange: v => onEditFieldChange("wave", v) })),
                 React.createElement(Field, { label: "\u062E\u0631\u06CC\u062F/\u0641\u0631\u0648\u0634" },
                     React.createElement(ToggleGroup, { value: editForm.direction, options: [{ key: "buy", label: "خرید" }, { key: "sell", label: "فروش" }], onChange: v => onEditFieldChange("direction", v), activeColor: "#34D399" })),
-                React.createElement(Field, { label: "\u0627\u0644\u06AF\u0648\u06CC \u06A9\u0646\u062F\u0644 \u0628\u0631\u06AF\u0634\u062A\u06CC \u0631\u0648\u0646\u062F \u0627\u0635\u0644\u06CC (\u0686\u0646\u062F \u062A\u0627 \u0647\u0645 \u0645\u06CC\u200C\u062A\u0648\u0646\u06CC \u0627\u0646\u062A\u062E\u0627\u0628 \u06A9\u0646\u06CC)" },
+                React.createElement(Field, { label: "\u0627\u0644\u06AF\u0648\u06CC \u06A9\u0646\u062F\u0644 \u0628\u0631\u06AF\u0634\u062A\u06CC \u062A\u0627\u06CC\u0645 \u0648\u0631\u0648\u062F (\u0686\u0646\u062F \u062A\u0627 \u0647\u0645 \u0645\u06CC\u200C\u062A\u0648\u0646\u06CC \u0627\u0646\u062A\u062E\u0627\u0628 \u06A9\u0646\u06CC)" },
                     React.createElement("div", { className: "flex flex-wrap gap-1.5" }, reversalPatternOptions.map(opt => {
                         const active = (editForm.reversalPatterns || []).includes(opt);
                         return (React.createElement("button", { key: opt, type: "button", onClick: () => {
@@ -3900,11 +3902,11 @@ function App() {
                                 onEditFieldChange("reversalPatterns", next);
                             }, className: "px-3 py-2 rounded-lg text-[12px]", style: { background: active ? "#A855F722" : "#1A1F27", color: active ? "#A855F7" : "#6B7280" } }, opt));
                     }))),
-                React.createElement(Field, { label: "Trig" },
+                React.createElement(Field, { label: "\u0646\u0642\u0637\u0647 \u0648\u0631\u0648\u062F" },
                     React.createElement(ChipGroup, { value: editForm.trig, options: trigOptions, onChange: v => onEditFieldChange("trig", v), mono: true })),
-                React.createElement(Field, { label: "Target" },
+                React.createElement(Field, { label: "\u062D\u062F \u0633\u0648\u062F (TP)" },
                     React.createElement(ChipGroup, { value: editForm.target, options: targetOptions, onChange: v => onEditFieldChange("target", v), mono: true, activeColor: "#34D399" })),
-                React.createElement(Field, { label: "Stop" },
+                React.createElement(Field, { label: "\u062D\u062F \u0636\u0631\u0631 (SL)" },
                     React.createElement(ChipGroup, { value: editForm.stop, options: stopOptions, onChange: v => onEditFieldChange("stop", v), mono: true, activeColor: "#F87171" })),
                 React.createElement("div", { className: "grid grid-cols-2 gap-2 mb-2" },
                     React.createElement(Field, { label: "\u0642\u06CC\u0645\u062A \u0648\u0631\u0648\u062F" },
