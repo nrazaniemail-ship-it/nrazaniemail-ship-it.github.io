@@ -875,7 +875,25 @@ function buildCalcProbParams(config, dst) {
     return [...CALC_PROB_STATIC_PARAMS, sessionParam];
 }
 const CALC_PROB_PARAM_KEYS = [...CALC_PROB_STATIC_PARAMS.map(p => p.key), "session"];
-const DEFAULT_CALC_PROB_WEIGHTS = Object.fromEntries(CALC_PROB_PARAM_KEYS.map(k => [k, 10]));
+const DEFAULT_CALC_PROB_WEIGHTS = {
+    fractal: 3, // فراکتال — کم
+    mainTrend: 10, // جهت روند اصلی HTF — بسیار زیاد
+    dailyTrend: 8, // جهت روند روزانه — زیاد
+    dailyCandle: 3, // جهت کندل روزانه — کم
+    bias: 8, // جهت روند تایم‌فریم ورود — زیاد
+    condition: 5, // بازار تایم ورود / وضعیت بازار — متوسط
+    wave: 6, // موج/مومنتوم تایم ورود — متوسط
+    trend: 0, // جهت ترید (با/خلاف روند اصلی) — در جدول وزن‌دهی نبود
+    trig: 12, // نقطه ورود — بسیار زیاد
+    target: 5, // حد سود (TP) — متوسط
+    stop: 8, // حد ضرر (SL) — زیاد
+    rr: 8, // R-Multiple / Risk:Reward — زیاد
+    systems: 4, // سیستم معاملاتی تایم اصلی — متوسط
+    entryTimeSystems: 5, // سیستم معاملاتی تایم ورود — متوسط
+    reversalPatterns: 4, // الگوی کندل برگشتی تایم ورود — متوسط
+    psychology: 4, // روانشناسی — متوسط
+    session: 7, // سشن / رویداد معاملاتی — زیاد
+};
 function normalizeProfitScores(groups) {
     if (!groups.length)
         return { map: {}, best: null };
@@ -1391,7 +1409,7 @@ function App() {
             }
             catch (e) { }
             try {
-                const r = await window.storage.get("namello_calc_prob_weights_v1");
+                const r = await window.storage.get("namello_calc_prob_weights_v2");
                 if (r)
                     setCalcProbWeights({ ...DEFAULT_CALC_PROB_WEIGHTS, ...JSON.parse(r.value) });
             }
@@ -1602,7 +1620,7 @@ function App() {
     }
     catch (e) { } }, []);
     const persistCalcProbWeights = useCallback(async (next) => { setCalcProbWeights(next); try {
-        await window.storage.set("namello_calc_prob_weights_v1", JSON.stringify(next));
+        await window.storage.set("namello_calc_prob_weights_v2", JSON.stringify(next));
     }
     catch (e) { } }, []);
     const persistCloseTypeOptions = useCallback(async (next) => { setCloseTypeOptions(next); try {
