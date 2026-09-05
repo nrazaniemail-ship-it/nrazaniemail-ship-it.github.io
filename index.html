@@ -246,6 +246,44 @@ function weekdayFromDateStr(dateStr) {
     const wd = new Date(Date.UTC(y, m - 1, d)).getUTCDay();
     return WEEKDAYS_FA[wd];
 }
+function tradeDurationMinutes(t) {
+    if (!t || !t.date || !t.time || !t.closedDate || !t.closedTime)
+        return null;
+    const start = new Date(`${t.date}T${t.time}:00`).getTime();
+    const end = new Date(`${t.closedDate}T${t.closedTime}:00`).getTime();
+    if (isNaN(start) || isNaN(end))
+        return null;
+    const diffMin = Math.round((end - start) / 60000);
+    return diffMin < 0 ? null : diffMin;
+}
+function formatDurationFa(minutes) {
+    if (minutes === null || minutes === undefined || isNaN(minutes))
+        return "—";
+    const days = Math.floor(minutes / 1440);
+    const hours = Math.floor((minutes % 1440) / 60);
+    const mins = minutes % 60;
+    const parts = [];
+    if (days > 0)
+        parts.push(`${days} روز`);
+    if (hours > 0)
+        parts.push(`${hours} ساعت`);
+    if (mins > 0 || parts.length === 0)
+        parts.push(`${mins} دقیقه`);
+    return parts.join(" و ");
+}
+function durationBucketFa(minutes) {
+    if (minutes === null || minutes === undefined || isNaN(minutes))
+        return undefined;
+    if (minutes < 15)
+        return "زیر ۱۵ دقیقه";
+    if (minutes < 60)
+        return "۱۵ تا ۶۰ دقیقه";
+    if (minutes < 240)
+        return "۱ تا ۴ ساعت";
+    if (minutes < 1440)
+        return "۴ تا ۲۴ ساعت";
+    return "بیش از ۱ روز";
+}
 const WEEKDAYS_FA = ["یکشنبه", "دوشنبه", "سه‌شنبه", "چهارشنبه", "پنجشنبه", "جمعه", "شنبه"];
 const JMONTHS_FA = ["فروردین", "اردیبهشت", "خرداد", "تیر", "مرداد", "شهریور", "مهر", "آبان", "آذر", "دی", "بهمن", "اسفند"];
 /* ------------------------- default session config (NY time) ------------------------- */
@@ -763,6 +801,8 @@ function computeFinancialMetrics(trades, startingBalance) {
     const expectancy = total ? Math.round(((winFrac * avgWin) - (lossFrac * avgLoss)) * 100) / 100 : null;
     const riskSamples = asc.filter(t => t.riskPercent !== null && t.riskPercent !== undefined && !isNaN(t.riskPercent));
     const avgRiskPercent = riskSamples.length ? riskSamples.reduce((s, t) => s + t.riskPercent, 0) / riskSamples.length : null;
+    const durationSamples = asc.filter(t => t.durationMinutes !== null && t.durationMinutes !== undefined && !isNaN(t.durationMinutes));
+    const avgDurationMinutes = durationSamples.length ? Math.round(durationSamples.reduce((s, t) => s + t.durationMinutes, 0) / durationSamples.length) : null;
     let riskOfRuin = null;
     if (avgRiskPercent && avgRiskPercent > 0 && total) {
         const denom = (winFrac * avgWin) + (lossFrac * avgLoss);
@@ -774,7 +814,7 @@ function computeFinancialMetrics(trades, startingBalance) {
             riskOfRuin = Math.round(Math.min(100, Math.max(0, Math.pow((1 - A) / (1 + A), N) * 100)) * 100) / 100;
         }
     }
-    return { total, wins, losses, winRate, profitFactor, avgWin, avgLoss, netPnl, maxDD: Math.round(maxDD * 100) / 100, maxDDPercent: Math.round(maxDDPercent * 10) / 10, biggestWin, biggestLoss, maxWinStreak, maxLossStreak, curve, finalBalance: balance, expectancy, riskOfRuin, avgRiskPercent: avgRiskPercent !== null ? Math.round(avgRiskPercent * 100) / 100 : null };
+    return { total, wins, losses, winRate, profitFactor, avgWin, avgLoss, netPnl, maxDD: Math.round(maxDD * 100) / 100, maxDDPercent: Math.round(maxDDPercent * 10) / 10, biggestWin, biggestLoss, maxWinStreak, maxLossStreak, curve, finalBalance: balance, expectancy, riskOfRuin, avgRiskPercent: avgRiskPercent !== null ? Math.round(avgRiskPercent * 100) / 100 : null, avgDurationMinutes };
 }
 function groupProfitability(trades, keyFn) {
     const map = {};
@@ -832,7 +872,7 @@ const DEFAULT_SUCCESS_PROB_OPTIONS = ["50", "60", "70", "80", "90"];
 const DEFAULT_PSYCH_OPTIONS = ["ترس", "استرس", "غصه", "خشم", "انتقام"];
 const DEFAULT_CLOSE_TYPE_OPTIONS = ["دستی", "حد سود (TP)", "حد ضرر (SL)"];
 const DEFAULT_MANUAL_EXIT_REASON_OPTIONS = ["ترس از دست دادن سود", "رسیدن به هدف ذهنی", "تغییر ساختار بازار", "استرس/فشار روانی", "خبر اقتصادی", "نقض قانون معاملاتی"];
-const CUSTOM_PARAM_TOKENS = ["total", "wins", "losses", "winRate", "profitFactor", "avgWin", "avgLoss", "biggestWin", "biggestLoss", "maxWinStreak", "maxLossStreak", "maxDD", "maxDDPercent", "netPnl", "finalBalance", "startingBalance"];
+const CUSTOM_PARAM_TOKENS = ["total", "wins", "losses", "winRate", "profitFactor", "avgWin", "avgLoss", "biggestWin", "biggestLoss", "maxWinStreak", "maxLossStreak", "maxDD", "maxDDPercent", "netPnl", "finalBalance", "startingBalance", "avgDurationMinutes"];
 const CUSTOM_PARAM_OPERATORS = ["+", "-", "*", "/", "(", ")"];
 const DAILY_DIRECTION_OPTIONS = [
     { key: "bullish", label: "صعودی" },
@@ -1979,6 +2019,8 @@ function App() {
             return;
         const mag = closeForm.pnl === "" ? null : Math.abs(parseFloat(closeForm.pnl));
         const signedPnl = mag === null ? null : (closeForm.pnlSign === "loss" ? -mag : mag);
+        const closedDate = todayStr, closedTime = `${pad2(now.hh)}:${pad2(now.mi)}`;
+        const durationMinutes = tradeDurationMinutes({ ...closingTrade, closedDate, closedTime });
         const updated = trades.map(t => t.id === closingTrade.id ? {
             ...t, status: "closed",
             exit: closeForm.exit === "" ? null : parseFloat(closeForm.exit),
@@ -1987,7 +2029,7 @@ function App() {
             note: closeForm.note,
             closeType: closeForm.closeType,
             manualExitReason: closeForm.manualExitReason,
-            closedDate: todayStr, closedTime: `${pad2(now.hh)}:${pad2(now.mi)}`,
+            closedDate, closedTime, durationMinutes,
         } : t);
         persistTrades(updated);
         setClosingTrade(null);
@@ -2046,27 +2088,33 @@ function App() {
             return;
         const mag = editForm.pnlAbs === "" ? null : Math.abs(parseFloat(editForm.pnlAbs));
         const signedPnl = mag === null ? null : (editForm.pnlSign === "loss" ? -mag : mag);
-        const updated = trades.map(t => t.id === editingTrade.id ? {
-            ...t,
-            date: editForm.date, time: editForm.time, pair: editForm.pair, direction: editForm.direction,
-            tradeDirectionRel: editForm.tradeDirectionRel,
-            systems: editForm.systems || [], system: (editForm.systems && editForm.systems[0]) || "",
-            entryTimeSystems: editForm.entryTimeSystems || [],
-            fractal: editForm.fractal, dailyCandleDirection: editForm.dailyCandleDirection, dailyTrendDirection: editForm.dailyTrendDirection,
-            mainTrendDirection: editForm.mainTrendDirection, marketBias: editForm.marketBias, marketCondition: editForm.marketCondition,
-            wave: editForm.wave, trig: editForm.trig, target: editForm.target, stop: editForm.stop,
-            reversalPatterns: editForm.reversalPatterns || [], reversalPattern: (editForm.reversalPatterns && editForm.reversalPatterns[0]) || "",
-            entry: editForm.entry === "" ? null : parseFloat(editForm.entry),
-            exit: editForm.exit === "" ? null : parseFloat(editForm.exit),
-            lot: editForm.lot,
-            rrReward: editForm.rrReward === "" ? null : parseFloat(editForm.rrReward),
-            riskDollar: editForm.riskDollar === "" ? null : parseFloat(editForm.riskDollar),
-            successProb: editForm.successProb === "" ? null : parseFloat(editForm.successProb),
-            psychology: editForm.psychology || [],
-            pnl: signedPnl,
-            pips: editForm.pips === "" ? null : parseFloat(editForm.pips),
-            closeType: editForm.closeType, manualExitReason: editForm.manualExitReason, note: editForm.note,
-        } : t);
+        const updated = trades.map(t => {
+            if (t.id !== editingTrade.id)
+                return t;
+            const next = {
+                ...t,
+                date: editForm.date, time: editForm.time, pair: editForm.pair, direction: editForm.direction,
+                tradeDirectionRel: editForm.tradeDirectionRel,
+                systems: editForm.systems || [], system: (editForm.systems && editForm.systems[0]) || "",
+                entryTimeSystems: editForm.entryTimeSystems || [],
+                fractal: editForm.fractal, dailyCandleDirection: editForm.dailyCandleDirection, dailyTrendDirection: editForm.dailyTrendDirection,
+                mainTrendDirection: editForm.mainTrendDirection, marketBias: editForm.marketBias, marketCondition: editForm.marketCondition,
+                wave: editForm.wave, trig: editForm.trig, target: editForm.target, stop: editForm.stop,
+                reversalPatterns: editForm.reversalPatterns || [], reversalPattern: (editForm.reversalPatterns && editForm.reversalPatterns[0]) || "",
+                entry: editForm.entry === "" ? null : parseFloat(editForm.entry),
+                exit: editForm.exit === "" ? null : parseFloat(editForm.exit),
+                lot: editForm.lot,
+                rrReward: editForm.rrReward === "" ? null : parseFloat(editForm.rrReward),
+                riskDollar: editForm.riskDollar === "" ? null : parseFloat(editForm.riskDollar),
+                successProb: editForm.successProb === "" ? null : parseFloat(editForm.successProb),
+                psychology: editForm.psychology || [],
+                pnl: signedPnl,
+                pips: editForm.pips === "" ? null : parseFloat(editForm.pips),
+                closeType: editForm.closeType, manualExitReason: editForm.manualExitReason, note: editForm.note,
+            };
+            next.durationMinutes = tradeDurationMinutes(next);
+            return next;
+        });
         persistTrades(updated);
         setEditingTrade(null);
         setEditForm(null);
@@ -2102,14 +2150,14 @@ function App() {
             return;
         }
         const asc = sortAsc(filtered);
-        const header = ["شماره ترید روز", "تاریخ", "روز هفته", "ساعت ورود", "جفت‌ارز", "جهت", "فراکتال", "جهت روند اصلی", "جهت روند", "بایاس بازار", "بازار روند میانی", "سیستم معاملاتی", "قیمت ورود", "قیمت خروج", "پیپ", "حجم (لات)", "R:R", "ریسک (%)", "Trig", "Target", "Stop", "خبر", "سود/ضرر", "نوع بستن معامله", "موجودی پس از ترید", "سشن/کیل‌زون فعال", "یادداشت"];
+        const header = ["شماره ترید روز", "تاریخ", "روز هفته", "ساعت ورود", "جفت‌ارز", "جهت", "فراکتال", "جهت روند اصلی", "جهت روند", "بایاس بازار", "بازار روند میانی", "سیستم معاملاتی", "قیمت ورود", "قیمت خروج", "پیپ", "حجم (لات)", "R:R", "ریسک (%)", "Trig", "Target", "Stop", "خبر", "سود/ضرر", "نوع بستن معامله", "مدت معامله", "موجودی پس از ترید", "سشن/کیل‌زون فعال", "یادداشت"];
         const rows = asc.map(t => [
             derived.byId[t.id]?.dailyIndex ?? "", t.date, weekdayFromDateStr(t.date), t.time, t.pair,
             t.direction === "buy" ? "خرید" : "فروش", t.fractal || "", t.mainTrendDirection === "bullish" ? "صعودی" : t.mainTrendDirection === "bearish" ? "نزولی" : "", t.tradeDirectionRel === "with" ? "جهت روند اصلی" : t.tradeDirectionRel === "against" ? "خلاف روند اصلی" : "",
             t.marketBias === "bullish" ? "صعودی" : t.marketBias === "bearish" ? "نزولی" : "", t.marketCondition === "trend" ? "روند" : t.marketCondition === "range" ? "رنج" : t.marketCondition === "volatile" ? "پرنوسان" : "",
             t.system || "", t.entry ?? "", t.exit ?? "", t.pips ?? "",
             t.lot, t.rrReward !== null && t.rrReward !== undefined ? `1:${t.rrReward}` : "", t.riskPercent ?? "", t.trig || "", t.target || "", t.stop || "", t.newsName || "",
-            t.pnl ?? "", closeTypeLabel(t), derived.byId[t.id]?.balanceAfter ?? "", (t.tags || []).map(tg => tg.label).join("، "), t.note || "",
+            t.pnl ?? "", closeTypeLabel(t), formatDurationFa(t.durationMinutes), derived.byId[t.id]?.balanceAfter ?? "", (t.tags || []).map(tg => tg.label).join("، "), t.note || "",
         ]);
         const sum = filtered.reduce((s, t) => s + (t.pnl || 0), 0);
         const aoa = [header, ...rows, [], ["جمع سود/ضرر این بازه", sum], ["موجودی فعلی حساب", derived.currentBalance], ["کد حساب", activeAccount], ["بروکر", accSettings.broker]];
@@ -2474,6 +2522,7 @@ function App() {
         maxWinStreak: finMetrics.maxWinStreak, maxLossStreak: finMetrics.maxLossStreak,
         maxDD: finMetrics.maxDD, maxDDPercent: finMetrics.maxDDPercent, netPnl: finMetrics.netPnl,
         finalBalance: finMetrics.finalBalance, startingBalance: accSettings.startingBalance,
+        avgDurationMinutes: finMetrics.avgDurationMinutes ?? 0,
     }), [finMetrics, accSettings.startingBalance]);
     function evalFormula(formula, vars) {
         const clean = (formula || "").trim();
@@ -2556,6 +2605,7 @@ function App() {
             ["بیشترین برد متوالی", m.maxWinStreak], ["بیشترین باخت متوالی", m.maxLossStreak],
             ["حداکثر افت سرمایه (Drawdown)", m.maxDD], ["حداکثر افت سرمایه (٪)", m.maxDDPercent + "%"],
             ["سود/زیان خالص", m.netPnl], ["موجودی نهایی", m.finalBalance], ["Expectancy (به ازای هر ترید)", m.expectancy ?? "—"], ["Risk of Ruin (%)", m.riskOfRuin ?? "—"],
+            ["میانگین مدت معامله", formatDurationFa(m.avgDurationMinutes)],
             ...(customParams.length ? [[], ["پارامترهای سفارشی", ""], ...customParams.map(p => {
                     let v = "خطا";
                     try {
@@ -2590,6 +2640,7 @@ function App() {
     const byReversalPattern = useMemo(() => groupProfitabilityMulti(closedTrades, t => (t.reversalPatterns && t.reversalPatterns.length) ? t.reversalPatterns : (t.reversalPattern ? [t.reversalPattern] : [])), [trades]);
     const bySuccessProb = useMemo(() => groupProfitability(closedTrades, t => (t.successProb !== null && t.successProb !== undefined && t.successProb !== "") ? `${t.successProb}%` : undefined), [trades]);
     const byPsychology = useMemo(() => groupProfitabilityMulti(closedTrades, t => t.psychology || []), [trades]);
+    const byDuration = useMemo(() => groupProfitability(closedTrades, t => durationBucketFa(t.durationMinutes)), [trades]);
     const [param3dX, setParam3dX] = useState("system");
     const [param3dY, setParam3dY] = useState("weekday");
     const rows3d = useMemo(() => get3DRows(closedTrades, param3dX, param3dY), [trades, param3dX, param3dY]);
@@ -3015,6 +3066,9 @@ function App() {
                         React.createElement("b", { style: { color: t.pnl > 0 ? "#34D399" : t.pnl < 0 ? "#F87171" : "#E8EAED" } },
                             t.pnl > 0 ? "+" : "",
                             t.pnl)),
+                    t.durationMinutes !== null && t.durationMinutes !== undefined && React.createElement("span", null,
+                        "\u0645\u062F\u062A \u0645\u0639\u0627\u0645\u0644\u0647: ",
+                        React.createElement("b", { style: { color: "#E8EAED" } }, formatDurationFa(t.durationMinutes))),
                     React.createElement("span", null,
                         "\u0645\u0648\u062C\u0648\u062F\u06CC: ",
                         React.createElement("b", { style: { color: "#E8EAED" } }, (derived.byId[t.id]?.balanceAfter ?? 0).toFixed(2)))),
@@ -3075,7 +3129,10 @@ function App() {
                         React.createElement("div", { className: "text-lg font-bold tabular-nums", style: { color: finMetrics.riskOfRuin === null ? "#6B7280" : finMetrics.riskOfRuin >= 20 ? "#F87171" : finMetrics.riskOfRuin >= 5 ? "#FBBF24" : "#34D399", fontFamily: "JetBrains Mono, monospace" } }, finMetrics.riskOfRuin === null ? "—" : `${finMetrics.riskOfRuin}%`),
                         React.createElement("div", { className: "text-[11px]", style: { color: "#6B7280" } },
                             "Risk of Ruin",
-                            finMetrics.avgRiskPercent !== null ? ` (میانگین ریسک ${finMetrics.avgRiskPercent}٪)` : ""))),
+                            finMetrics.avgRiskPercent !== null ? ` (میانگین ریسک ${finMetrics.avgRiskPercent}٪)` : "")),
+                    React.createElement("div", { className: "rounded-xl p-3 text-center", style: { background: "#12161C" } },
+                        React.createElement("div", { className: "text-lg font-bold", style: { color: "#E8EAED" } }, formatDurationFa(finMetrics.avgDurationMinutes)),
+                        React.createElement("div", { className: "text-[11px]", style: { color: "#6B7280" } }, "\u0645\u06CC\u0627\u0646\u06AF\u06CC\u0646 \u0645\u062F\u062A \u0645\u0639\u0627\u0645\u0644\u0647"))),
                 finMetrics.riskOfRuin === null && (React.createElement("p", { className: "text-[11px] mb-3", style: { color: "#6B7280" } }, "\u0628\u0631\u0627\u06CC \u0645\u062D\u0627\u0633\u0628\u0647\u200C\u06CC Risk of Ruin\u060C \u062D\u062F\u0627\u0642\u0644 \u062A\u0648 \u0686\u0646\u062F \u0645\u0639\u0627\u0645\u0644\u0647 \u0628\u0627\u06A9\u0633 \u00AB\u0631\u06CC\u0633\u06A9 \u0645\u0639\u0627\u0645\u0644\u0647\u00BB \u0631\u0648 \u062A\u0648 \u062B\u0628\u062A \u0648\u0631\u0648\u062F \u067E\u0631 \u06A9\u0646.")),
                 React.createElement("h3", { className: "text-[13px] font-semibold mt-4 mb-2", style: { color: "#E8EAED" } }, "\u0646\u0645\u0648\u062F\u0627\u0631 \u0631\u0634\u062F \u062D\u0633\u0627\u0628"),
                 React.createElement("div", { className: "rounded-xl p-2 mb-4", style: { background: "#12161C" } },
@@ -3110,6 +3167,8 @@ function App() {
                             "\u066A"),
                         " \u0628\u0648\u062F\u0647. \u0645\u0648\u062C\u0648\u062F\u06CC \u067E\u0627\u06CC\u0627\u0646 \u062F\u0648\u0631\u0647: ",
                         React.createElement("b", { style: { color: "#E8EAED" } }, finMetrics.finalBalance.toFixed(2)),
+                        ". \u0645\u06CC\u0627\u0646\u06AF\u06CC\u0646 \u0645\u062F\u062A \u0645\u0639\u0627\u0645\u0644\u0647 \u062F\u0631 \u0627\u06CC\u0646 \u062F\u0648\u0631\u0647: ",
+                        React.createElement("b", { style: { color: "#E8EAED" } }, formatDurationFa(finMetrics.avgDurationMinutes)),
                         ".")),
                 React.createElement("div", { className: "rounded-xl p-3 mb-4", style: { background: "#12161C", border: "1px solid #1F242C" } },
                     React.createElement("h4", { className: "text-[12px] font-semibold mb-2", style: { color: "#D4A64A" } }, "\u067E\u0627\u0631\u0627\u0645\u062A\u0631\u0647\u0627\u06CC \u0645\u0627\u0644\u06CC \u0633\u0641\u0627\u0631\u0634\u06CC"),
@@ -3282,6 +3341,7 @@ function App() {
                         { label: "الگوی کندل برگشتی روند اصلی", data: byReversalPattern },
                         { label: "احتمال موفقیت", data: bySuccessProb },
                         { label: "روانشناسی", data: byPsychology },
+                        { label: "مدت معامله", data: byDuration },
                     ].filter(p => p.data.length > 0).map(p => (React.createElement("div", { key: p.label, className: "rounded-lg p-2", style: { background: "#1A1F27" } },
                         React.createElement("div", { className: "text-[11px] mb-1", style: { color: "#8B93A1" } }, p.label),
                         React.createElement("div", { className: "flex items-center justify-between text-[11px]" },
@@ -3312,6 +3372,7 @@ function App() {
                     { title: "سودآوری بر اساس Target", data: byTarget },
                     { title: "سودآوری بر اساس Stop", data: byStop },
                     { title: "سودآوری بر اساس خبر هم‌زمان", data: byNews },
+                    { title: "سودآوری بر اساس مدت معامله", data: byDuration },
                     { title: "ترکیب سیستم + روز هفته", data: bySystemWeekday },
                     { title: "ترکیب سشن + لات", data: bySessionLot },
                 ].map(chart => (React.createElement("div", { key: chart.title, className: "mb-4" },
