@@ -65,6 +65,17 @@
   };
 </script>
 
+<script>
+  // بدون این بلوک، فایل sw.js هیچ‌وقت واقعاً فعال نمی‌شد و برنامه‌ی نصب‌شده هیچ‌چیزی
+  // رو کش نمی‌کرد — همین، دلیل اصلی اجرا نشدنش بدون اینترنت بود.
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register('./sw.js').catch(function (err) {
+        console.warn('Namello: service worker registration failed', err);
+      });
+    });
+  }
+</script>
 <script>document.getElementById('boot-status').textContent = 'Loading libraries…';</script>
 <script src="https://cdn.jsdelivr.net/npm/react@18/umd/react.production.min.js" onerror="showBootError('Failed to load React', 'cdn.jsdelivr.net may be blocked on this network.')"></script>
 <script src="https://cdn.jsdelivr.net/npm/react-dom@18/umd/react-dom.production.min.js" onerror="showBootError('Failed to load ReactDOM', 'cdn.jsdelivr.net may be blocked on this network.')"></script>
