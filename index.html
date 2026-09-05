@@ -831,6 +831,69 @@ function groupProfitabilityMulti(trades, arrFn) {
     });
     return Object.entries(map).map(([name, value]) => ({ name, value: Math.round(value * 100) / 100 })).sort((a, b) => b.value - a.value);
 }
+/* ---- "سودآورترین شرایط معامله" و «احتمال موفقیت محاسباتی» ---- */
+const CALC_PROB_PARAMS = [
+    { key: "fractal", label: "فراکتال", multi: false, get: t => t.fractal || undefined },
+    { key: "mainTrend", label: "جهت روند اصلی", multi: false, get: t => t.mainTrendDirection === "bullish" ? "صعودی" : t.mainTrendDirection === "bearish" ? "نزولی" : undefined },
+    { key: "dailyTrend", label: "جهت روند روزانه", multi: false, get: t => t.dailyTrendDirection === "bullish" ? "صعودی" : t.dailyTrendDirection === "bearish" ? "نزولی" : t.dailyTrendDirection === "neutral" ? "خنثی" : undefined },
+    { key: "dailyCandle", label: "جهت کندل روزانه", multi: false, get: t => t.dailyCandleDirection === "bullish" ? "صعودی" : t.dailyCandleDirection === "bearish" ? "نزولی" : t.dailyCandleDirection === "neutral" ? "خنثی" : undefined },
+    { key: "bias", label: "جهت روند تایم ورود", multi: false, get: t => t.marketBias === "bullish" ? "صعودی" : t.marketBias === "bearish" ? "نزولی" : undefined },
+    { key: "condition", label: "بازار تایم ورود", multi: false, get: t => t.marketCondition === "trend" ? "روند" : t.marketCondition === "range" ? "رنج" : t.marketCondition === "volatile" ? "پرنوسان" : undefined },
+    { key: "wave", label: "موج تایم ورود", multi: false, get: t => t.wave || undefined },
+    { key: "trend", label: "جهت ترید", multi: false, get: t => t.tradeDirectionRel === "with" ? "جهت روند اصلی" : t.tradeDirectionRel === "against" ? "خلاف روند اصلی" : undefined },
+    { key: "trig", label: "نقطه ورود", multi: false, get: t => t.trig || undefined },
+    { key: "target", label: "حد سود (TP)", multi: false, get: t => t.target || undefined },
+    { key: "stop", label: "حد ضرر (SL)", multi: false, get: t => t.stop || undefined },
+    { key: "systems", label: "سیستم‌های معاملاتی تایم اصلی", multi: true, get: t => t.systems || [] },
+    { key: "entryTimeSystems", label: "سیستم‌های معاملاتی تایم ورود", multi: true, get: t => t.entryTimeSystems || [] },
+    { key: "reversalPatterns", label: "الگوی کندل برگشتی تایم ورود", multi: true, get: t => (t.reversalPatterns && t.reversalPatterns.length) ? t.reversalPatterns : (t.reversalPattern ? [t.reversalPattern] : []) },
+    { key: "psychology", label: "روانشناسی", multi: true, get: t => t.psychology || [] },
+];
+const DEFAULT_CALC_PROB_WEIGHTS = Object.fromEntries(CALC_PROB_PARAMS.map(p => [p.key, 10]));
+function normalizeProfitScores(groups) {
+    if (!groups.length)
+        return { map: {}, best: null };
+    const values = groups.map(g => g.value);
+    const max = Math.max(...values), min = Math.min(...values);
+    const map = {};
+    groups.forEach(g => { map[g.name] = (max === min) ? 1 : (g.value - min) / (max - min); });
+    return { map, best: groups[0] };
+}
+function computeConditionStats(closedTrades) {
+    return CALC_PROB_PARAMS.map(p => {
+        const groups = p.multi ? groupProfitabilityMulti(closedTrades, p.get) : groupProfitability(closedTrades, p.get);
+        const { map, best } = normalizeProfitScores(groups);
+        return { ...p, groups, scoreMap: map, best };
+    });
+}
+function computeCalculatedSuccessProb(formLike, conditionStats, weights) {
+    let weightedSum = 0, totalWeight = 0;
+    conditionStats.forEach(p => {
+        const w = (weights && weights[p.key] !== undefined) ? Number(weights[p.key]) : 10;
+        if (!w)
+            return;
+        if (p.multi) {
+            const selected = (p.get(formLike) || []).filter(Boolean);
+            if (!selected.length)
+                return;
+            const scores = selected.map(opt => p.scoreMap[opt] !== undefined ? p.scoreMap[opt] : 0.5);
+            const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
+            weightedSum += w * avg;
+            totalWeight += w;
+        }
+        else {
+            const selected = p.get(formLike);
+            if (!selected)
+                return;
+            const score = p.scoreMap[selected] !== undefined ? p.scoreMap[selected] : 0.5;
+            weightedSum += w * score;
+            totalWeight += w;
+        }
+    });
+    if (totalWeight === 0)
+        return null;
+    return Math.round((weightedSum / totalWeight) * 100);
+}
 function sessionLabelOf(t) { return (t.tags && t.tags[0]) ? t.tags[0].label : "نامشخص"; }
 const NEWS_PRESETS_CALENDAR = [
     "Non-Farm Payrolls (NFP)", "Average Hourly Earnings", "Unemployment Rate",
@@ -1118,6 +1181,9 @@ function App() {
     const [rrOptions, setRrOptions] = useState(DEFAULT_RR_OPTIONS);
     const [successProbOptions, setSuccessProbOptions] = useState(DEFAULT_SUCCESS_PROB_OPTIONS);
     const [psychOptions, setPsychOptions] = useState(DEFAULT_PSYCH_OPTIONS);
+    const [calcProbWeights, setCalcProbWeights] = useState(DEFAULT_CALC_PROB_WEIGHTS);
+    const [showCalcProbWeights, setShowCalcProbWeights] = useState(false);
+    const [showBestConditionsList, setShowBestConditionsList] = useState(false);
     const [closeTypeOptions, setCloseTypeOptions] = useState(DEFAULT_CLOSE_TYPE_OPTIONS);
     const [manualExitReasonOptions, setManualExitReasonOptions] = useState(DEFAULT_MANUAL_EXIT_REASON_OPTIONS);
     const [fractalEditMode, setFractalEditMode] = useState(false);
@@ -1296,6 +1362,12 @@ function App() {
                 const r = await window.storage.get("namello_psych_options_v1");
                 if (r)
                     setPsychOptions(JSON.parse(r.value));
+            }
+            catch (e) { }
+            try {
+                const r = await window.storage.get("namello_calc_prob_weights_v1");
+                if (r)
+                    setCalcProbWeights({ ...DEFAULT_CALC_PROB_WEIGHTS, ...JSON.parse(r.value) });
             }
             catch (e) { }
             try {
@@ -1503,6 +1575,10 @@ function App() {
         await window.storage.set("namello_psych_options_v1", JSON.stringify(next));
     }
     catch (e) { } }, []);
+    const persistCalcProbWeights = useCallback(async (next) => { setCalcProbWeights(next); try {
+        await window.storage.set("namello_calc_prob_weights_v1", JSON.stringify(next));
+    }
+    catch (e) { } }, []);
     const persistCloseTypeOptions = useCallback(async (next) => { setCloseTypeOptions(next); try {
         await window.storage.set("namello_close_type_options_v1", JSON.stringify(next));
     }
@@ -1688,6 +1764,8 @@ function App() {
         return map;
     }, [trades]);
     const openTrades = trades.filter(t => t.status === "open");
+    const conditionStats = useMemo(() => computeConditionStats(closedTrades), [trades]);
+    const calcSuccessProbResult = useMemo(() => openForm ? computeCalculatedSuccessProb(openForm, conditionStats, calcProbWeights) : null, [openForm, conditionStats, calcProbWeights]);
     const todayClosed = closedTrades.filter(t => t.date === todayStr);
     const dailyPnl = todayClosed.reduce((s, t) => s + (t.pnl || 0), 0);
     const wins = closedTrades.filter(t => t.pnl > 0).length;
@@ -2021,6 +2099,7 @@ function App() {
             rrReward: openForm.rrReward === "" ? null : parseFloat(openForm.rrReward),
             riskDollar, riskPercent,
             successProb: openForm.successProb === "" ? null : parseFloat(openForm.successProb),
+            calcSuccessProb: calcSuccessProbResult,
             psychology: openForm.psychology || [],
             newsName: findNewsForTrade(newsEvents, openForm.pair, openForm.date, openForm.time),
             exit: null, pnl: null, pips: null, closedDate: null, closedTime: null, note: "",
@@ -3353,6 +3432,21 @@ function App() {
             React.createElement("h2", { className: "text-sm font-semibold mb-2", style: { color: "#E8EAED" } }, "\u062A\u062D\u0644\u06CC\u0644 \u0622\u0645\u0627\u0631\u06CC \u2014 \u0633\u0648\u062F\u0622\u0648\u0631\u062A\u0631\u06CC\u0646 \u067E\u0627\u0631\u0627\u0645\u062A\u0631\u0647\u0627"),
             closedTrades.length === 0 ? (React.createElement("div", { className: "rounded-xl p-6 text-center text-sm mb-4", style: { background: "#12161C", color: "#6B7280" } }, "\u0628\u0631\u0627\u06CC \u062A\u062D\u0644\u06CC\u0644\u060C \u062D\u062F\u0627\u0642\u0644 \u0686\u0646\u062F \u0645\u0639\u0627\u0645\u0644\u0647\u200C\u06CC \u0628\u0633\u062A\u0647\u200C\u0634\u062F\u0647 \u0644\u0627\u0632\u0645 \u0627\u0633\u062A.")) : (React.createElement(React.Fragment, null,
                 React.createElement("div", { className: "rounded-xl p-3 mb-5", style: { background: "#12161C", border: "1px solid #1F242C" } },
+                    React.createElement("button", { type: "button", onClick: () => setShowBestConditionsList(v => !v), className: "w-full flex items-center justify-between" },
+                        React.createElement("h3", { className: "text-[13px] font-semibold", style: { color: "#D4A64A" } }, "\u0633\u0648\u062F\u0622\u0648\u0631\u062A\u0631\u06CC\u0646 \u0634\u0631\u0627\u06CC\u0637 \u0645\u0639\u0627\u0645\u0644\u0647"),
+                        showBestConditionsList ? React.createElement(ChevronUp, { size: 16, color: "#D4A64A" }) : React.createElement(ChevronDown, { size: 16, color: "#D4A64A" })),
+                    showBestConditionsList && (React.createElement("div", { className: "mt-3 pt-3", style: { borderTop: "1px solid #1F242C" } },
+                        React.createElement("p", { className: "text-[11px] mb-3 leading-5", style: { color: "#6B7280" } }, "\u0628\u0647\u06CC\u0646\u0647\u200C\u062A\u0631\u06CC\u0646 \u062D\u0627\u0644\u062A \u0647\u0631 \u067E\u0627\u0631\u0627\u0645\u062A\u0631 \u0645\u0639\u0627\u0645\u0644\u0627\u062A\u06CC\u060C \u0628\u0631 \u0627\u0633\u0627\u0633 \u0645\u062C\u0645\u0648\u0639 \u0633\u0648\u062F/\u0632\u06CC\u0627\u0646 \u0645\u0639\u0627\u0645\u0644\u0627\u062A \u0628\u0633\u062A\u0647\u200C\u0634\u062F\u0647\u200C\u06CC \u0627\u06CC\u0646 \u062D\u0633\u0627\u0628. \u0647\u0645\u06CC\u0646 \u0644\u06CC\u0633\u062A\u060C \u0645\u0628\u0646\u0627\u06CC \u0645\u062D\u0627\u0633\u0628\u0647\u200C\u06CC \u00AB\u0627\u062D\u062A\u0645\u0627\u0644 \u0645\u0648\u0641\u0642\u06CC\u062A \u0645\u062D\u0627\u0633\u0628\u0627\u062A\u06CC\u00BB \u062F\u0631 \u0641\u0631\u0645 \u062B\u0628\u062A \u0648\u0631\u0648\u062F \u0627\u0633\u062A."),
+                        React.createElement("div", { className: "grid grid-cols-1 gap-1.5" },
+                            conditionStats.filter(p => p.best).map(p => (React.createElement("div", { key: p.key, className: "flex items-center justify-between gap-2 rounded-lg px-3 py-2 text-[12px]", style: { background: "#1A1F27" } },
+                                React.createElement("span", { style: { color: "#8B93A1" } }, p.label),
+                                React.createElement("span", { className: "flex items-center gap-2" },
+                                    React.createElement("b", { style: { color: "#E8EAED" } }, p.best.name),
+                                    React.createElement("span", { className: "mono", style: { color: p.best.value >= 0 ? "#34D399" : "#F87171", fontFamily: "JetBrains Mono, monospace" } },
+                                        p.best.value >= 0 ? "+" : "",
+                                        p.best.value))))),
+                            conditionStats.every(p => !p.best) && (React.createElement("div", { className: "rounded-lg p-3 text-center text-[12px]", style: { background: "#1A1F27", color: "#6B7280" } }, "\u0647\u0646\u0648\u0632 \u062F\u0627\u062F\u0647\u200C\u06CC \u06A9\u0627\u0641\u06CC \u0628\u0631\u0627\u06CC \u0627\u06CC\u0646 \u062A\u062D\u0644\u06CC\u0644 \u0646\u06CC\u0633\u062A.")))))),
+                React.createElement("div", { className: "rounded-xl p-3 mb-5", style: { background: "#12161C", border: "1px solid #1F242C" } },
                     React.createElement("h3", { className: "text-[13px] font-semibold mb-2", style: { color: "#D4A64A" } }, "\u0646\u0645\u0648\u062F\u0627\u0631 \u0633\u0647\u200C\u0628\u0639\u062F\u06CC \u062A\u0631\u06A9\u06CC\u0628 \u062F\u0648 \u067E\u0627\u0631\u0627\u0645\u062A\u0631"),
                     React.createElement("p", { className: "text-[11px] mb-3 leading-5", style: { color: "#6B7280" } }, "\u062F\u0648 \u067E\u0627\u0631\u0627\u0645\u062A\u0631 \u0631\u0648 \u0627\u0646\u062A\u062E\u0627\u0628 \u06A9\u0646\u061B \u0645\u062D\u0648\u0631 \u0627\u0641\u0642\u06CC \u0627\u0648\u0644 \u0648 \u062F\u0648\u0645 \u0647\u0645\u0648\u0646 \u067E\u0627\u0631\u0627\u0645\u062A\u0631\u0647\u0627 \u0647\u0633\u062A\u0646 \u0648 \u0645\u062D\u0648\u0631 \u0639\u0645\u0648\u062F\u06CC \u0633\u0648\u062F\u0622\u0648\u0631\u06CC\u0650 \u062A\u0631\u06A9\u06CC\u0628 \u0627\u0648\u0646\u200C\u0647\u0627\u0633\u062A. \u0647\u0631 \u0646\u0642\u0637\u0647\u200C\u06CC \u0633\u0628\u0632/\u0642\u0631\u0645\u0632 \u0631\u0648\u06CC \u0646\u0648\u06A9\u0650 \u062E\u0637\u060C \u0633\u0648\u062F\u0622\u0648\u0631\u06CC \u0647\u0645\u0648\u0646 \u062A\u0631\u06A9\u06CC\u0628 \u062E\u0627\u0635\u0647."),
                     React.createElement("div", { className: "grid grid-cols-2 gap-2 mb-3" },
@@ -3400,7 +3494,7 @@ function App() {
                         { label: "حجم (لات)", data: byLot },
                         { label: "R-multiple", data: byRR },
                         { label: "الگوی کندل برگشتی تایم ورود", data: byReversalPattern },
-                        { label: "احتمال موفقیت", data: bySuccessProb },
+                        { label: "احتمال موفقیت ذهنی", data: bySuccessProb },
                         { label: "روانشناسی", data: byPsychology },
                         { label: "مدت معامله", data: byDuration },
                     ].filter(p => p.data.length > 0).map(p => (React.createElement("div", { key: p.label, className: "rounded-lg p-2", style: { background: "#1A1F27" } },
@@ -3810,19 +3904,6 @@ function App() {
                         React.createElement("input", { type: "number", inputMode: "decimal", value: openForm.entry, onChange: e => setOpenForm({ ...openForm, entry: e.target.value }), className: "w-full bg-transparent outline-none text-sm mono", style: { color: "#E8EAED", fontFamily: "JetBrains Mono, monospace" } })),
                     React.createElement(Field, { label: `حجم (لات) — پیشنهادی: ${derived.nextLot}` },
                         React.createElement("input", { type: "text", inputMode: "decimal", value: openForm.lot, onChange: e => setOpenForm({ ...openForm, lot: e.target.value }), className: "w-full bg-transparent outline-none text-sm mono", style: { color: "#E8EAED", fontFamily: "JetBrains Mono, monospace" } }))),
-                React.createElement(Field, { label: "\u0627\u062D\u062A\u0645\u0627\u0644 \u0645\u0648\u0641\u0642\u06CC\u062A (%)" },
-                    React.createElement("div", { style: { position: "relative", paddingTop: 6 } },
-                        React.createElement("button", { type: "button", onClick: () => setSuccessProbEditMode(m => !m), style: { position: "absolute", top: -6, left: -6, zIndex: 1, background: successProbEditMode ? "#F8717122" : "#1A1F27", border: `1px solid ${successProbEditMode ? "#F8717155" : "#262C36"}`, borderRadius: 8, padding: 4 }, "aria-label": "\u062D\u0630\u0641 \u06AF\u0632\u06CC\u0646\u0647\u200C\u0647\u0627" },
-                            React.createElement(Trash2, { size: 11, color: successProbEditMode ? "#F87171" : "#6B7280" })),
-                        React.createElement("div", { className: "flex flex-wrap gap-1.5" }, successProbOptions.map(opt => (React.createElement("span", { key: opt, className: "flex items-center gap-1 px-3 py-2 rounded-lg text-[12px] mono", style: { background: openForm.successProb === opt ? "#D4A64A22" : "#1A1F27", color: openForm.successProb === opt ? "#D4A64A" : "#6B7280", fontFamily: "JetBrains Mono, monospace" } },
-                            React.createElement("button", { type: "button", onClick: () => setOpenForm({ ...openForm, successProb: opt }) }, opt),
-                            successProbEditMode && (React.createElement("button", { type: "button", onClick: e => { e.stopPropagation(); removeSuccessProbOption(opt); if (openForm.successProb === opt)
-                                    setOpenForm(f => ({ ...f, successProb: "" })); } },
-                                React.createElement(X, { size: 10 }))))))),
-                        React.createElement("div", { className: "flex gap-1.5 mt-1.5" },
-                            React.createElement("input", { type: "text", inputMode: "decimal", value: newSuccessProbText, onChange: e => setNewSuccessProbText(e.target.value), onKeyDown: e => e.key === "Enter" && addSuccessProbOptionInline(), placeholder: "\u0645\u0642\u062F\u0627\u0631 \u062C\u062F\u06CC\u062F...", className: "flex-1 rounded-lg px-2.5 py-1.5 text-[12px] bg-transparent outline-none", style: { color: "#E8EAED", border: "1px solid #262C36" } }),
-                            React.createElement("button", { type: "button", onClick: addSuccessProbOptionInline, className: "flex items-center gap-1 px-3 py-1.5 rounded-lg text-[12px]", style: { background: "#1A1F27", color: "#D4A64A" } },
-                                React.createElement(Plus, { size: 12 }))))),
                 React.createElement("div", { className: "flex flex-wrap gap-1.5 my-3" }, (() => {
                     const [hh, mi] = openForm.time.split(":").map(Number);
                     const tags = tagsForMinutes(config, hh * 60 + mi, now.dst);
@@ -3854,6 +3935,35 @@ function App() {
                             React.createElement("input", { type: "text", value: newPsychText, onChange: e => setNewPsychText(e.target.value), onKeyDown: e => e.key === "Enter" && addPsychOptionInline(), placeholder: "\u062D\u0627\u0644\u062A \u0631\u0648\u0627\u0646\u06CC \u062C\u062F\u06CC\u062F...", className: "flex-1 rounded-lg px-2.5 py-1.5 text-[12px] bg-transparent outline-none", style: { color: "#E8EAED", border: "1px solid #262C36" } }),
                             React.createElement("button", { type: "button", onClick: addPsychOptionInline, className: "flex items-center gap-1 px-3 py-1.5 rounded-lg text-[12px]", style: { background: "#1A1F27", color: "#F87171" } },
                                 React.createElement(Plus, { size: 12 }))))),
+                React.createElement(Field, { label: "\u0627\u062D\u062A\u0645\u0627\u0644 \u0645\u0648\u0641\u0642\u06CC\u062A \u0630\u0647\u0646\u06CC (%)" },
+                    React.createElement("div", { style: { position: "relative", paddingTop: 6 } },
+                        React.createElement("button", { type: "button", onClick: () => setSuccessProbEditMode(m => !m), style: { position: "absolute", top: -6, left: -6, zIndex: 1, background: successProbEditMode ? "#F8717122" : "#1A1F27", border: `1px solid ${successProbEditMode ? "#F8717155" : "#262C36"}`, borderRadius: 8, padding: 4 }, "aria-label": "\u062D\u0630\u0641 \u06AF\u0632\u06CC\u0646\u0647\u200C\u0647\u0627" },
+                            React.createElement(Trash2, { size: 11, color: successProbEditMode ? "#F87171" : "#6B7280" })),
+                        React.createElement("div", { className: "flex flex-wrap gap-1.5" }, successProbOptions.map(opt => (React.createElement("span", { key: opt, className: "flex items-center gap-1 px-3 py-2 rounded-lg text-[12px] mono", style: { background: openForm.successProb === opt ? "#D4A64A22" : "#1A1F27", color: openForm.successProb === opt ? "#D4A64A" : "#6B7280", fontFamily: "JetBrains Mono, monospace" } },
+                            React.createElement("button", { type: "button", onClick: () => setOpenForm({ ...openForm, successProb: opt }) }, opt),
+                            successProbEditMode && (React.createElement("button", { type: "button", onClick: e => { e.stopPropagation(); removeSuccessProbOption(opt); if (openForm.successProb === opt)
+                                    setOpenForm(f => ({ ...f, successProb: "" })); } },
+                                React.createElement(X, { size: 10 }))))))),
+                        React.createElement("div", { className: "flex gap-1.5 mt-1.5" },
+                            React.createElement("input", { type: "text", inputMode: "decimal", value: newSuccessProbText, onChange: e => setNewSuccessProbText(e.target.value), onKeyDown: e => e.key === "Enter" && addSuccessProbOptionInline(), placeholder: "\u0645\u0642\u062F\u0627\u0631 \u062C\u062F\u06CC\u062F...", className: "flex-1 rounded-lg px-2.5 py-1.5 text-[12px] bg-transparent outline-none", style: { color: "#E8EAED", border: "1px solid #262C36" } }),
+                            React.createElement("button", { type: "button", onClick: addSuccessProbOptionInline, className: "flex items-center gap-1 px-3 py-1.5 rounded-lg text-[12px]", style: { background: "#1A1F27", color: "#D4A64A" } },
+                                React.createElement(Plus, { size: 12 }))))),
+                React.createElement("div", { className: "mb-2" },
+                    React.createElement("label", { className: "text-[11px] block mb-1", style: { color: "#6B7280" } }, "\u0627\u062D\u062A\u0645\u0627\u0644 \u0645\u0648\u0641\u0642\u06CC\u062A \u0645\u062D\u0627\u0633\u0628\u0627\u062A\u06CC (%)"),
+                    React.createElement("div", { className: "rounded-lg px-3 py-3 flex items-center justify-between", style: { background: "#1A1F27", border: "1px solid #262C36", position: "relative" } },
+                        React.createElement("button", { type: "button", onClick: () => setShowCalcProbWeights(true), style: { position: "absolute", top: -6, left: -6, background: "#1A1F27", border: "1px solid #262C36", borderRadius: 8, padding: 4 }, "aria-label": "\u0633\u0641\u0627\u0631\u0634\u06CC\u200C\u0633\u0627\u0632\u06CC \u0648\u0632\u0646\u200C\u062F\u0647\u06CC" },
+                            React.createElement(Edit3, { size: 11, color: "#6B7280" })),
+                        (() => {
+                            const r = calcSuccessProbResult;
+                            if (r === null)
+                                return React.createElement("span", { className: "text-sm", style: { color: "#6B7280" } }, "\u062F\u0627\u062F\u0647\u200C\u06CC \u06A9\u0627\u0641\u06CC \u0646\u06CC\u0633\u062A");
+                            const color = r >= 66 ? "#34D399" : r >= 40 ? "#FBBF24" : "#F87171";
+                            return (React.createElement(React.Fragment, null,
+                                React.createElement("span", { className: "text-lg font-bold mono", style: { color, fontFamily: "JetBrains Mono, monospace" } },
+                                    r,
+                                    "\u066A"),
+                                React.createElement("span", { className: "text-[10px]", style: { color: "#6B7280" } }, "\u0628\u0631 \u0627\u0633\u0627\u0633 \u0633\u0648\u062F\u0622\u0648\u0631\u062A\u0631\u06CC\u0646 \u0634\u0631\u0627\u06CC\u0637 \u0645\u0639\u0627\u0645\u0644\u0647\u200C\u06CC \u062B\u0628\u062A\u200C\u0634\u062F\u0647")));
+                        })())),
                 React.createElement("button", { onClick: saveOpenTrade, className: "w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-medium mt-2 mb-2", style: { background: "#D4A64A", color: "#0B0E11" } },
                     React.createElement(Check, { size: 16 }),
                     " \u062B\u0628\u062A \u0648\u0631\u0648\u062F")))),
@@ -3994,7 +4104,7 @@ function App() {
                         React.createElement("input", { type: "number", inputMode: "decimal", value: editForm.riskDollar, onChange: e => onEditFieldChange("riskDollar", e.target.value), className: "w-full bg-transparent outline-none text-sm mono", style: { color: "#E8EAED", fontFamily: "JetBrains Mono, monospace" } }))),
                 React.createElement(Field, { label: "R-multiple" },
                     React.createElement(ChipGroup, { value: editForm.rrReward, options: rrOptions, onChange: v => onEditFieldChange("rrReward", v), mono: true, activeColor: "#D4A64A" })),
-                React.createElement(Field, { label: "\u0627\u062D\u062A\u0645\u0627\u0644 \u0645\u0648\u0641\u0642\u06CC\u062A (%)" },
+                React.createElement(Field, { label: "\u0627\u062D\u062A\u0645\u0627\u0644 \u0645\u0648\u0641\u0642\u06CC\u062A \u0630\u0647\u0646\u06CC (%)" },
                     React.createElement(ChipGroup, { value: editForm.successProb, options: successProbOptions, onChange: v => onEditFieldChange("successProb", v), mono: true, activeColor: "#D4A64A" })),
                 React.createElement(Field, { label: "\u0631\u0648\u0627\u0646\u0634\u0646\u0627\u0633\u06CC (\u0686\u0646\u062F \u062A\u0627 \u0647\u0645 \u0645\u06CC\u200C\u062A\u0648\u0646\u06CC \u0627\u0646\u062A\u062E\u0627\u0628 \u06A9\u0646\u06CC)" },
                     React.createElement("div", { className: "flex flex-wrap gap-1.5" }, psychOptions.map(opt => {
@@ -4043,6 +4153,22 @@ function App() {
                 React.createElement("div", { className: "flex gap-2" },
                     React.createElement("button", { onClick: () => setConfirmDelete(null), className: "flex-1 py-2.5 rounded-xl text-sm", style: { background: "#1A1F27", color: "#E8EAED" } }, "\u0627\u0646\u0635\u0631\u0627\u0641"),
                     React.createElement("button", { onClick: runConfirmedDelete, className: "flex-1 py-2.5 rounded-xl text-sm font-medium", style: { background: "#F87171", color: "#0B0E11" } }, "\u0628\u0644\u0647\u060C \u062D\u0630\u0641 \u06A9\u0646"))))),
+        showCalcProbWeights && (React.createElement("div", { className: "fixed inset-0 z-50 flex items-end sm:items-center justify-center", style: { background: "#000000AA" }, onClick: () => setShowCalcProbWeights(false) },
+            React.createElement("div", { className: "w-full rounded-t-2xl sm:rounded-2xl p-4", style: { background: "#12161C", border: "1px solid #1F242C", maxWidth: 420, maxHeight: "85vh", overflowY: "auto" }, onClick: e => e.stopPropagation() },
+                React.createElement("div", { className: "flex items-center justify-between mb-2" },
+                    React.createElement("h3", { className: "text-sm font-semibold", style: { color: "#E8EAED" } }, "\u0648\u0632\u0646\u200C\u062F\u0647\u06CC \u0627\u062D\u062A\u0645\u0627\u0644 \u0645\u0648\u0641\u0642\u06CC\u062A \u0645\u062D\u0627\u0633\u0628\u0627\u062A\u06CC"),
+                    React.createElement("button", { onClick: () => setShowCalcProbWeights(false) },
+                        React.createElement(X, { size: 16, color: "#6B7280" }))),
+                React.createElement("p", { className: "text-[11px] mb-3", style: { color: "#6B7280" } }, "\u0628\u0647 \u0647\u0631 \u067E\u0627\u0631\u0627\u0645\u062A\u0631 \u06CC\u06A9 \u0648\u0632\u0646 (\u0647\u0631\u0686\u0642\u062F\u0631 \u0628\u062E\u0648\u0627\u06CC\u060C \u0645\u062B\u0644\u0627\u064B \u06F0 \u062A\u0627 \u06F1\u06F0\u06F0) \u0628\u062F\u0647. \u0647\u0631\u0686\u06CC \u0648\u0632\u0646 \u06CC\u06A9 \u067E\u0627\u0631\u0627\u0645\u062A\u0631 \u0628\u06CC\u0634\u062A\u0631 \u0628\u0627\u0634\u0647\u060C \u062A\u0627\u062B\u06CC\u0631\u0634 \u0631\u0648\u06CC \u062F\u0631\u0635\u062F \u0646\u0647\u0627\u06CC\u06CC \u0628\u06CC\u0634\u062A\u0631\u0647. \u0648\u0632\u0646 \u0635\u0641\u0631 \u06CC\u0639\u0646\u06CC \u0627\u0648\u0646 \u067E\u0627\u0631\u0627\u0645\u062A\u0631 \u0627\u0635\u0644\u0627\u064B \u062F\u0631 \u0645\u062D\u0627\u0633\u0628\u0647 \u0644\u062D\u0627\u0638 \u0646\u0634\u0647."),
+                React.createElement("div", { className: "grid grid-cols-1 gap-2 mb-4" }, CALC_PROB_PARAMS.map(p => (React.createElement("div", { key: p.key, className: "flex items-center justify-between gap-2 rounded-lg px-3 py-2", style: { background: "#1A1F27" } },
+                    React.createElement("span", { className: "text-[12px]", style: { color: "#E8EAED" } }, p.label),
+                    React.createElement("input", { type: "number", min: "0", inputMode: "numeric", value: calcProbWeights[p.key] ?? 10, onChange: e => {
+                            const v = e.target.value === "" ? "" : Math.max(0, parseInt(e.target.value, 10) || 0);
+                            setCalcProbWeights(w => ({ ...w, [p.key]: v }));
+                        }, onBlur: () => persistCalcProbWeights({ ...calcProbWeights, [p.key]: calcProbWeights[p.key] === "" ? 0 : calcProbWeights[p.key] }), className: "rounded-lg px-2 py-1 text-[12px] text-center mono", style: { background: "#0B0E11", border: "1px solid #262C36", color: "#D4A64A", width: 60, fontFamily: "JetBrains Mono, monospace" } }))))),
+                React.createElement("div", { className: "flex gap-2" },
+                    React.createElement("button", { onClick: () => persistCalcProbWeights(DEFAULT_CALC_PROB_WEIGHTS), className: "flex-1 py-2.5 rounded-xl text-sm", style: { background: "#1A1F27", color: "#E8EAED" } }, "\u0628\u0627\u0632\u06AF\u0634\u062A \u0628\u0647 \u067E\u06CC\u0634\u200C\u0641\u0631\u0636"),
+                    React.createElement("button", { onClick: () => setShowCalcProbWeights(false), className: "flex-1 py-2.5 rounded-xl text-sm font-medium", style: { background: "#D4A64A", color: "#0B0E11" } }, "\u0628\u0627\u0634\u0647"))))),
         toast && (React.createElement("div", { className: "fixed left-1/2 z-50 px-4 py-2.5 rounded-xl text-[12px]", style: { bottom: 76, transform: "translateX(-50%)", background: "#1A1F27", color: "#E8EAED", border: "1px solid #262C36", maxWidth: "90%", textAlign: "center" } }, toast))));
 }
 
