@@ -849,7 +849,7 @@ const CALC_PROB_STATIC_PARAMS = [
     { key: "dailyTrend", label: "جهت روند روزانه", multi: false, get: t => t.dailyTrendDirection === "bullish" ? "صعودی" : t.dailyTrendDirection === "bearish" ? "نزولی" : t.dailyTrendDirection === "neutral" ? "خنثی" : undefined },
     { key: "dailyCandle", label: "جهت کندل روزانه", multi: false, get: t => t.dailyCandleDirection === "bullish" ? "صعودی" : t.dailyCandleDirection === "bearish" ? "نزولی" : t.dailyCandleDirection === "neutral" ? "خنثی" : undefined },
     { key: "bias", label: "جهت روند تایم ورود", multi: false, get: t => t.marketBias === "bullish" ? "صعودی" : t.marketBias === "bearish" ? "نزولی" : undefined },
-    { key: "condition", label: "بازار تایم ورود", multi: false, get: t => t.marketCondition === "trend" ? "روند" : t.marketCondition === "range" ? "رنج" : t.marketCondition === "volatile" ? "پرنوسان" : undefined },
+    { key: "condition", label: "بازار تایم ورود", multi: false, get: t => t.marketCondition === "trend" ? "رونددار" : t.marketCondition === "range" ? "رنج" : t.marketCondition === "volatile" ? "پرنوسان" : undefined },
     { key: "wave", label: "شماره موج تایم ورود", multi: false, get: t => t.wave || undefined },
     { key: "trend", label: "هم راستایی معامله با روند اصلی", multi: false, get: t => t.tradeDirectionRel === "with" ? "هم جهت با روند اصلی" : t.tradeDirectionRel === "against" ? "خلاف جهت روند اصلی" : undefined },
     { key: "trig", label: "نقطه ورود", multi: false, get: t => t.trig || undefined },
@@ -1018,7 +1018,7 @@ const PARAM_DEFS = {
     trend: { label: "هم راستایی معامله با روند اصلی", get: t => t.tradeDirectionRel === "with" ? "هم جهت با روند اصلی" : t.tradeDirectionRel === "against" ? "خلاف جهت روند اصلی" : "—" },
     rr: { label: "R-multiple", get: t => (t.rrReward !== null && t.rrReward !== undefined) ? `1:${t.rrReward}` : "—" },
     bias: { label: "جهت روند تایم ورود", get: t => t.marketBias === "bullish" ? "صعودی" : t.marketBias === "bearish" ? "نزولی" : "—" },
-    condition: { label: "بازار تایم ورود", get: t => t.marketCondition === "trend" ? "روند" : t.marketCondition === "range" ? "رنج" : t.marketCondition === "volatile" ? "پرنوسان" : "—" },
+    condition: { label: "بازار تایم ورود", get: t => t.marketCondition === "trend" ? "رونددار" : t.marketCondition === "range" ? "رنج" : t.marketCondition === "volatile" ? "پرنوسان" : "—" },
     trig: { label: "نقطه ورود", get: t => t.trig || "—" },
     target: { label: "حد سود (TP)", get: t => t.target || "—" },
     stop: { label: "حد ضرر (SL)", get: t => t.stop || "—" },
@@ -1436,6 +1436,45 @@ function App() {
             }
             catch (e) { }
             try {
+                const r = await window.storage.get("namello_settings_v1");
+                if (r) {
+                    const s = { ...DEFAULT_ACC_SETTINGS, ...JSON.parse(r.value) };
+                    setAccSettings(s);
+                    setAccSettingsForm(s);
+                }
+            }
+            catch (e) { }
+            try {
+                const r = await window.storage.get("namello_strategies_v1");
+                if (r)
+                    setStrategies(JSON.parse(r.value));
+            }
+            catch (e) { }
+            try {
+                const r = await window.storage.get("namello_goals_v1");
+                if (r)
+                    setGoals(JSON.parse(r.value));
+            }
+            catch (e) { }
+            try {
+                const r = await window.storage.get("namello_lifegoals_v1");
+                if (r)
+                    setLifeGoals(JSON.parse(r.value));
+            }
+            catch (e) { }
+            try {
+                const r = await window.storage.get("namello_gratitude_v1");
+                if (r)
+                    setGratitude(JSON.parse(r.value));
+            }
+            catch (e) { }
+            try {
+                const r = await window.storage.get("namello_customparams_v1");
+                if (r)
+                    setCustomParams(JSON.parse(r.value));
+            }
+            catch (e) { }
+            try {
                 const r = await window.storage.get("namello_close_type_options_v1");
                 if (r)
                     setCloseTypeOptions(JSON.parse(r.value));
@@ -1531,7 +1570,6 @@ function App() {
     useEffect(() => {
         if (!activeAccount) {
             setTrades([]);
-            setAccSettings(DEFAULT_ACC_SETTINGS);
             return;
         }
         (async () => {
@@ -1541,50 +1579,6 @@ function App() {
             }
             catch (e) {
                 setTrades([]);
-            }
-            try {
-                const r = await window.storage.get(`namello_settings_${activeAccount}`);
-                const s = r ? { ...DEFAULT_ACC_SETTINGS, ...JSON.parse(r.value) } : DEFAULT_ACC_SETTINGS;
-                setAccSettings(s);
-                setAccSettingsForm(s);
-            }
-            catch (e) {
-                setAccSettings(DEFAULT_ACC_SETTINGS);
-            }
-            try {
-                const r = await window.storage.get(`namello_strategies_${activeAccount}`);
-                setStrategies(r ? JSON.parse(r.value) : []);
-            }
-            catch (e) {
-                setStrategies([]);
-            }
-            try {
-                const r = await window.storage.get(`namello_goals_${activeAccount}`);
-                setGoals(r ? JSON.parse(r.value) : []);
-            }
-            catch (e) {
-                setGoals([]);
-            }
-            try {
-                const r = await window.storage.get(`namello_lifegoals_${activeAccount}`);
-                setLifeGoals(r ? JSON.parse(r.value) : []);
-            }
-            catch (e) {
-                setLifeGoals([]);
-            }
-            try {
-                const r = await window.storage.get(`namello_gratitude_${activeAccount}`);
-                setGratitude(r ? JSON.parse(r.value) : []);
-            }
-            catch (e) {
-                setGratitude([]);
-            }
-            try {
-                const r = await window.storage.get(`namello_customparams_${activeAccount}`);
-                setCustomParams(r ? JSON.parse(r.value) : []);
-            }
-            catch (e) {
-                setCustomParams([]);
             }
         })();
     }, [activeAccount]);
@@ -1681,36 +1675,30 @@ function App() {
         await window.storage.set(`namello_trades_${activeAccount}`, JSON.stringify(next));
     }
     catch (e) { } }, [activeAccount]);
-    const persistAccSettings = useCallback(async (next) => { setAccSettings(next); if (!activeAccount)
-        return; try {
-        await window.storage.set(`namello_settings_${activeAccount}`, JSON.stringify(next));
+    const persistAccSettings = useCallback(async (next) => { setAccSettings(next); try {
+        await window.storage.set("namello_settings_v1", JSON.stringify(next));
     }
-    catch (e) { } }, [activeAccount]);
-    const persistStrategies = useCallback(async (next) => { setStrategies(next); if (!activeAccount)
-        return; try {
-        await window.storage.set(`namello_strategies_${activeAccount}`, JSON.stringify(next));
+    catch (e) { } }, []);
+    const persistStrategies = useCallback(async (next) => { setStrategies(next); try {
+        await window.storage.set("namello_strategies_v1", JSON.stringify(next));
     }
-    catch (e) { } }, [activeAccount]);
-    const persistGoals = useCallback(async (next) => { setGoals(next); if (!activeAccount)
-        return; try {
-        await window.storage.set(`namello_goals_${activeAccount}`, JSON.stringify(next));
+    catch (e) { } }, []);
+    const persistGoals = useCallback(async (next) => { setGoals(next); try {
+        await window.storage.set("namello_goals_v1", JSON.stringify(next));
     }
-    catch (e) { } }, [activeAccount]);
-    const persistLifeGoals = useCallback(async (next) => { setLifeGoals(next); if (!activeAccount)
-        return; try {
-        await window.storage.set(`namello_lifegoals_${activeAccount}`, JSON.stringify(next));
+    catch (e) { } }, []);
+    const persistLifeGoals = useCallback(async (next) => { setLifeGoals(next); try {
+        await window.storage.set("namello_lifegoals_v1", JSON.stringify(next));
     }
-    catch (e) { } }, [activeAccount]);
-    const persistGratitude = useCallback(async (next) => { setGratitude(next); if (!activeAccount)
-        return; try {
-        await window.storage.set(`namello_gratitude_${activeAccount}`, JSON.stringify(next));
+    catch (e) { } }, []);
+    const persistGratitude = useCallback(async (next) => { setGratitude(next); try {
+        await window.storage.set("namello_gratitude_v1", JSON.stringify(next));
     }
-    catch (e) { } }, [activeAccount]);
-    const persistCustomParams = useCallback(async (next) => { setCustomParams(next); if (!activeAccount)
-        return; try {
-        await window.storage.set(`namello_customparams_${activeAccount}`, JSON.stringify(next));
+    catch (e) { } }, []);
+    const persistCustomParams = useCallback(async (next) => { setCustomParams(next); try {
+        await window.storage.set("namello_customparams_v1", JSON.stringify(next));
     }
-    catch (e) { } }, [activeAccount]);
+    catch (e) { } }, []);
     const now = getNYNow();
     const schedule = buildSchedule(config, now.minutesOfDay, now.dst);
     const [jy, jm, jd] = gregorianToJalali(now.y, now.m, now.d);
@@ -1852,25 +1840,11 @@ function App() {
             return;
         }
         setAccCodeError("");
-        const isNewAccount = !accounts.includes(code);
-        if (isNewAccount) {
+        // فقط معاملات (ترید‌ها) مخصوص هر حساب هستن؛ حساب جدید با ترید خالی شروع می‌شه.
+        // بقیه‌ی لایه‌ها (مدیریت مالی، پارامترهای سفارشی، استراتژی، اهداف معامله‌گری، اهداف زندگی،
+        // شکر گزاری، سیستم‌ها، آماده‌سازی، اخبار و ...) بین همه‌ی حساب‌ها مشترک هستن، پس نیازی به کپی نیست.
+        if (!accounts.includes(code))
             persistAccounts([...accounts, code]);
-            // یک حساب کاملاً جدید: تنظیمات و تعاریف حساب فعلی (مدیریت مالی/پارامترهای سفارشی، استراتژی، اهداف معامله‌گری، اهداف زندگی، شکر گزاری) برای حساب جدید هم کپی می‌شه.
-            // معاملات (ترید‌ها) عمداً کپی نمی‌شن؛ حساب جدید همیشه با ترید خالی شروع می‌شه.
-            if (activeAccount) {
-                try {
-                    await Promise.all([
-                        window.storage.set(`namello_settings_${code}`, JSON.stringify(accSettings)),
-                        window.storage.set(`namello_strategies_${code}`, JSON.stringify(strategies)),
-                        window.storage.set(`namello_goals_${code}`, JSON.stringify(goals)),
-                        window.storage.set(`namello_lifegoals_${code}`, JSON.stringify(lifeGoals)),
-                        window.storage.set(`namello_gratitude_${code}`, JSON.stringify(gratitude)),
-                        window.storage.set(`namello_customparams_${code}`, JSON.stringify(customParams)),
-                    ]);
-                }
-                catch (e) { }
-            }
-        }
         persistActiveAccount(code);
         setNewAccCode("");
     }
@@ -2359,7 +2333,7 @@ function App() {
         const rows = asc.map(t => [
             derived.byId[t.id]?.dailyIndex ?? "", t.date, weekdayFromDateStr(t.date), t.time, t.pair,
             t.direction === "buy" ? "خرید" : "فروش", t.fractal || "", t.mainTrendDirection === "bullish" ? "صعودی" : t.mainTrendDirection === "bearish" ? "نزولی" : "", t.tradeDirectionRel === "with" ? "هم جهت با روند اصلی" : t.tradeDirectionRel === "against" ? "خلاف جهت روند اصلی" : "",
-            t.marketBias === "bullish" ? "صعودی" : t.marketBias === "bearish" ? "نزولی" : "", t.marketCondition === "trend" ? "روند" : t.marketCondition === "range" ? "رنج" : t.marketCondition === "volatile" ? "پرنوسان" : "",
+            t.marketBias === "bullish" ? "صعودی" : t.marketBias === "bearish" ? "نزولی" : "", t.marketCondition === "trend" ? "رونددار" : t.marketCondition === "range" ? "رنج" : t.marketCondition === "volatile" ? "پرنوسان" : "",
             t.system || "", t.entry ?? "", t.exit ?? "", t.pips ?? "",
             t.lot, t.rrReward !== null && t.rrReward !== undefined ? `1:${t.rrReward}` : "", t.riskPercent ?? "", t.trig || "", t.target || "", t.stop || "", t.newsName || "",
             t.pnl ?? "", closeTypeLabel(t), formatDurationFa(t.durationMinutes), derived.byId[t.id]?.balanceAfter ?? "", (t.tags || []).map(tg => tg.label).join("، "), t.note || "",
@@ -2878,7 +2852,7 @@ function App() {
         const jHeader = ["شماره ترید روز", "تاریخ", "روز هفته", "ساعت ورود", "جفت‌ارز", "جهت", "فراکتال", "جهت روند اصلی", "جهت روند", "بایاس بازار", "بازار تایم ورود", "سیستم معاملاتی", "قیمت ورود", "قیمت خروج", "پیپ", "حجم (لات)", "R:R", "ریسک (%)", "نقطه ورود", "حد سود (TP)", "حد ضرر (SL)", "خبر", "سود/ضرر", "نوع بستن معامله", "موجودی پس از ترید", "سشن/کیل‌زون فعال", "یادداشت"];
         const jRows = allClosedAsc.map(t => [
             derived.byId[t.id]?.dailyIndex ?? "", t.date, weekdayFromDateStr(t.date), t.time, t.pair, t.direction === "buy" ? "خرید" : "فروش", t.fractal || "", t.mainTrendDirection === "bullish" ? "صعودی" : t.mainTrendDirection === "bearish" ? "نزولی" : "", t.tradeDirectionRel === "with" ? "هم جهت با روند اصلی" : t.tradeDirectionRel === "against" ? "خلاف جهت روند اصلی" : "",
-            t.marketBias === "bullish" ? "صعودی" : t.marketBias === "bearish" ? "نزولی" : "", t.marketCondition === "trend" ? "روند" : t.marketCondition === "range" ? "رنج" : t.marketCondition === "volatile" ? "پرنوسان" : "",
+            t.marketBias === "bullish" ? "صعودی" : t.marketBias === "bearish" ? "نزولی" : "", t.marketCondition === "trend" ? "رونددار" : t.marketCondition === "range" ? "رنج" : t.marketCondition === "volatile" ? "پرنوسان" : "",
             t.system || "", t.entry ?? "", t.exit ?? "", t.pips ?? "", t.lot, t.rrReward !== null && t.rrReward !== undefined ? `1:${t.rrReward}` : "", t.riskPercent ?? "", t.trig || "", t.target || "", t.stop || "", t.newsName || "",
             t.pnl ?? "", closeTypeLabel(t), derived.byId[t.id]?.balanceAfter ?? "", (t.tags || []).map(tg => tg.label).join("، "), t.note || "",
         ]);
@@ -3281,7 +3255,7 @@ function App() {
                 React.createElement("div", { className: "flex flex-wrap gap-1.5 mb-2" },
                     t.tradeDirectionRel && React.createElement("span", { className: "text-[10px] px-2 py-0.5 rounded-full", style: { background: t.tradeDirectionRel === "with" ? "#60A5FA22" : "#FBBF2422", color: t.tradeDirectionRel === "with" ? "#60A5FA" : "#FBBF24" } }, t.tradeDirectionRel === "with" ? "هم جهت با روند اصلی" : "خلاف جهت روند اصلی"),
                     t.marketBias && React.createElement("span", { className: "text-[10px] px-2 py-0.5 rounded-full", style: { background: t.marketBias === "bullish" ? "#34D39922" : "#F8717122", color: t.marketBias === "bullish" ? "#34D399" : "#F87171" } }, t.marketBias === "bullish" ? "صعودی" : "نزولی"),
-                    t.marketCondition && React.createElement("span", { className: "text-[10px] px-2 py-0.5 rounded-full", style: { background: "#A855F722", color: "#A855F7" } }, t.marketCondition === "trend" ? "روند" : t.marketCondition === "range" ? "رنج" : "پرنوسان"),
+                    t.marketCondition && React.createElement("span", { className: "text-[10px] px-2 py-0.5 rounded-full", style: { background: "#A855F722", color: "#A855F7" } }, t.marketCondition === "trend" ? "رونددار" : t.marketCondition === "range" ? "رنج" : "پرنوسان"),
                     t.trig && React.createElement("span", { className: "text-[10px] px-2 py-0.5 rounded-full", style: { background: "#1A1F27", color: "#8B93A1" } },
                         "Trig: ",
                         t.trig),
@@ -3731,7 +3705,7 @@ function App() {
                         deleteAccountConfirm),
                     React.createElement("button", { onClick: () => setDeleteAccountConfirm(null) },
                         React.createElement(X, { size: 18, color: "#6B7280" }))),
-                React.createElement("p", { className: "text-[12px] leading-6 mb-4", style: { color: "#8B93A1" } }, "\u0627\u06CC\u0646 \u06A9\u062F \u062D\u0633\u0627\u0628 \u0627\u0632 \u0644\u06CC\u0633\u062A \u062D\u0633\u0627\u0628\u200C\u0647\u0627 \u062D\u0630\u0641 \u0645\u06CC\u200C\u0634\u0648\u062F \u0648 \u0645\u0639\u0627\u0645\u0644\u0627\u062A \u0628\u0633\u062A\u0647\u200C\u0634\u062F\u0647\u200C\u06CC \u0622\u0646 \u067E\u0627\u06A9 \u0645\u06CC\u200C\u0634\u0648\u0646\u062F. \u062A\u0646\u0638\u06CC\u0645\u0627\u062A\u060C \u0633\u06CC\u0633\u062A\u0645\u200C\u0647\u0627\u06CC \u0645\u0639\u0627\u0645\u0644\u0627\u062A\u06CC\u060C \u0627\u0633\u062A\u0631\u0627\u062A\u0698\u06CC\u200C\u0647\u0627\u060C \u0627\u0647\u062F\u0627\u0641 \u0648 \u067E\u0627\u0631\u0627\u0645\u062A\u0631\u0647\u0627\u06CC \u0633\u0641\u0627\u0631\u0634\u06CC \u0627\u06CC\u0646 \u062D\u0633\u0627\u0628 \u062F\u0633\u062A\u200C\u0646\u062E\u0648\u0631\u062F\u0647 \u0628\u0627\u0642\u06CC \u0645\u06CC\u200C\u0645\u0627\u0646\u0646\u062F \u0648 \u0627\u06AF\u0631 \u062F\u0648\u0628\u0627\u0631\u0647 \u0647\u0645\u06CC\u0646 \u06A9\u062F \u0631\u0627 \u0648\u0627\u0631\u062F \u06A9\u0646\u06CC\u060C \u0628\u0631\u0645\u06CC\u200C\u06AF\u0631\u062F\u0646\u062F."),
+                React.createElement("p", { className: "text-[12px] leading-6 mb-4", style: { color: "#8B93A1" } }, "\u0627\u06CC\u0646 \u06A9\u062F \u062D\u0633\u0627\u0628 \u0627\u0632 \u0644\u06CC\u0633\u062A \u062D\u0633\u0627\u0628\u200C\u0647\u0627 \u062D\u0630\u0641 \u0645\u06CC\u200C\u0634\u0648\u062F \u0648 \u0645\u0639\u0627\u0645\u0644\u0627\u062A \u0628\u0633\u062A\u0647\u200C\u0634\u062F\u0647\u200C\u06CC \u0622\u0646 \u067E\u0627\u06A9 \u0645\u06CC\u200C\u0634\u0648\u0646\u062F. \u0633\u0627\u06CC\u0631 \u0644\u0627\u06CC\u0647\u200C\u0647\u0627 (\u0645\u062F\u06CC\u0631\u06CC\u062A \u0645\u0627\u0644\u06CC\u060C \u0633\u06CC\u0633\u062A\u0645\u200C\u0647\u0627\u06CC \u0645\u0639\u0627\u0645\u0644\u0627\u062A\u06CC\u060C \u0627\u0633\u062A\u0631\u0627\u062A\u0698\u06CC\u200C\u0647\u0627\u060C \u0627\u0647\u062F\u0627\u0641\u060C \u067E\u0627\u0631\u0627\u0645\u062A\u0631\u0647\u0627\u06CC \u0633\u0641\u0627\u0631\u0634\u06CC \u0648 ...) \u0628\u06CC\u0646 \u0647\u0645\u0647\u200C\u06CC \u062D\u0633\u0627\u0628\u200C\u0647\u0627 \u0645\u0634\u062A\u0631\u06A9 \u0647\u0633\u062A\u0646 \u0648 \u062F\u0633\u062A\u200C\u0646\u062E\u0648\u0631\u062F\u0647 \u0628\u0627\u0642\u06CC \u0645\u06CC\u200C\u0645\u0627\u0646\u0646\u062F."),
                 React.createElement("div", { className: "flex gap-2" },
                     React.createElement("button", { onClick: () => setDeleteAccountConfirm(null), className: "flex-1 py-3 rounded-xl text-sm", style: { background: "#1A1F27", color: "#E8EAED", border: "1px solid #262C36" } }, "\u0627\u0646\u0635\u0631\u0627\u0641"),
                     React.createElement("button", { onClick: () => deleteAccount(deleteAccountConfirm), className: "flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-medium", style: { background: "#F87171", color: "#0B0E11" } },
@@ -3812,7 +3786,7 @@ function App() {
                         React.createElement("button", { onClick: () => setOpenForm({ ...openForm, marketBias: "bullish" }), className: "flex-1 py-2 rounded-lg text-sm", style: { background: openForm.marketBias === "bullish" ? "#34D39922" : "#1A1F27", color: openForm.marketBias === "bullish" ? "#34D399" : "#6B7280" } }, "\u0635\u0639\u0648\u062F\u06CC"),
                         React.createElement("button", { onClick: () => setOpenForm({ ...openForm, marketBias: "bearish" }), className: "flex-1 py-2 rounded-lg text-sm", style: { background: openForm.marketBias === "bearish" ? "#F8717122" : "#1A1F27", color: openForm.marketBias === "bearish" ? "#F87171" : "#6B7280" } }, "\u0646\u0632\u0648\u0644\u06CC"))),
                 React.createElement(Field, { label: hlLabel("بازار تایم ورود") },
-                    React.createElement("div", { className: "flex gap-2" }, [["trend", "روند"], ["range", "رنج"], ["volatile", "پرنوسان"]].map(([val, label]) => (React.createElement("button", { key: val, onClick: () => setOpenForm({ ...openForm, marketCondition: val }), className: "flex-1 py-2 rounded-lg text-[13px]", style: { background: openForm.marketCondition === val ? "#D4A64A22" : "#1A1F27", color: openForm.marketCondition === val ? "#D4A64A" : "#6B7280" } }, label))))),
+                    React.createElement("div", { className: "flex gap-2" }, [["trend", "رونددار"], ["range", "رنج"], ["volatile", "پرنوسان"]].map(([val, label]) => (React.createElement("button", { key: val, onClick: () => setOpenForm({ ...openForm, marketCondition: val }), className: "flex-1 py-2 rounded-lg text-[13px]", style: { background: openForm.marketCondition === val ? "#D4A64A22" : "#1A1F27", color: openForm.marketCondition === val ? "#D4A64A" : "#6B7280" } }, label))))),
                 React.createElement(Field, { label: hlLabel("شماره موج تایم ورود") },
                     React.createElement("div", { style: { position: "relative", paddingTop: 6 } },
                         React.createElement("button", { type: "button", onClick: () => setWaveEditMode(m => !m), style: { position: "absolute", top: -6, left: -6, zIndex: 1, background: waveEditMode ? "#F8717122" : "#1A1F27", border: `1px solid ${waveEditMode ? "#F8717155" : "#262C36"}`, borderRadius: 8, padding: 4 }, "aria-label": "\u062D\u0630\u0641 \u06AF\u0632\u06CC\u0646\u0647\u200C\u0647\u0627" },
@@ -3926,7 +3900,7 @@ function App() {
                             React.createElement("input", { type: "text", value: newTargetText, onChange: e => setNewTargetText(e.target.value), onKeyDown: e => e.key === "Enter" && addTargetOptionInline(), placeholder: "Target \u062C\u062F\u06CC\u062F...", className: "flex-1 rounded-lg px-2.5 py-1.5 text-[12px] bg-transparent outline-none", style: { color: "#E8EAED", border: "1px solid #262C36" } }),
                             React.createElement("button", { type: "button", onClick: addTargetOptionInline, className: "flex items-center gap-1 px-3 py-1.5 rounded-lg text-[12px]", style: { background: "#1A1F27", color: "#34D399" } },
                                 React.createElement(Plus, { size: 12 }))))),
-                React.createElement(Field, { label: "\u062D\u062F \u0636\u0631\u0631 (SL)" },
+                React.createElement(Field, { label: "\u062D\u062F \u0636\u0631\u0631 (SL) (\u0645\u06CC\u0632\u0627\u0646 \u0627\u0633\u067E\u0631\u062F \u06CC\u0627 ATR*(1-1.5) \u0644\u062D\u0627\u0638 \u06AF\u0631\u062F\u062F.)" },
                     React.createElement("div", { style: { position: "relative", paddingTop: 6 } },
                         React.createElement("button", { type: "button", onClick: () => setStopEditMode(m => !m), style: { position: "absolute", top: -6, left: -6, zIndex: 1, background: stopEditMode ? "#F8717122" : "#1A1F27", border: `1px solid ${stopEditMode ? "#F8717155" : "#262C36"}`, borderRadius: 8, padding: 4 }, "aria-label": "\u062D\u0630\u0641 \u06AF\u0632\u06CC\u0646\u0647\u200C\u0647\u0627" },
                             React.createElement(Trash2, { size: 11, color: stopEditMode ? "#F87171" : "#6B7280" })),
@@ -4142,7 +4116,7 @@ function App() {
                 React.createElement(Field, { label: "\u062C\u0647\u062A \u0631\u0648\u0646\u062F \u062A\u0627\u06CC\u0645 \u0648\u0631\u0648\u062F" },
                     React.createElement(ToggleGroup, { value: editForm.marketBias, options: [{ key: "bullish", label: "صعودی" }, { key: "bearish", label: "نزولی" }], onChange: v => onEditFieldChange("marketBias", v), activeColor: "#34D399" })),
                 React.createElement(Field, { label: "\u0628\u0627\u0632\u0627\u0631 \u062A\u0627\u06CC\u0645 \u0648\u0631\u0648\u062F" },
-                    React.createElement(ToggleGroup, { value: editForm.marketCondition, options: [{ key: "trend", label: "روند" }, { key: "range", label: "رنج" }, { key: "volatile", label: "پرنوسان" }], onChange: v => onEditFieldChange("marketCondition", v) })),
+                    React.createElement(ToggleGroup, { value: editForm.marketCondition, options: [{ key: "trend", label: "رونددار" }, { key: "range", label: "رنج" }, { key: "volatile", label: "پرنوسان" }], onChange: v => onEditFieldChange("marketCondition", v) })),
                 React.createElement(Field, { label: "\u0634\u0645\u0627\u0631\u0647 \u0645\u0648\u062C \u062A\u0627\u06CC\u0645 \u0648\u0631\u0648\u062F" },
                     React.createElement(ChipGroup, { value: editForm.wave, options: waveOptions, onChange: v => onEditFieldChange("wave", v) })),
                 React.createElement(Field, { label: "\u062E\u0631\u06CC\u062F/\u0641\u0631\u0648\u0634" },
