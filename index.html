@@ -531,40 +531,42 @@ function describeArc(cx, cy, r, a0, a1) {
     return `M ${p0.x} ${p0.y} A ${r} ${r} 0 ${large} 1 ${p1.x} ${p1.y}`;
 }
 function SessionClock({ minutesOfDay, sessions, killzones, silverbullets, colors }) {
-    const size = 300, cx = size / 2, cy = size / 2;
+    const size = 360, cx = size / 2, cy = size / 2;
     const sessionOverlaps = computeSessionOverlaps(sessions);
     const ktRing = { r: 100, w: 13, items: killzones, textColor: "#14532D", fontSize: 8, showLabel: true };
     const sbRing = { r: 78, w: 9, items: silverbullets, textColor: "#7C2D12", fontSize: 7, showLabel: false };
     const hourAngle = (minutesOfDay / 1440) * 360;
     const minuteOfHour = minutesOfDay % 60;
     const minuteAngle = (minuteOfHour / 60) * 360;
-    const hourPt = polar(cx, cy, 138, hourAngle);
-    const minutePt = polar(cx, cy, 138, minuteAngle);
-    const ticks = [0, 3, 6, 9, 12, 15, 18, 21];
-    const minuteTicks = [5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60];
+    const hourPt = polar(cx, cy, 150, hourAngle);
+    const minutePt = polar(cx, cy, 150, minuteAngle);
+    const hourTicks = Array.from({ length: 24 }, (_, i) => i);
+    const minuteTicks = Array.from({ length: 60 }, (_, i) => i);
     const sessR = 128, sessW = 19;
-    return (React.createElement("svg", { viewBox: `0 0 ${size} ${size}`, className: "w-full max-w-[300px] mx-auto select-none" },
+    return (React.createElement("svg", { viewBox: `0 0 ${size} ${size}`, className: "w-full max-w-[300px] mx-auto select-none", style: { aspectRatio: "1 / 1" }, preserveAspectRatio: "xMidYMid meet" },
         React.createElement("defs", null,
             React.createElement("radialGradient", { id: "namelloClockFace", cx: "50%", cy: "50%", r: "65%" },
                 React.createElement("stop", { offset: "0%", stopColor: "#141922" }),
                 React.createElement("stop", { offset: "80%", stopColor: "#0D1015" }),
                 React.createElement("stop", { offset: "100%", stopColor: "#090B0E" }))),
-        React.createElement("circle", { cx: cx, cy: cy, r: 149, fill: "url(#namelloClockFace)" }),
-        React.createElement("circle", { cx: cx, cy: cy, r: 149, fill: "none", stroke: "#262C36", strokeWidth: "1.5" }),
-        React.createElement("circle", { cx: cx, cy: cy, r: 148, fill: "none", stroke: "#1C2128", strokeWidth: "1" }),
-        ticks.map(h => {
+        React.createElement("circle", { cx: cx, cy: cy, r: 177, fill: "url(#namelloClockFace)" }),
+        React.createElement("circle", { cx: cx, cy: cy, r: 177, fill: "none", stroke: "#262C36", strokeWidth: "1.5" }),
+        React.createElement("circle", { cx: cx, cy: cy, r: 176, fill: "none", stroke: "#1C2128", strokeWidth: "1" }),
+        hourTicks.map(h => {
             const a = (h / 24) * 360;
-            const p1 = polar(cx, cy, 146, a), p2 = polar(cx, cy, 156, a), lp = polar(cx, cy, 168, a);
+            const major = h % 3 === 0;
+            const p1 = polar(cx, cy, major ? 159 : 161, a), p2 = polar(cx, cy, 168, a), lp = polar(cx, cy, 172, a);
             return (React.createElement("g", { key: h },
-                React.createElement("line", { x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y, stroke: "#4A5260", strokeWidth: "1.5" }),
-                React.createElement("text", { x: lp.x, y: lp.y, fill: "#9CA3AF", fontSize: "11", fontWeight: "700", fontFamily: "JetBrains Mono, monospace", textAnchor: "middle", dominantBaseline: "middle" }, pad2(h))));
+                React.createElement("line", { x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y, stroke: major ? "#4A5260" : "#333A44", strokeWidth: major ? 1.5 : 1 }),
+                React.createElement("text", { x: lp.x, y: lp.y, fill: major ? "#9CA3AF" : "#6B7280", fontSize: major ? 10.5 : 8.5, fontWeight: "700", fontFamily: "JetBrains Mono, monospace", textAnchor: "middle", dominantBaseline: "middle" }, pad2(h))));
         }),
         minuteTicks.map(m => {
             const a = (m / 60) * 360;
-            const p = polar(cx, cy, 138, a), lp = polar(cx, cy, 138, a);
+            const major = m % 5 === 0;
+            const p1 = polar(cx, cy, major ? 141 : 143, a), p2 = polar(cx, cy, 148, a), lp = polar(cx, cy, 153.5, a);
             return (React.createElement("g", { key: `m-${m}` },
-                React.createElement("circle", { cx: p.x, cy: p.y, r: 1.4, fill: "#3A4250" }),
-                React.createElement("text", { x: lp.x, y: lp.y - 8, fill: "#5B6472", fontSize: "7.5", fontWeight: "600", fontFamily: "JetBrains Mono, monospace", textAnchor: "middle", dominantBaseline: "middle" }, m)));
+                React.createElement("line", { x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y, stroke: major ? "#5B6472" : "#333A44", strokeWidth: major ? 1.2 : 0.75 }),
+                major && React.createElement("text", { x: lp.x, y: lp.y, fill: "#5B6472", fontSize: "7", fontWeight: "600", fontFamily: "JetBrains Mono, monospace", textAnchor: "middle", dominantBaseline: "middle" }, m === 0 ? 60 : m)));
         }),
         React.createElement("g", null,
             React.createElement("circle", { cx: cx, cy: cy, r: sessR, fill: "none", stroke: "#12161C", strokeWidth: sessW }),
@@ -3607,7 +3609,7 @@ function App() {
                 React.createElement(FileSpreadsheet, { size: 18 }),
                 " \u062E\u0631\u0648\u062C\u06CC \u06A9\u0644 \u0627\u06A9\u0633\u0644")))),
         React.createElement("div", { className: "fixed bottom-0 left-0 right-0 flex overflow-x-auto", style: { background: "#12161C", borderTop: "1px solid #1F242C" } }, [
-            { key: "live", label: "سشن‌ها", Icon: Clock },
+            { key: "live", label: "نشست‌ها", Icon: Clock },
             { key: "news", label: "اخبار", Icon: Newspaper },
             { key: "prep", label: "آماده‌سازی", Icon: Check },
             { key: "journal", label: "ژورنال", Icon: TrendingUp },
