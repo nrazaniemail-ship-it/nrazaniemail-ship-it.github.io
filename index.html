@@ -850,8 +850,8 @@ const CALC_PROB_STATIC_PARAMS = [
     { key: "dailyCandle", label: "جهت کندل روزانه", multi: false, get: t => t.dailyCandleDirection === "bullish" ? "صعودی" : t.dailyCandleDirection === "bearish" ? "نزولی" : t.dailyCandleDirection === "neutral" ? "خنثی" : undefined },
     { key: "bias", label: "جهت روند تایم ورود", multi: false, get: t => t.marketBias === "bullish" ? "صعودی" : t.marketBias === "bearish" ? "نزولی" : undefined },
     { key: "condition", label: "بازار تایم ورود", multi: false, get: t => t.marketCondition === "trend" ? "روند" : t.marketCondition === "range" ? "رنج" : t.marketCondition === "volatile" ? "پرنوسان" : undefined },
-    { key: "wave", label: "موج تایم ورود", multi: false, get: t => t.wave || undefined },
-    { key: "trend", label: "جهت ترید", multi: false, get: t => t.tradeDirectionRel === "with" ? "جهت روند اصلی" : t.tradeDirectionRel === "against" ? "خلاف روند اصلی" : undefined },
+    { key: "wave", label: "شماره موج تایم ورود", multi: false, get: t => t.wave || undefined },
+    { key: "trend", label: "هم راستایی معامله با روند اصلی", multi: false, get: t => t.tradeDirectionRel === "with" ? "هم جهت با روند اصلی" : t.tradeDirectionRel === "against" ? "خلاف جهت روند اصلی" : undefined },
     { key: "trig", label: "نقطه ورود", multi: false, get: t => t.trig || undefined },
     { key: "target", label: "حد سود (TP)", multi: false, get: t => t.target || undefined },
     { key: "stop", label: "حد ضرر (SL)", multi: false, get: t => t.stop || undefined },
@@ -1015,7 +1015,7 @@ const PARAM_DEFS = {
     dailyCandle: { label: "جهت کندل روزانه", get: t => t.dailyCandleDirection === "bullish" ? "صعودی" : t.dailyCandleDirection === "bearish" ? "نزولی" : t.dailyCandleDirection === "neutral" ? "خنثی" : "—" },
     dailyTrend: { label: "جهت روند روزانه", get: t => t.dailyTrendDirection === "bullish" ? "صعودی" : t.dailyTrendDirection === "bearish" ? "نزولی" : t.dailyTrendDirection === "neutral" ? "خنثی" : "—" },
     session: { label: "سشن معاملاتی", get: t => sessionLabelOf(t) },
-    trend: { label: "جهت ترید", get: t => t.tradeDirectionRel === "with" ? "جهت روند اصلی" : t.tradeDirectionRel === "against" ? "خلاف روند اصلی" : "—" },
+    trend: { label: "هم راستایی معامله با روند اصلی", get: t => t.tradeDirectionRel === "with" ? "هم جهت با روند اصلی" : t.tradeDirectionRel === "against" ? "خلاف جهت روند اصلی" : "—" },
     rr: { label: "R-multiple", get: t => (t.rrReward !== null && t.rrReward !== undefined) ? `1:${t.rrReward}` : "—" },
     bias: { label: "جهت روند تایم ورود", get: t => t.marketBias === "bullish" ? "صعودی" : t.marketBias === "bearish" ? "نزولی" : "—" },
     condition: { label: "بازار تایم ورود", get: t => t.marketCondition === "trend" ? "روند" : t.marketCondition === "range" ? "رنج" : t.marketCondition === "volatile" ? "پرنوسان" : "—" },
@@ -1148,6 +1148,16 @@ const ADD_ITEM_LABELS = {
     target: "نام گزینه‌ی Target",
     stop: "نام گزینه‌ی Stop",
 };
+function AutoGrowTextarea({ value, onChange, className, style, placeholder, onKeyDown }) {
+    const ref = useRef(null);
+    useEffect(() => {
+        if (ref.current) {
+            ref.current.style.height = "auto";
+            ref.current.style.height = ref.current.scrollHeight + "px";
+        }
+    }, [value]);
+    return (React.createElement("textarea", { ref: ref, rows: 1, value: value, onChange: onChange, onKeyDown: onKeyDown, placeholder: placeholder, className: className, style: { ...style, resize: "none", overflow: "hidden", overflowWrap: "break-word", wordBreak: "break-word" } }));
+}
 function Field({ label, children }) {
     return (React.createElement("div", { className: "mb-2" },
         React.createElement("label", { className: "text-[11px] block mb-1", style: { color: "#6B7280" } }, label),
@@ -1195,8 +1205,8 @@ function GoalsLayer({ title, activeAccount, list, newText, setNewText, onAdd, on
                     React.createElement("button", { onClick: () => onMove(g.id, 1), disabled: i === list.length - 1, className: "p-1", style: { opacity: i === list.length - 1 ? 0.3 : 1 } },
                         React.createElement(ChevronDown, { size: 18, color: "#6B7280" }))),
                 React.createElement("span", { className: "w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0", style: { background: "#D4A64A22", color: "#D4A64A" } }, i + 1),
-                React.createElement("div", { className: "flex-1" },
-                    React.createElement("input", { type: "text", value: g.text, onChange: e => onUpdateText(g.id, e.target.value), className: "w-full bg-transparent outline-none text-sm mb-1", style: { color: "#E8EAED" } }),
+                React.createElement("div", { className: "flex-1", style: { minWidth: 0 } },
+                    React.createElement(AutoGrowTextarea, { value: g.text, onChange: e => onUpdateText(g.id, e.target.value), className: "w-full bg-transparent outline-none text-sm mb-1", style: { color: "#E8EAED", minWidth: 0 } }),
                     React.createElement("span", { className: "text-[10px]", style: { color: "#6B7280" } }, g.date)),
                 React.createElement("div", { className: "shrink-0 flex items-center rounded-lg", style: { background: `${progressColor(g.progress)}22`, border: `1px solid ${progressColor(g.progress)}55` } },
                     React.createElement("input", { type: "number", min: "0", max: "100", inputMode: "numeric", value: g.progress === undefined || g.progress === null ? "" : g.progress, onChange: e => {
@@ -2348,7 +2358,7 @@ function App() {
         const header = ["شماره ترید روز", "تاریخ", "روز هفته", "ساعت ورود", "جفت‌ارز", "جهت", "فراکتال", "جهت روند اصلی", "جهت روند", "بایاس بازار", "بازار تایم ورود", "سیستم معاملاتی", "قیمت ورود", "قیمت خروج", "پیپ", "حجم (لات)", "R:R", "ریسک (%)", "نقطه ورود", "حد سود (TP)", "حد ضرر (SL)", "خبر", "سود/ضرر", "نوع بستن معامله", "مدت معامله", "موجودی پس از ترید", "سشن/کیل‌زون فعال", "یادداشت"];
         const rows = asc.map(t => [
             derived.byId[t.id]?.dailyIndex ?? "", t.date, weekdayFromDateStr(t.date), t.time, t.pair,
-            t.direction === "buy" ? "خرید" : "فروش", t.fractal || "", t.mainTrendDirection === "bullish" ? "صعودی" : t.mainTrendDirection === "bearish" ? "نزولی" : "", t.tradeDirectionRel === "with" ? "جهت روند اصلی" : t.tradeDirectionRel === "against" ? "خلاف روند اصلی" : "",
+            t.direction === "buy" ? "خرید" : "فروش", t.fractal || "", t.mainTrendDirection === "bullish" ? "صعودی" : t.mainTrendDirection === "bearish" ? "نزولی" : "", t.tradeDirectionRel === "with" ? "هم جهت با روند اصلی" : t.tradeDirectionRel === "against" ? "خلاف جهت روند اصلی" : "",
             t.marketBias === "bullish" ? "صعودی" : t.marketBias === "bearish" ? "نزولی" : "", t.marketCondition === "trend" ? "روند" : t.marketCondition === "range" ? "رنج" : t.marketCondition === "volatile" ? "پرنوسان" : "",
             t.system || "", t.entry ?? "", t.exit ?? "", t.pips ?? "",
             t.lot, t.rrReward !== null && t.rrReward !== undefined ? `1:${t.rrReward}` : "", t.riskPercent ?? "", t.trig || "", t.target || "", t.stop || "", t.newsName || "",
@@ -2867,7 +2877,7 @@ function App() {
         const allClosedAsc = sortAsc(closedTrades);
         const jHeader = ["شماره ترید روز", "تاریخ", "روز هفته", "ساعت ورود", "جفت‌ارز", "جهت", "فراکتال", "جهت روند اصلی", "جهت روند", "بایاس بازار", "بازار تایم ورود", "سیستم معاملاتی", "قیمت ورود", "قیمت خروج", "پیپ", "حجم (لات)", "R:R", "ریسک (%)", "نقطه ورود", "حد سود (TP)", "حد ضرر (SL)", "خبر", "سود/ضرر", "نوع بستن معامله", "موجودی پس از ترید", "سشن/کیل‌زون فعال", "یادداشت"];
         const jRows = allClosedAsc.map(t => [
-            derived.byId[t.id]?.dailyIndex ?? "", t.date, weekdayFromDateStr(t.date), t.time, t.pair, t.direction === "buy" ? "خرید" : "فروش", t.fractal || "", t.mainTrendDirection === "bullish" ? "صعودی" : t.mainTrendDirection === "bearish" ? "نزولی" : "", t.tradeDirectionRel === "with" ? "جهت روند اصلی" : t.tradeDirectionRel === "against" ? "خلاف روند اصلی" : "",
+            derived.byId[t.id]?.dailyIndex ?? "", t.date, weekdayFromDateStr(t.date), t.time, t.pair, t.direction === "buy" ? "خرید" : "فروش", t.fractal || "", t.mainTrendDirection === "bullish" ? "صعودی" : t.mainTrendDirection === "bearish" ? "نزولی" : "", t.tradeDirectionRel === "with" ? "هم جهت با روند اصلی" : t.tradeDirectionRel === "against" ? "خلاف جهت روند اصلی" : "",
             t.marketBias === "bullish" ? "صعودی" : t.marketBias === "bearish" ? "نزولی" : "", t.marketCondition === "trend" ? "روند" : t.marketCondition === "range" ? "رنج" : t.marketCondition === "volatile" ? "پرنوسان" : "",
             t.system || "", t.entry ?? "", t.exit ?? "", t.pips ?? "", t.lot, t.rrReward !== null && t.rrReward !== undefined ? `1:${t.rrReward}` : "", t.riskPercent ?? "", t.trig || "", t.target || "", t.stop || "", t.newsName || "",
             t.pnl ?? "", closeTypeLabel(t), derived.byId[t.id]?.balanceAfter ?? "", (t.tags || []).map(tg => tg.label).join("، "), t.note || "",
@@ -3079,7 +3089,7 @@ function App() {
                     React.createElement("button", { onClick: () => movePrepStep(s.id, 1), disabled: i === prepSteps.length - 1, className: "p-1", style: { opacity: i === prepSteps.length - 1 ? 0.3 : 1 } },
                         React.createElement(ChevronDown, { size: 18, color: "#6B7280" }))),
                 React.createElement("span", { className: "w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0", style: { background: "#D4A64A22", color: "#D4A64A" } }, i + 1),
-                React.createElement("input", { type: "text", value: s.text, onChange: e => updatePrepStep(s.id, e.target.value), className: "flex-1 bg-transparent outline-none text-sm", style: { color: "#E8EAED" } }),
+                React.createElement(AutoGrowTextarea, { value: s.text, onChange: e => updatePrepStep(s.id, e.target.value), className: "flex-1 bg-transparent outline-none text-sm", style: { color: "#E8EAED", minWidth: 0 } }),
                 React.createElement("button", { onClick: () => askDeleteConfirm("این مرحله آماده‌سازی حذف بشه؟", () => deletePrepStep(s.id)) },
                     React.createElement(Trash2, { size: 15, color: "#6B7280" }))))))))),
         tab === "journal" && (React.createElement("div", { className: "px-4 mt-4" }, !loaded ? (React.createElement("div", { className: "text-center text-sm py-10", style: { color: "#6B7280" } }, "\u062F\u0631 \u062D\u0627\u0644 \u0628\u0627\u0631\u06AF\u0630\u0627\u0631\u06CC...")) : !activeAccount ? (React.createElement("div", { className: "rounded-xl p-5", style: { background: "#12161C", border: "1px solid #1F242C" } },
@@ -3269,7 +3279,7 @@ function App() {
                         "\u0645\u0648\u062C\u0648\u062F\u06CC: ",
                         React.createElement("b", { style: { color: "#E8EAED" } }, (derived.byId[t.id]?.balanceAfter ?? 0).toFixed(2)))),
                 React.createElement("div", { className: "flex flex-wrap gap-1.5 mb-2" },
-                    t.tradeDirectionRel && React.createElement("span", { className: "text-[10px] px-2 py-0.5 rounded-full", style: { background: t.tradeDirectionRel === "with" ? "#60A5FA22" : "#FBBF2422", color: t.tradeDirectionRel === "with" ? "#60A5FA" : "#FBBF24" } }, t.tradeDirectionRel === "with" ? "جهت روند اصلی" : "خلاف روند اصلی"),
+                    t.tradeDirectionRel && React.createElement("span", { className: "text-[10px] px-2 py-0.5 rounded-full", style: { background: t.tradeDirectionRel === "with" ? "#60A5FA22" : "#FBBF2422", color: t.tradeDirectionRel === "with" ? "#60A5FA" : "#FBBF24" } }, t.tradeDirectionRel === "with" ? "هم جهت با روند اصلی" : "خلاف جهت روند اصلی"),
                     t.marketBias && React.createElement("span", { className: "text-[10px] px-2 py-0.5 rounded-full", style: { background: t.marketBias === "bullish" ? "#34D39922" : "#F8717122", color: t.marketBias === "bullish" ? "#34D399" : "#F87171" } }, t.marketBias === "bullish" ? "صعودی" : "نزولی"),
                     t.marketCondition && React.createElement("span", { className: "text-[10px] px-2 py-0.5 rounded-full", style: { background: "#A855F722", color: "#A855F7" } }, t.marketCondition === "trend" ? "روند" : t.marketCondition === "range" ? "رنج" : "پرنوسان"),
                     t.trig && React.createElement("span", { className: "text-[10px] px-2 py-0.5 rounded-full", style: { background: "#1A1F27", color: "#8B93A1" } },
@@ -3447,14 +3457,14 @@ function App() {
                             React.createElement("button", { onClick: () => moveTradingSystemCatalogItem(i, 1), disabled: i === tradingSystemsCatalog.length - 1, className: "p-1", style: { opacity: i === tradingSystemsCatalog.length - 1 ? 0.3 : 1 } },
                                 React.createElement(ChevronDown, { size: 18, color: "#6B7280" }))),
                         React.createElement("span", { className: "w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0", style: { background: "#D4A64A22", color: "#D4A64A" } }, i + 1),
-                        React.createElement("button", { type: "button", onClick: () => toggleTradingSystemDescription(s.id), className: "flex-1 text-right text-sm py-1", style: { color: expanded ? "#D4A64A" : "#E8EAED" } },
+                        React.createElement("button", { type: "button", onClick: () => toggleTradingSystemDescription(s.id), className: "flex-1 text-right text-sm py-1", style: { color: expanded ? "#D4A64A" : "#E8EAED", minWidth: 0, whiteSpace: "normal", overflowWrap: "break-word", wordBreak: "break-word" } },
                             s.name,
                             s.description ? React.createElement("span", { className: "text-[10px]", style: { color: "#6B7280" } }, " (\u062F\u0627\u0631\u0627\u06CC \u062A\u0648\u0636\u06CC\u062D\u0627\u062A)") : null),
                         React.createElement("button", { onClick: () => askDeleteConfirm("این سیستم حذف بشه؟", () => deleteTradingSystemCatalogItem(s.id)), className: "shrink-0" },
                             React.createElement(Trash2, { size: 14, color: "#6B7280" }))),
                     expanded && (React.createElement("div", { className: "mt-2 pt-2", style: { borderTop: "1px solid #1F242C" } },
                         React.createElement(Field, { label: "\u0646\u0627\u0645 \u0633\u06CC\u0633\u062A\u0645" },
-                            React.createElement("input", { type: "text", value: s.name, onChange: e => renameTradingSystemCatalogItem(s.id, e.target.value), className: "w-full bg-transparent outline-none text-sm", style: { color: "#E8EAED" } })),
+                            React.createElement(AutoGrowTextarea, { value: s.name, onChange: e => renameTradingSystemCatalogItem(s.id, e.target.value), className: "w-full bg-transparent outline-none text-sm", style: { color: "#E8EAED", minWidth: 0 } })),
                         React.createElement(Field, { label: "\u062A\u0648\u0636\u06CC\u062D\u0627\u062A" },
                             React.createElement("textarea", { rows: 3, value: s.description || "", onChange: e => updateTradingSystemDescription(s.id, e.target.value), placeholder: "\u062A\u0648\u0636\u06CC\u062D\u0627\u062A \u0627\u06CC\u0646 \u0633\u06CC\u0633\u062A\u0645 \u0631\u0648 \u0627\u06CC\u0646\u062C\u0627 \u0628\u0646\u0648\u06CC\u0633...", className: "w-full bg-transparent outline-none text-sm resize-none", style: { color: "#E8EAED" } }))))));
             }))),
@@ -3477,7 +3487,7 @@ function App() {
                             React.createElement(ChevronDown, { size: 18, color: "#6B7280" }))),
                     React.createElement("span", { className: "w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0", style: { background: "#D4A64A22", color: "#D4A64A" } }, i + 1),
                     React.createElement("div", { className: "flex-1" },
-                        React.createElement("input", { type: "text", value: s.text, onChange: e => updateStrategyRow(s.id, e.target.value), className: "w-full bg-transparent outline-none text-sm mb-1", style: { color: "#E8EAED" } }),
+                        React.createElement(AutoGrowTextarea, { value: s.text, onChange: e => updateStrategyRow(s.id, e.target.value), className: "w-full bg-transparent outline-none text-sm mb-1", style: { color: "#E8EAED", minWidth: 0 } }),
                         React.createElement("span", { className: "text-[10px]", style: { color: "#6B7280" } }, s.date)),
                     React.createElement("button", { onClick: () => askDeleteConfirm("این استراتژی حذف بشه؟", () => deleteStrategyRow(s.id)) },
                         React.createElement(Trash2, { size: 14, color: "#6B7280" }))))))))))),
@@ -3536,7 +3546,7 @@ function App() {
                     React.createElement("h3", { className: "text-[13px] font-semibold mb-3", style: { color: "#D4A64A" } }, "\uD83C\uDFC6 \u0628\u0647\u062A\u0631\u06CC\u0646 \u0648 \u0628\u062F\u062A\u0631\u06CC\u0646 \u062D\u0627\u0644\u062A \u0647\u0631 \u067E\u0627\u0631\u0627\u0645\u062A\u0631"),
                     React.createElement("div", { className: "grid grid-cols-1 gap-2" }, [
                         { label: "سشن معاملاتی", data: bySession },
-                        { label: "جهت روند", data: byTrend },
+                        { label: "هم راستایی معامله با روند اصلی", data: byTrend },
                         { label: "بایاس بازار", data: byBias },
                         { label: "فراکتال", data: byFractal },
                         { label: "جهت روند اصلی", data: byMainTrend },
@@ -3573,7 +3583,7 @@ function App() {
                     { title: "سودآوری بر اساس روز هفته", data: byWeekday },
                     { title: "سودآوری بر اساس سیستم معاملاتی", data: bySystem },
                     { title: "سودآوری بر اساس سشن معاملاتی", data: bySession },
-                    { title: "سودآوری بر اساس جهت روند", data: byTrend },
+                    { title: "سودآوری بر اساس هم راستایی معامله با روند اصلی", data: byTrend },
                     { title: "سودآوری بر اساس R-multiple", data: byRR },
                     { title: "سودآوری بر اساس بایاس بازار", data: byBias },
                     { title: "سودآوری بر اساس فراکتال", data: byFractal },
@@ -3803,7 +3813,7 @@ function App() {
                         React.createElement("button", { onClick: () => setOpenForm({ ...openForm, marketBias: "bearish" }), className: "flex-1 py-2 rounded-lg text-sm", style: { background: openForm.marketBias === "bearish" ? "#F8717122" : "#1A1F27", color: openForm.marketBias === "bearish" ? "#F87171" : "#6B7280" } }, "\u0646\u0632\u0648\u0644\u06CC"))),
                 React.createElement(Field, { label: hlLabel("بازار تایم ورود") },
                     React.createElement("div", { className: "flex gap-2" }, [["trend", "روند"], ["range", "رنج"], ["volatile", "پرنوسان"]].map(([val, label]) => (React.createElement("button", { key: val, onClick: () => setOpenForm({ ...openForm, marketCondition: val }), className: "flex-1 py-2 rounded-lg text-[13px]", style: { background: openForm.marketCondition === val ? "#D4A64A22" : "#1A1F27", color: openForm.marketCondition === val ? "#D4A64A" : "#6B7280" } }, label))))),
-                React.createElement(Field, { label: hlLabel("موج تایم ورود") },
+                React.createElement(Field, { label: hlLabel("شماره موج تایم ورود") },
                     React.createElement("div", { style: { position: "relative", paddingTop: 6 } },
                         React.createElement("button", { type: "button", onClick: () => setWaveEditMode(m => !m), style: { position: "absolute", top: -6, left: -6, zIndex: 1, background: waveEditMode ? "#F8717122" : "#1A1F27", border: `1px solid ${waveEditMode ? "#F8717155" : "#262C36"}`, borderRadius: 8, padding: 4 }, "aria-label": "\u062D\u0630\u0641 \u06AF\u0632\u06CC\u0646\u0647\u200C\u0647\u0627" },
                             React.createElement(Trash2, { size: 11, color: waveEditMode ? "#F87171" : "#6B7280" })),
@@ -3848,14 +3858,16 @@ function App() {
                 React.createElement("div", { className: "flex gap-2 mb-2 mt-2" },
                     React.createElement("button", { onClick: () => setOpenForm(f => ({ ...f, direction: "buy", tradeDirectionRel: relFromTrend(f.mainTrendDirection, "buy") })), className: "flex-1 py-2 rounded-lg text-sm flex items-center justify-center gap-1", style: { background: openForm.direction === "buy" ? "#34D39922" : "#1A1F27", color: openForm.direction === "buy" ? "#34D399" : "#6B7280" } },
                         React.createElement(TrendingUp, { size: 14 }),
-                        " \u062E\u0631\u06CC\u062F"),
+                        " ",
+                        React.createElement("b", { className: "font-extrabold" }, "\u062E\u0631\u06CC\u062F")),
                     React.createElement("button", { onClick: () => setOpenForm(f => ({ ...f, direction: "sell", tradeDirectionRel: relFromTrend(f.mainTrendDirection, "sell") })), className: "flex-1 py-2 rounded-lg text-sm flex items-center justify-center gap-1", style: { background: openForm.direction === "sell" ? "#F8717122" : "#1A1F27", color: openForm.direction === "sell" ? "#F87171" : "#6B7280" } },
                         React.createElement(TrendingDown, { size: 14 }),
-                        " \u0641\u0631\u0648\u0634")),
-                React.createElement(Field, { label: "\u062C\u0647\u062A \u062A\u0631\u06CC\u062F" },
+                        " ",
+                        React.createElement("b", { className: "font-extrabold" }, "\u0641\u0631\u0648\u0634"))),
+                React.createElement(Field, { label: hlLabel("هم راستایی معامله با روند اصلی") },
                     React.createElement("div", { className: "flex gap-2" },
-                        React.createElement("button", { onClick: () => setOpenForm({ ...openForm, tradeDirectionRel: "with" }), className: "flex-1 py-2 rounded-lg text-sm", style: { background: openForm.tradeDirectionRel === "with" ? "#60A5FA22" : "#1A1F27", color: openForm.tradeDirectionRel === "with" ? "#60A5FA" : "#6B7280" } }, "\u062C\u0647\u062A \u0631\u0648\u0646\u062F \u0627\u0635\u0644\u06CC"),
-                        React.createElement("button", { onClick: () => setOpenForm({ ...openForm, tradeDirectionRel: "against" }), className: "flex-1 py-2 rounded-lg text-sm", style: { background: openForm.tradeDirectionRel === "against" ? "#FBBF2422" : "#1A1F27", color: openForm.tradeDirectionRel === "against" ? "#FBBF24" : "#6B7280" } }, "\u062E\u0644\u0627\u0641 \u0631\u0648\u0646\u062F \u0627\u0635\u0644\u06CC")),
+                        React.createElement("button", { onClick: () => setOpenForm({ ...openForm, tradeDirectionRel: "with" }), className: "flex-1 py-2 rounded-lg text-sm", style: { background: openForm.tradeDirectionRel === "with" ? "#60A5FA22" : "#1A1F27", color: openForm.tradeDirectionRel === "with" ? "#60A5FA" : "#6B7280" } }, "\u0647\u0645 \u062C\u0647\u062A \u0628\u0627 \u0631\u0648\u0646\u062F \u0627\u0635\u0644\u06CC"),
+                        React.createElement("button", { onClick: () => setOpenForm({ ...openForm, tradeDirectionRel: "against" }), className: "flex-1 py-2 rounded-lg text-sm", style: { background: openForm.tradeDirectionRel === "against" ? "#FBBF2422" : "#1A1F27", color: openForm.tradeDirectionRel === "against" ? "#FBBF24" : "#6B7280" } }, "\u062E\u0644\u0627\u0641 \u062C\u0647\u062A \u0631\u0648\u0646\u062F \u0627\u0635\u0644\u06CC")),
                     React.createElement("p", { className: "text-[10px] mt-1", style: { color: "#6B7280" } }, "\u0628\u0631 \u0627\u0633\u0627\u0633 \u00AB\u062C\u0647\u062A \u0631\u0648\u0646\u062F \u0627\u0635\u0644\u06CC\u00BB \u0648 \u00AB\u062E\u0631\u06CC\u062F/\u0641\u0631\u0648\u0634\u00BB \u062E\u0648\u062F\u06A9\u0627\u0631 \u0627\u0646\u062A\u062E\u0627\u0628 \u0645\u06CC\u200C\u0634\u0647\u061B \u0627\u06AF\u0647 \u0644\u0627\u0632\u0645 \u0628\u0648\u062F \u062F\u0633\u062A\u06CC \u0647\u0645 \u0645\u06CC\u200C\u062A\u0648\u0646\u06CC \u0639\u0648\u0636\u0634 \u06A9\u0646\u06CC.")),
                 React.createElement(Field, { label: hlLabel("الگوی کندل برگشتی تایم ورود (چند تا هم می‌تونی انتخاب کنی)") },
                     React.createElement("div", { style: { position: "relative", paddingTop: 6 } },
@@ -3960,11 +3972,13 @@ function App() {
                         React.createElement("input", { type: "number", inputMode: "decimal", value: openForm.entry, onChange: e => setOpenForm({ ...openForm, entry: e.target.value }), className: "w-full bg-transparent outline-none text-sm mono", style: { color: "#E8EAED", fontFamily: "JetBrains Mono, monospace" } })),
                     React.createElement(Field, { label: `حجم (لات) — پیشنهادی: ${derived.nextLot}` },
                         React.createElement("input", { type: "text", inputMode: "decimal", value: openForm.lot, onChange: e => setOpenForm({ ...openForm, lot: e.target.value }), className: "w-full bg-transparent outline-none text-sm mono", style: { color: "#E8EAED", fontFamily: "JetBrains Mono, monospace" } }))),
-                React.createElement("div", { className: "flex flex-wrap gap-1.5 my-3" }, (() => {
-                    const [hh, mi] = openForm.time.split(":").map(Number);
-                    const tags = tagsForMinutes(config, hh * 60 + mi, now.dst);
-                    return tags.length ? tags.map((tg, i) => (React.createElement("span", { key: i, className: "text-[10px] px-2 py-0.5 rounded-full", style: { background: `${tg.color}33`, color: tg.color } }, tg.label))) : React.createElement("span", { className: "text-[11px]", style: { color: "#6B7280" } }, "\u062F\u0631 \u0627\u06CC\u0646 \u0633\u0627\u0639\u062A \u0647\u06CC\u0686 \u0633\u0634\u0646/\u06A9\u06CC\u0644\u200C\u0632\u0648\u0646\u06CC \u0641\u0639\u0627\u0644 \u0646\u06CC\u0633\u062A");
-                })()),
+                React.createElement("div", { className: "mb-2" },
+                    React.createElement("label", { className: "text-[11px] block mb-1", style: { color: "#6B7280" } }, "\u0646\u0634\u0633\u062A\u200C\u0647\u0627 \u0648 \u0631\u0648\u06CC\u062F\u0627\u062F\u0647\u0627\u06CC \u0628\u0627\u0632\u0627\u0631"),
+                    React.createElement("div", { className: "rounded-lg px-3 py-2 flex flex-wrap gap-1.5", style: { background: "#1A1F27", border: "1px solid #262C36" } }, (() => {
+                        const [hh, mi] = openForm.time.split(":").map(Number);
+                        const tags = tagsForMinutes(config, hh * 60 + mi, now.dst);
+                        return tags.length ? tags.map((tg, i) => (React.createElement("span", { key: i, className: "text-[10px] px-2 py-0.5 rounded-full", style: { background: `${tg.color}33`, color: tg.color } }, tg.label))) : React.createElement("span", { className: "text-[11px]", style: { color: "#6B7280" } }, "\u062F\u0631 \u0627\u06CC\u0646 \u0633\u0627\u0639\u062A \u0647\u06CC\u0686 \u0633\u0634\u0646/\u06A9\u06CC\u0644\u200C\u0632\u0648\u0646\u06CC \u0641\u0639\u0627\u0644 \u0646\u06CC\u0633\u062A");
+                    })())),
                 React.createElement(Field, { label: "\u0631\u0648\u0627\u0646\u0634\u0646\u0627\u0633\u06CC (\u0686\u0646\u062F \u062A\u0627 \u0647\u0645 \u0645\u06CC\u200C\u062A\u0648\u0646\u06CC \u0627\u0646\u062A\u062E\u0627\u0628 \u06A9\u0646\u06CC)" },
                     React.createElement("div", { style: { position: "relative", paddingTop: 6 } },
                         React.createElement("button", { type: "button", onClick: () => setPsychEditMode(m => !m), style: { position: "absolute", top: -6, left: -6, zIndex: 1, background: psychEditMode ? "#F8717122" : "#1A1F27", border: `1px solid ${psychEditMode ? "#F8717155" : "#262C36"}`, borderRadius: 8, padding: 4 }, "aria-label": "\u062D\u0630\u0641 \u062D\u0627\u0644\u062A\u200C\u0647\u0627" },
@@ -4129,7 +4143,7 @@ function App() {
                     React.createElement(ToggleGroup, { value: editForm.marketBias, options: [{ key: "bullish", label: "صعودی" }, { key: "bearish", label: "نزولی" }], onChange: v => onEditFieldChange("marketBias", v), activeColor: "#34D399" })),
                 React.createElement(Field, { label: "\u0628\u0627\u0632\u0627\u0631 \u062A\u0627\u06CC\u0645 \u0648\u0631\u0648\u062F" },
                     React.createElement(ToggleGroup, { value: editForm.marketCondition, options: [{ key: "trend", label: "روند" }, { key: "range", label: "رنج" }, { key: "volatile", label: "پرنوسان" }], onChange: v => onEditFieldChange("marketCondition", v) })),
-                React.createElement(Field, { label: "\u0645\u0648\u062C \u062A\u0627\u06CC\u0645 \u0648\u0631\u0648\u062F" },
+                React.createElement(Field, { label: "\u0634\u0645\u0627\u0631\u0647 \u0645\u0648\u062C \u062A\u0627\u06CC\u0645 \u0648\u0631\u0648\u062F" },
                     React.createElement(ChipGroup, { value: editForm.wave, options: waveOptions, onChange: v => onEditFieldChange("wave", v) })),
                 React.createElement(Field, { label: "\u062E\u0631\u06CC\u062F/\u0641\u0631\u0648\u0634" },
                     React.createElement(ToggleGroup, { value: editForm.direction, options: [{ key: "buy", label: "خرید" }, { key: "sell", label: "فروش" }], onChange: v => onEditFieldChange("direction", v), activeColor: "#34D399" })),
