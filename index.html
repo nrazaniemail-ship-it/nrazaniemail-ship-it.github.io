@@ -981,17 +981,17 @@ function relFromTrend(mainTrend, direction) {
         return "with";
     return "against";
 }
-const DEFAULT_TRIG_OPTIONS = ["SF", "EQ", "OTE/L", "OTE", "OTE/H", "Start", "SF1", "SF2"];
+const DEFAULT_TRIG_OPTIONS = ["OTE/L", "EQ", "SF2", "SF1", "Start", "OTE/H", "OTE"];
 const DEFAULT_WAVE_OPTIONS = ["اول", "دوم", "سوم", "چهارم", "پنجم"];
-const DEFAULT_TARGET_OPTIONS = ["tp", "tp1", "tp2", "tp3", "LRL", "M60", "M240", "K", "SB", "SB-main", "K-main", "D-key level"];
-const DEFAULT_STOP_OPTIONS = ["ITL/H", "FVG", "IFVG", "OB", "Disp.", "STL/H", "0.5FVG", "K", "SB", ".Disp", "SB-main", "K-main", "D-key level"];
+const DEFAULT_TARGET_OPTIONS = ["M60", "LRL", "tp3", "tp2", "tp1", "tp", "SB-main", "SB", "K", "M240", "D-key level", "K-main", "Komo switch"];
+const DEFAULT_STOP_OPTIONS = [".Disp", "OB", "IFVG", "FVG", "ITL/H", "SB", "K", "0.5FVG", "STL/H", "K-main", "SB-main", "Komo switch", "D-key level"];
 const DEFAULT_FRACTAL_OPTIONS = ["D-H1", "H4-M15", "H1-M5", "M15-M5"];
 const DEFAULT_REVERSAL_PATTERN_OPTIONS = ["پین‌بار", "انگالفینگ", "دوجی", "هارامی", "ستاره صبحگاهی", "ستاره عصرگاهی", "چکش", "مرد آویزان", "چکش معکوس", "ستاره ثاقب", "ابر سیاه", "نفوذ", "C3", "C2"];
 const DEFAULT_RR_OPTIONS = ["0.8", "0.9", "1", "1.5", "2", "2.5", "3", "3.5", "4", "4.5"];
 const DEFAULT_SYSTEMS = [
-    "K cross", "K&T cross", "Ichimoku align", "Komo switch", "Chikou cross", "SB cross",
-    "Stoch 123", "MACD 123", "Price 123", "M60/M240 cross", "M240cross", "M60cross",
-    "Key Level OB", "Pattern OB", "RD", "HD", "LS", "2B",
+    "K&T cross", "K/P cross", "Ichimoku align", "Komo switch", "Chikou/P cross", "SB/P cross",
+    "Stoch123", "MACD123", "Price123", "MSS", "Stoch align", "MACD align",
+    "M60cross", "M240cross", "M60/M240 cross", "HD", "RD", "Pattern OB", "Key Level OB", "2B", "LS",
 ];
 const DEFAULT_PREP_STEPS = [
     { id: "step1", text: "PMH/L, PWH/L, PDH/L, Daily key level" },
