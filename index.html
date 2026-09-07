@@ -94,7 +94,7 @@ function makeIcon(emoji) {
     return /* @__PURE__ */ React.createElement("span", { className, style: { fontSize: size, color, lineHeight: 1, display: "inline-flex", ...style } }, emoji);
   };
 }
-const Clock = makeIcon("⏱"), TrendingUp = makeIcon("📈"), TrendingDown = makeIcon("📉"), Plus = makeIcon("➕"), Trash2 = makeIcon("🗑️"), ChevronDown = makeIcon("▾"), ChevronUp = makeIcon("▴"), Target = makeIcon("🎯"), X = makeIcon("✕"), Check = makeIcon("✓"), Wallet = makeIcon("💰"), Hash = makeIcon("#️⃣"), Flame = makeIcon("🔥"), Snowflake = makeIcon("❄️"), AlertTriangle = makeIcon("⚠️"), SettingsIcon = makeIcon("⚙️"), Download = makeIcon("⬇️"), Bell = makeIcon("🔔"), BellOff = makeIcon("🔕"), PiggyBank = makeIcon("🐖"), Coffee = makeIcon("☕"), MoreHorizontal = makeIcon("⋯"), LineChartIcon = makeIcon("📈"), ListChecks = makeIcon("☑️"), Flag = makeIcon("🚩"), BarChart3 = makeIcon("📊"), FileSpreadsheet = makeIcon("📑"), Newspaper = makeIcon("📰"), Edit3 = makeIcon("✏️"), Heart = makeIcon("🙏");
+const Clock = makeIcon("⏱"), TrendingUp = makeIcon("📈"), TrendingDown = makeIcon("📉"), Plus = makeIcon("➕"), Trash2 = makeIcon("🗑️"), ChevronDown = makeIcon("▾"), ChevronUp = makeIcon("▴"), Target = makeIcon("🎯"), X = makeIcon("✕"), Check = makeIcon("✓"), Wallet = makeIcon("💰"), Hash = makeIcon("#️⃣"), Flame = makeIcon("🔥"), Snowflake = makeIcon("❄️"), AlertTriangle = makeIcon("⚠️"), SettingsIcon = makeIcon("⚙️"), Download = makeIcon("⬇️"), Bell = makeIcon("🔔"), BellOff = makeIcon("🔕"), PiggyBank = makeIcon("🐖"), Coffee = makeIcon("☕"), MoreHorizontal = makeIcon("⋯"), LineChartIcon = makeIcon("📈"), ListChecks = makeIcon("☑️"), Flag = makeIcon("🚩"), BarChart3 = makeIcon("📊"), FileSpreadsheet = makeIcon("📑"), Newspaper = makeIcon("📰"), Edit3 = makeIcon("✏️"), Heart = makeIcon("🙏"), User = makeIcon("👤");
 function findChild(children, Comp) {
   let found = null;
   React.Children.forEach(children, (c) => {
@@ -1321,6 +1321,11 @@ function App() {
     const [activeAccount, setActiveAccount] = useState(null);
     const [trades, setTrades] = useState([]);
     const [accSettings, setAccSettings] = useState(DEFAULT_ACC_SETTINGS);
+    const [users, setUsers] = useState([]); // [{id, name}]
+    const [activeUserId, setActiveUserId] = useState(null);
+    const [newUserName, setNewUserName] = useState("");
+    const [templatesByUser, setTemplatesByUser] = useState({}); // { [userId]: [{id, name, data}] }
+    const [newTemplateName, setNewTemplateName] = useState("");
     const [accSettingsForm, setAccSettingsForm] = useState(DEFAULT_ACC_SETTINGS);
     const [showAccSettings, setShowAccSettings] = useState(false);
     const [loaded, setLoaded] = useState(false);
@@ -1461,6 +1466,24 @@ function App() {
                     setAccSettings(s);
                     setAccSettingsForm(s);
                 }
+            }
+            catch (e) { }
+            try {
+                const r = await window.storage.get("namello_users_v1");
+                if (r)
+                    setUsers(JSON.parse(r.value));
+            }
+            catch (e) { }
+            try {
+                const r = await window.storage.get("namello_active_user_v1");
+                if (r)
+                    setActiveUserId(JSON.parse(r.value));
+            }
+            catch (e) { }
+            try {
+                const r = await window.storage.get("namello_templates_v1");
+                if (r)
+                    setTemplatesByUser(JSON.parse(r.value));
             }
             catch (e) { }
             try {
@@ -1698,6 +1721,104 @@ function App() {
         await window.storage.set("namello_settings_v1", JSON.stringify(next));
     }
     catch (e) { } }, []);
+    const persistUsers = useCallback(async (next) => { setUsers(next); try {
+        await window.storage.set("namello_users_v1", JSON.stringify(next));
+    }
+    catch (e) { } }, []);
+    const persistActiveUserId = useCallback(async (next) => { setActiveUserId(next); try {
+        await window.storage.set("namello_active_user_v1", JSON.stringify(next));
+    }
+    catch (e) { } }, []);
+    const persistTemplatesByUser = useCallback(async (next) => { setTemplatesByUser(next); try {
+        await window.storage.set("namello_templates_v1", JSON.stringify(next));
+    }
+    catch (e) { } }, []);
+    /* ---------------- کاربر و تمپلیت‌های تنظیمات ---------------- */
+    function addUser() {
+        const name = newUserName.trim();
+        if (!name)
+            return;
+        const id = Date.now().toString(36);
+        persistUsers([...users, { id, name }]);
+        persistActiveUserId(id);
+        setNewUserName("");
+    }
+    function deleteUser(id) {
+        persistUsers(users.filter(u => u.id !== id));
+        if (activeUserId === id)
+            persistActiveUserId(null);
+        const next = { ...templatesByUser };
+        delete next[id];
+        persistTemplatesByUser(next);
+    }
+    function selectUser(id) { persistActiveUserId(id); }
+    const templateFieldDefs = [
+        { key: "config", value: config, persist: persistConfig, def: DEFAULT_CONFIG },
+        { key: "pairs", value: pairs, persist: persistPairs, def: DEFAULT_PAIRS },
+        { key: "brokers", value: brokers, persist: persistBrokers, def: DEFAULT_BROKERS },
+        { key: "systems", value: systems, persist: persistSystems, def: DEFAULT_SYSTEMS },
+        { key: "tradingSystemsCatalog", value: tradingSystemsCatalog, persist: persistTradingSystemsCatalog, def: [] },
+        { key: "fractalOptions", value: fractalOptions, persist: persistFractalOptions, def: DEFAULT_FRACTAL_OPTIONS },
+        { key: "trigOptions", value: trigOptions, persist: persistTrigOptions, def: DEFAULT_TRIG_OPTIONS },
+        { key: "waveOptions", value: waveOptions, persist: persistWaveOptions, def: DEFAULT_WAVE_OPTIONS },
+        { key: "targetOptions", value: targetOptions, persist: persistTargetOptions, def: DEFAULT_TARGET_OPTIONS },
+        { key: "stopOptions", value: stopOptions, persist: persistStopOptions, def: DEFAULT_STOP_OPTIONS },
+        { key: "reversalPatternOptions", value: reversalPatternOptions, persist: persistReversalPatternOptions, def: DEFAULT_REVERSAL_PATTERN_OPTIONS },
+        { key: "rrOptions", value: rrOptions, persist: persistRrOptions, def: DEFAULT_RR_OPTIONS },
+        { key: "successProbOptions", value: successProbOptions, persist: persistSuccessProbOptions, def: DEFAULT_SUCCESS_PROB_OPTIONS },
+        { key: "psychOptions", value: psychOptions, persist: persistPsychOptions, def: DEFAULT_PSYCH_OPTIONS },
+        { key: "calcProbWeights", value: calcProbWeights, persist: persistCalcProbWeights, def: DEFAULT_CALC_PROB_WEIGHTS },
+        { key: "closeTypeOptions", value: closeTypeOptions, persist: persistCloseTypeOptions, def: DEFAULT_CLOSE_TYPE_OPTIONS },
+        { key: "manualExitReasonOptions", value: manualExitReasonOptions, persist: persistManualExitReasonOptions, def: DEFAULT_MANUAL_EXIT_REASON_OPTIONS },
+        { key: "prepSteps", value: prepSteps, persist: persistPrepSteps, def: DEFAULT_PREP_STEPS },
+        { key: "accSettings", value: accSettings, persist: persistAccSettings, def: DEFAULT_ACC_SETTINGS },
+        { key: "customParams", value: customParams, persist: persistCustomParams, def: [] },
+    ];
+    function buildSettingsSnapshot() {
+        const snap = {};
+        templateFieldDefs.forEach(f => { snap[f.key] = f.value; });
+        return snap;
+    }
+    async function applySettingsSnapshot(snap) {
+        for (const f of templateFieldDefs) {
+            const val = (snap && snap[f.key] !== undefined) ? snap[f.key] : f.def;
+            await f.persist(val);
+        }
+        if (snap && snap.accSettings)
+            setAccSettingsForm(snap.accSettings);
+        else
+            setAccSettingsForm(DEFAULT_ACC_SETTINGS);
+    }
+    function addTemplateFromCurrentSettings() {
+        const name = newTemplateName.trim();
+        if (!name || !activeUserId)
+            return;
+        const snap = buildSettingsSnapshot();
+        const list = templatesByUser[activeUserId] || [];
+        persistTemplatesByUser({ ...templatesByUser, [activeUserId]: [...list, { id: Date.now().toString(36), name, data: snap }] });
+        setNewTemplateName("");
+        showToast(`تمپلیت «${name}» ذخیره شد.`);
+    }
+    function deleteTemplate(id) {
+        if (!activeUserId)
+            return;
+        const list = templatesByUser[activeUserId] || [];
+        persistTemplatesByUser({ ...templatesByUser, [activeUserId]: list.filter(t => t.id !== id) });
+    }
+    async function applyTemplateById(id) {
+        if (!activeUserId)
+            return;
+        const list = templatesByUser[activeUserId] || [];
+        const tpl = list.find(t => t.id === id);
+        if (!tpl)
+            return;
+        await applySettingsSnapshot(tpl.data);
+        showToast(`تمپلیت «${tpl.name}» اعمال شد.`);
+    }
+    async function applyDefaultTemplate() {
+        await applySettingsSnapshot(null);
+        showToast("تنظیمات پیش‌فرض همه‌ی لایه‌ها بازگردانده شد.");
+    }
     const persistStrategies = useCallback(async (next) => { setStrategies(next); try {
         await window.storage.set("namello_strategies_v1", JSON.stringify(next));
     }
@@ -2957,6 +3078,40 @@ function App() {
                 JMONTHS_FA[jm - 1],
                 " ",
                 jy)),
+        tab === "user" && (React.createElement("div", { className: "px-4 mt-4" },
+            React.createElement("h2", { className: "text-sm font-semibold mb-2", style: { color: "#E8EAED" } }, "\u06A9\u0627\u0631\u0628\u0631\u0627\u0646"),
+            React.createElement("div", { className: "flex gap-2 mb-4" },
+                React.createElement("div", { className: "flex-1 rounded-lg px-3 py-2", style: { background: "#1A1F27", border: "1px solid #262C36" } },
+                    React.createElement("input", { type: "text", value: newUserName, onChange: e => setNewUserName(e.target.value), onKeyDown: e => e.key === "Enter" && addUser(), placeholder: "\u0646\u0627\u0645 \u06A9\u0627\u0631\u0628\u0631 \u062C\u062F\u06CC\u062F...", className: "w-full bg-transparent outline-none text-sm", style: { color: "#E8EAED" } })),
+                React.createElement("button", { onClick: addUser, className: "px-4 rounded-lg text-sm flex items-center gap-1", style: { background: "#D4A64A", color: "#0B0E11" } },
+                    React.createElement(Plus, { size: 14 }),
+                    " \u0627\u0641\u0632\u0648\u062F\u0646")),
+            users.length === 0 ? (React.createElement("div", { className: "rounded-xl p-6 text-center text-sm mb-4", style: { background: "#12161C", color: "#6B7280" } }, "\u0647\u0646\u0648\u0632 \u06A9\u0627\u0631\u0628\u0631\u06CC \u062A\u0639\u0631\u06CC\u0641 \u0646\u0634\u062F\u0647. \u0627\u0648\u0644 \u06CC\u06A9 \u06A9\u0627\u0631\u0628\u0631 \u062C\u062F\u06CC\u062F \u0628\u0633\u0627\u0632.")) : (React.createElement("div", { className: "flex flex-wrap gap-2 mb-5" }, users.map(u => (React.createElement("span", { key: u.id, className: "flex items-center gap-1.5 px-3 py-2 rounded-lg text-[13px]", style: { background: activeUserId === u.id ? "#D4A64A22" : "#12161C", color: activeUserId === u.id ? "#D4A64A" : "#8B93A1", border: `1px solid ${activeUserId === u.id ? "#D4A64A55" : "#1F242C"}` } },
+                React.createElement("button", { type: "button", onClick: () => selectUser(u.id) }, u.name),
+                React.createElement("button", { type: "button", onClick: () => askDeleteConfirm(`کاربر «${u.name}» و تمام تمپلیت‌هایش حذف بشه؟`, () => deleteUser(u.id)) },
+                    React.createElement(Trash2, { size: 12, color: "#6B7280" }))))))),
+            !activeUserId ? (React.createElement("div", { className: "rounded-xl p-4 text-center text-sm", style: { background: "#12161C", color: "#6B7280" } }, "\u06CC\u06A9 \u06A9\u0627\u0631\u0628\u0631 \u0631\u0648 \u0627\u0632 \u0628\u0627\u0644\u0627 \u0627\u0646\u062A\u062E\u0627\u0628 \u06A9\u0646 \u062A\u0627 \u062A\u0645\u067E\u0644\u06CC\u062A\u200C\u0647\u0627\u0634 \u0631\u0648 \u0628\u0628\u06CC\u0646\u06CC.")) : (React.createElement(React.Fragment, null,
+                React.createElement("h2", { className: "text-sm font-semibold mb-2", style: { color: "#E8EAED" } },
+                    "\u062A\u0645\u067E\u0644\u06CC\u062A\u200C\u0647\u0627\u06CC \u062A\u0646\u0638\u06CC\u0645\u0627\u062A \u2014 ",
+                    users.find(u => u.id === activeUserId)?.name),
+                React.createElement("p", { className: "text-[11px] mb-3 leading-5", style: { color: "#6B7280" } }, "\u0647\u0631 \u062A\u0645\u067E\u0644\u06CC\u062A\u060C \u06CC\u06A9 \u0639\u06A9\u0633\u200C\u0641\u0648\u0631\u06CC \u0627\u0632 \u062A\u0646\u0638\u06CC\u0645\u0627\u062A \u0633\u0641\u0627\u0631\u0634\u06CC \u0647\u0645\u0647\u200C\u06CC \u0644\u0627\u06CC\u0647\u200C\u0647\u0627\u0633\u062A (\u0646\u0634\u0633\u062A\u200C\u0647\u0627\u060C \u062C\u0641\u062A\u200C\u0627\u0631\u0632\u0647\u0627\u060C \u0633\u06CC\u0633\u062A\u0645\u200C\u0647\u0627\u06CC \u0645\u0639\u0627\u0645\u0644\u0627\u062A\u06CC\u060C \u0641\u0631\u0627\u06A9\u062A\u0627\u0644\u060C \u0646\u0642\u0637\u0647 \u0648\u0631\u0648\u062F\u060C TP/SL\u060C \u0627\u0644\u06AF\u0648\u0647\u0627\u06CC \u0628\u0631\u06AF\u0634\u062A\u06CC\u060C R:R\u060C \u0627\u062D\u062A\u0645\u0627\u0644 \u0645\u0648\u0641\u0642\u06CC\u062A\u060C \u0631\u0648\u0627\u0646\u0634\u0646\u0627\u0633\u06CC\u060C \u0648\u0632\u0646\u200C\u062F\u0647\u06CC \u0627\u062D\u062A\u0645\u0627\u0644 \u0645\u062D\u0627\u0633\u0628\u0627\u062A\u06CC\u060C \u0646\u0648\u0639 \u0628\u0633\u062A\u0646 \u0645\u0639\u0627\u0645\u0644\u0647\u060C \u0622\u0645\u0627\u062F\u0647\u200C\u0633\u0627\u0632\u06CC\u060C \u0645\u062F\u06CC\u0631\u06CC\u062A \u0645\u0627\u0644\u06CC \u0648 \u067E\u0627\u0631\u0627\u0645\u062A\u0631\u0647\u0627\u06CC \u0633\u0641\u0627\u0631\u0634\u06CC). \u0645\u0639\u0627\u0645\u0644\u0627\u062A\u060C \u0627\u0633\u062A\u0631\u0627\u062A\u0698\u06CC\u060C \u0627\u0647\u062F\u0627\u0641 \u0648 \u0627\u062E\u0628\u0627\u0631 \u062C\u0632\u0648 \u062A\u0645\u067E\u0644\u06CC\u062A \u0646\u06CC\u0633\u062A\u0646."),
+                React.createElement("div", { className: "rounded-xl p-3 flex items-center justify-between mb-2", style: { background: "#12161C", border: "1px solid #1F242C" } },
+                    React.createElement("div", null,
+                        React.createElement("div", { className: "text-sm font-medium", style: { color: "#E8EAED" } }, "\u067E\u06CC\u0634\u200C\u0641\u0631\u0636"),
+                        React.createElement("div", { className: "text-[10px]", style: { color: "#6B7280" } }, "\u0628\u0627\u0632\u06AF\u0634\u062A \u0628\u0647 \u062A\u0646\u0638\u06CC\u0645\u0627\u062A \u0627\u0648\u0644\u06CC\u0647\u200C\u06CC \u06A9\u0627\u0631\u062E\u0627\u0646\u0647\u200C\u0627\u06CC \u0647\u0645\u0647\u200C\u06CC \u0644\u0627\u06CC\u0647\u200C\u0647\u0627")),
+                    React.createElement("button", { onClick: () => askDeleteConfirm("تمام تنظیمات سفارشی لایه‌ها با مقادیر پیش‌فرض جایگزین بشه؟", applyDefaultTemplate), className: "px-3 py-1.5 rounded-lg text-[12px] font-medium", style: { background: "#D4A64A", color: "#0B0E11" } }, "\u0627\u0639\u0645\u0627\u0644")),
+                React.createElement("div", { className: "grid grid-cols-1 gap-2 mb-4" }, (templatesByUser[activeUserId] || []).map(tpl => (React.createElement("div", { key: tpl.id, className: "rounded-xl p-3 flex items-center justify-between gap-2", style: { background: "#12161C", border: "1px solid #1F242C" } },
+                    React.createElement("span", { className: "text-sm", style: { color: "#E8EAED", minWidth: 0, overflowWrap: "break-word", wordBreak: "break-word" } }, tpl.name),
+                    React.createElement("div", { className: "flex items-center gap-2 shrink-0" },
+                        React.createElement("button", { onClick: () => askDeleteConfirm(`تنظیمات فعلی همه‌ی لایه‌ها با تمپلیت «${tpl.name}» جایگزین بشه؟`, () => applyTemplateById(tpl.id)), className: "px-3 py-1.5 rounded-lg text-[12px] font-medium", style: { background: "#1A1F27", color: "#34D399" } }, "\u0627\u0639\u0645\u0627\u0644"),
+                        React.createElement("button", { onClick: () => askDeleteConfirm(`تمپلیت «${tpl.name}» حذف بشه؟`, () => deleteTemplate(tpl.id)) },
+                            React.createElement(Trash2, { size: 14, color: "#6B7280" }))))))),
+                React.createElement("div", { className: "flex gap-2 mb-2" },
+                    React.createElement("div", { className: "flex-1 rounded-lg px-3 py-2", style: { background: "#1A1F27", border: "1px solid #262C36" } },
+                        React.createElement("input", { type: "text", value: newTemplateName, onChange: e => setNewTemplateName(e.target.value), onKeyDown: e => e.key === "Enter" && addTemplateFromCurrentSettings(), placeholder: "\u0646\u0627\u0645 \u062A\u0645\u067E\u0644\u06CC\u062A \u062C\u062F\u06CC\u062F...", className: "w-full bg-transparent outline-none text-sm", style: { color: "#E8EAED" } })),
+                    React.createElement("button", { onClick: addTemplateFromCurrentSettings, className: "px-4 rounded-lg text-sm flex items-center gap-1", style: { background: "#D4A64A", color: "#0B0E11" } },
+                        React.createElement(Plus, { size: 14 }),
+                        " \u0630\u062E\u06CC\u0631\u0647 \u062A\u0646\u0638\u06CC\u0645\u0627\u062A \u0641\u0639\u0644\u06CC")))))),
         tab === "live" && (React.createElement("div", { className: "px-4 mt-4" },
             React.createElement(SessionClock, { minutesOfDay: now.minutesOfDay, sessions: schedule.sessions, killzones: schedule.killzones, silverbullets: schedule.silverbullets, colors: config.colors }),
             React.createElement("div", { className: "flex items-center justify-center flex-wrap gap-x-3 gap-y-1.5 text-[11px] mt-2 mb-5", style: { color: "#8B93A1" } },
@@ -3618,6 +3773,7 @@ function App() {
                 React.createElement(FileSpreadsheet, { size: 18 }),
                 " \u062E\u0631\u0648\u062C\u06CC \u06A9\u0644 \u0627\u06A9\u0633\u0644")))),
         React.createElement("div", { className: "fixed bottom-0 left-0 right-0 flex overflow-x-auto", style: { background: "#12161C", borderTop: "1px solid #1F242C" } }, [
+            { key: "user", label: "کاربر", Icon: User },
             { key: "live", label: "نشست‌ها", Icon: Clock },
             { key: "news", label: "اخبار", Icon: Newspaper },
             { key: "prep", label: "آماده‌سازی", Icon: Check },
