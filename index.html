@@ -2828,7 +2828,12 @@ function App() {
     const byBias = useMemo(() => groupProfitability(closedTrades, PARAM_DEFS.bias.get), [trades]);
     const byFractal = useMemo(() => groupProfitability(closedTrades, PARAM_DEFS.fractal.get), [trades]);
     const byMainTrend = useMemo(() => groupProfitability(closedTrades, PARAM_DEFS.mainTrend.get), [trades]);
+    const byDailyTrend = useMemo(() => groupProfitability(closedTrades, t => t.dailyTrendDirection === "bullish" ? "صعودی" : t.dailyTrendDirection === "bearish" ? "نزولی" : t.dailyTrendDirection === "neutral" ? "خنثی" : undefined), [trades]);
+    const byDailyCandle = useMemo(() => groupProfitability(closedTrades, t => t.dailyCandleDirection === "bullish" ? "صعودی" : t.dailyCandleDirection === "bearish" ? "نزولی" : t.dailyCandleDirection === "neutral" ? "خنثی" : undefined), [trades]);
+    const bySystemsMulti = useMemo(() => groupProfitabilityMulti(closedTrades, t => t.systems || []), [trades]);
+    const byEntryTimeSystemsMulti = useMemo(() => groupProfitabilityMulti(closedTrades, t => t.entryTimeSystems || []), [trades]);
     const byCondition = useMemo(() => groupProfitability(closedTrades, PARAM_DEFS.condition.get), [trades]);
+    const byWave = useMemo(() => groupProfitability(closedTrades, t => t.wave || undefined), [trades]);
     const byTrig = useMemo(() => groupProfitability(closedTrades, PARAM_DEFS.trig.get), [trades]);
     const byTarget = useMemo(() => groupProfitability(closedTrades, PARAM_DEFS.target.get), [trades]);
     const byStop = useMemo(() => groupProfitability(closedTrades, PARAM_DEFS.stop.get), [trades]);
@@ -3538,13 +3543,17 @@ function App() {
                 React.createElement("div", { className: "rounded-xl p-3 mb-5", style: { background: "#12161C", border: "1px solid #1F242C" } },
                     React.createElement("h3", { className: "text-[13px] font-semibold mb-3", style: { color: "#D4A64A" } }, "\uD83C\uDFC6 \u0628\u0647\u062A\u0631\u06CC\u0646 \u0648 \u0628\u062F\u062A\u0631\u06CC\u0646 \u062D\u0627\u0644\u062A \u0647\u0631 \u067E\u0627\u0631\u0627\u0645\u062A\u0631"),
                     React.createElement("div", { className: "grid grid-cols-1 gap-2" }, [
-                        { label: "سشن معاملاتی", data: bySession },
-                        { label: "خبر هم‌زمان", data: byNews },
+                        { label: "سشن یا رویداد معاملاتی", data: bySession },
+                        { label: "خبر", data: byNews },
                         { label: "فراکتال", data: byFractal },
+                        { label: "جهت روند روزانه", data: byDailyTrend },
+                        { label: "جهت کندل روزانه", data: byDailyCandle },
                         { label: "جهت روند اصلی", data: byMainTrend },
-                        { label: "سیستم معاملاتی", data: bySystem },
-                        { label: "بایاس بازار", data: byBias },
+                        { label: "سیستم‌های معاملاتی تایم اصلی", data: bySystemsMulti },
+                        { label: "جهت روند تایم ورود", data: byBias },
                         { label: "بازار تایم ورود", data: byCondition },
+                        { label: "شماره موج تایم ورود", data: byWave },
+                        { label: "سیستم‌های معاملاتی تایم ورود", data: byEntryTimeSystemsMulti },
                         { label: "هم راستایی معامله با روند اصلی", data: byTrend },
                         { label: "الگوی کندل برگشتی تایم ورود", data: byReversalPattern },
                         { label: "نقطه ورود", data: byTrig },
@@ -3554,10 +3563,10 @@ function App() {
                         { label: "حجم (لات)", data: byLot },
                         { label: "روانشناسی", data: byPsychology },
                         { label: "احتمال موفقیت ذهنی", data: bySuccessProb },
-                        { label: "روز هفته", data: byWeekday },
-                        { label: "مدت معامله", data: byDuration },
-                    ].filter(p => p.data.length > 0).map(p => (React.createElement("div", { key: p.label, className: "rounded-lg p-2", style: { background: "#1A1F27" } },
-                        React.createElement("div", { className: "text-[11px] mb-1", style: { color: "#8B93A1" } }, p.label),
+                    ].filter(p => p.data.length > 0).map((p, i) => (React.createElement("div", { key: p.label, className: "rounded-lg p-2", style: { background: "#1A1F27" } },
+                        React.createElement("div", { className: "text-[11px] mb-1 flex items-center gap-1.5", style: { color: "#8B93A1" } },
+                            React.createElement("span", { className: "inline-flex items-center justify-center rounded-full font-bold shrink-0", style: { width: 15, height: 15, fontSize: 9, background: "#D4A64A22", color: "#D4A64A" } }, i + 1),
+                            React.createElement("span", null, p.label)),
                         React.createElement("div", { className: "flex items-center justify-between text-[11px]" },
                             React.createElement("span", { style: { color: "#34D399" } },
                                 "\u2705 ",
@@ -3578,10 +3587,10 @@ function App() {
                     { title: "سودآوری بر اساس سشن معاملاتی", data: bySession },
                     { title: "سودآوری بر اساس هم راستایی معامله با روند اصلی", data: byTrend },
                     { title: "سودآوری بر اساس R-multiple", data: byRR },
-                    { title: "سودآوری بر اساس بایاس بازار", data: byBias },
+                    { title: "سودآوری بر اساس جهت روند تایم ورود", data: byBias },
                     { title: "سودآوری بر اساس فراکتال", data: byFractal },
                     { title: "سودآوری بر اساس جهت روند اصلی", data: byMainTrend },
-                    { title: "سودآوری بر اساس بازار روند میانی", data: byCondition },
+                    { title: "سودآوری بر اساس بازار تایم ورود", data: byCondition },
                     { title: "سودآوری بر اساس نقطه ورود", data: byTrig },
                     { title: "سودآوری بر اساس حد سود (TP)", data: byTarget },
                     { title: "سودآوری بر اساس حد ضرر (SL)", data: byStop },
