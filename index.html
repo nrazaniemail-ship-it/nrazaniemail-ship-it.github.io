@@ -1822,11 +1822,60 @@ function App() {
         else
             setAccSettingsForm(DEFAULT_ACC_SETTINGS);
     }
-    function addTemplateFromCurrentSettings() {
+    const personalContentFieldDefs = [
+        { key: "strategies", value: strategies, persist: persistStrategies },
+        { key: "goals", value: goals, persist: persistGoals },
+        { key: "lifeGoals", value: lifeGoals, persist: persistLifeGoals },
+        { key: "gratitude", value: gratitude, persist: persistGratitude },
+        { key: "newsEvents", value: newsEvents, persist: persistNewsEvents },
+    ];
+    async function buildFullSnapshot() {
+        const snap = buildSettingsSnapshot();
+        personalContentFieldDefs.forEach(f => { snap[f.key] = f.value; });
+        snap.accounts = accounts;
+        snap.tradesByAccount = {};
+        for (const code of accounts) {
+            if (code === activeAccount) {
+                snap.tradesByAccount[code] = trades;
+                continue;
+            }
+            try {
+                const r = await window.storage.get(`namello_trades_${code}`);
+                snap.tradesByAccount[code] = r ? JSON.parse(r.value) : [];
+            }
+            catch (e) {
+                snap.tradesByAccount[code] = [];
+            }
+        }
+        return snap;
+    }
+    async function applyFullSnapshot(snap) {
+        await applySettingsSnapshot(snap);
+        if (!snap)
+            return;
+        for (const f of personalContentFieldDefs) {
+            if (snap[f.key] !== undefined)
+                await f.persist(snap[f.key]);
+        }
+        if (snap.accounts) {
+            await persistAccounts(snap.accounts);
+            for (const code of snap.accounts) {
+                const t = (snap.tradesByAccount && snap.tradesByAccount[code]) || [];
+                try {
+                    await window.storage.set(`namello_trades_${code}`, JSON.stringify(t));
+                }
+                catch (e) { }
+            }
+            if (activeAccount && snap.tradesByAccount && snap.tradesByAccount[activeAccount] !== undefined) {
+                setTrades(snap.tradesByAccount[activeAccount]);
+            }
+        }
+    }
+    async function addTemplateFromCurrentSettings() {
         const name = newTemplateName.trim();
         if (!name || !activeUserId)
             return;
-        const snap = buildSettingsSnapshot();
+        const snap = await buildFullSnapshot();
         const list = templatesByUser[activeUserId] || [];
         persistTemplatesByUser({ ...templatesByUser, [activeUserId]: [...list, { id: Date.now().toString(36), name, data: snap }] });
         setNewTemplateName("");
@@ -1845,7 +1894,7 @@ function App() {
         const tpl = list.find(t => t.id === id);
         if (!tpl)
             return;
-        await applySettingsSnapshot(tpl.data);
+        await applyFullSnapshot(tpl.data);
         showToast(`تمپلیت «${tpl.name}» اعمال شد.`);
     }
     async function applyDefaultTemplate() {
@@ -3144,16 +3193,16 @@ function App() {
                 React.createElement("h2", { className: "text-sm font-semibold mb-2", style: { color: "#E8EAED" } },
                     "\u062A\u0645\u067E\u0644\u06CC\u062A\u200C\u0647\u0627\u06CC \u062A\u0646\u0638\u06CC\u0645\u0627\u062A \u2014 ",
                     users.find(u => u.id === activeUserId)?.name),
-                React.createElement("p", { className: "text-[11px] mb-3 leading-5", style: { color: "#6B7280" } }, "\u0647\u0631 \u062A\u0645\u067E\u0644\u06CC\u062A\u060C \u06CC\u06A9 \u0639\u06A9\u0633\u200C\u0641\u0648\u0631\u06CC \u0627\u0632 \u062A\u0646\u0638\u06CC\u0645\u0627\u062A \u0633\u0641\u0627\u0631\u0634\u06CC \u0647\u0645\u0647\u200C\u06CC \u0644\u0627\u06CC\u0647\u200C\u0647\u0627\u0633\u062A (\u0646\u0634\u0633\u062A\u200C\u0647\u0627\u060C \u062C\u0641\u062A\u200C\u0627\u0631\u0632\u0647\u0627\u060C \u0633\u06CC\u0633\u062A\u0645\u200C\u0647\u0627\u06CC \u0645\u0639\u0627\u0645\u0644\u0627\u062A\u06CC\u060C \u0641\u0631\u0627\u06A9\u062A\u0627\u0644\u060C \u0646\u0642\u0637\u0647 \u0648\u0631\u0648\u062F\u060C TP/SL\u060C \u0627\u0644\u06AF\u0648\u0647\u0627\u06CC \u0628\u0631\u06AF\u0634\u062A\u06CC\u060C R:R\u060C \u0627\u062D\u062A\u0645\u0627\u0644 \u0645\u0648\u0641\u0642\u06CC\u062A\u060C \u0631\u0648\u0627\u0646\u0634\u0646\u0627\u0633\u06CC\u060C \u0648\u0632\u0646\u200C\u062F\u0647\u06CC \u0627\u062D\u062A\u0645\u0627\u0644 \u0645\u062D\u0627\u0633\u0628\u0627\u062A\u06CC\u060C \u0646\u0648\u0639 \u0628\u0633\u062A\u0646 \u0645\u0639\u0627\u0645\u0644\u0647\u060C \u0622\u0645\u0627\u062F\u0647\u200C\u0633\u0627\u0632\u06CC\u060C \u0645\u062F\u06CC\u0631\u06CC\u062A \u0645\u0627\u0644\u06CC \u0648 \u067E\u0627\u0631\u0627\u0645\u062A\u0631\u0647\u0627\u06CC \u0633\u0641\u0627\u0631\u0634\u06CC). \u0645\u0639\u0627\u0645\u0644\u0627\u062A\u060C \u0627\u0633\u062A\u0631\u0627\u062A\u0698\u06CC\u060C \u0627\u0647\u062F\u0627\u0641 \u0648 \u0627\u062E\u0628\u0627\u0631 \u062C\u0632\u0648 \u062A\u0645\u067E\u0644\u06CC\u062A \u0646\u06CC\u0633\u062A\u0646."),
+                React.createElement("p", { className: "text-[11px] mb-3 leading-5", style: { color: "#6B7280" } }, "\u0647\u0631 \u062A\u0645\u067E\u0644\u06CC\u062A\u060C \u06CC\u06A9 \u0639\u06A9\u0633\u200C\u0641\u0648\u0631\u06CC \u06A9\u0627\u0645\u0644 \u0627\u0632 \u0627\u06CC\u0646 \u062D\u0633\u0627\u0628 \u06A9\u0627\u0631\u0628\u0631\u06CC\u0647: \u062A\u0646\u0638\u06CC\u0645\u0627\u062A \u0633\u0641\u0627\u0631\u0634\u06CC \u0647\u0645\u0647\u200C\u06CC \u0644\u0627\u06CC\u0647\u200C\u0647\u0627 (\u0646\u0634\u0633\u062A\u200C\u0647\u0627\u060C \u062C\u0641\u062A\u200C\u0627\u0631\u0632\u0647\u0627\u060C \u0633\u06CC\u0633\u062A\u0645\u200C\u0647\u0627\u06CC \u0645\u0639\u0627\u0645\u0644\u0627\u062A\u06CC\u060C \u0641\u0631\u0627\u06A9\u062A\u0627\u0644\u060C \u0646\u0642\u0637\u0647 \u0648\u0631\u0648\u062F\u060C TP/SL\u060C \u0627\u0644\u06AF\u0648\u0647\u0627\u06CC \u0628\u0631\u06AF\u0634\u062A\u06CC\u060C R:R\u060C \u0627\u062D\u062A\u0645\u0627\u0644 \u0645\u0648\u0641\u0642\u06CC\u062A\u060C \u0631\u0648\u0627\u0646\u0634\u0646\u0627\u0633\u06CC\u060C \u0648\u0632\u0646\u200C\u062F\u0647\u06CC \u0627\u062D\u062A\u0645\u0627\u0644 \u0645\u062D\u0627\u0633\u0628\u0627\u062A\u06CC\u060C \u0646\u0648\u0639 \u0628\u0633\u062A\u0646 \u0645\u0639\u0627\u0645\u0644\u0647\u060C \u0622\u0645\u0627\u062F\u0647\u200C\u0633\u0627\u0632\u06CC\u060C \u0645\u062F\u06CC\u0631\u06CC\u062A \u0645\u0627\u0644\u06CC \u0648 \u067E\u0627\u0631\u0627\u0645\u062A\u0631\u0647\u0627\u06CC \u0633\u0641\u0627\u0631\u0634\u06CC) \u0628\u0647\u200C\u0639\u0644\u0627\u0648\u0647\u200C\u06CC \u0645\u0639\u0627\u0645\u0644\u0627\u062A\u060C \u062D\u0633\u0627\u0628\u200C\u0647\u0627\u060C \u0627\u0633\u062A\u0631\u0627\u062A\u0698\u06CC\u200C\u0647\u0627\u060C \u0627\u0647\u062F\u0627\u0641 (\u0645\u0639\u0627\u0645\u0644\u0647\u200C\u06AF\u0631\u06CC/\u0632\u0646\u062F\u06AF\u06CC/\u0634\u06A9\u0631\u06AF\u0632\u0627\u0631\u06CC) \u0648 \u0627\u062E\u0628\u0627\u0631. \u062A\u0648\u062C\u0647: \u00AB\u0627\u0639\u0645\u0627\u0644\u00BB \u06CC\u06A9 \u062A\u0645\u067E\u0644\u06CC\u062A\u060C \u0647\u0645\u0647\u200C\u06CC \u0627\u06CC\u0646\u200C\u0647\u0627 \u0631\u0648 \u0628\u0627 \u0646\u0633\u062E\u0647\u200C\u06CC \u0630\u062E\u06CC\u0631\u0647\u200C\u0634\u062F\u0647 \u062C\u0627\u06CC\u06AF\u0632\u06CC\u0646 \u0645\u06CC\u200C\u06A9\u0646\u0647."),
                 React.createElement("div", { className: "rounded-xl p-3 flex items-center justify-between mb-2", style: { background: "#12161C", border: "1px solid #1F242C" } },
                     React.createElement("div", null,
                         React.createElement("div", { className: "text-sm font-medium", style: { color: "#E8EAED" } }, "\u067E\u06CC\u0634\u200C\u0641\u0631\u0636"),
-                        React.createElement("div", { className: "text-[10px]", style: { color: "#6B7280" } }, "\u0628\u0627\u0632\u06AF\u0634\u062A \u0628\u0647 \u062A\u0646\u0638\u06CC\u0645\u0627\u062A \u0627\u0648\u0644\u06CC\u0647\u200C\u06CC \u06A9\u0627\u0631\u062E\u0627\u0646\u0647\u200C\u0627\u06CC \u0647\u0645\u0647\u200C\u06CC \u0644\u0627\u06CC\u0647\u200C\u0647\u0627")),
+                        React.createElement("div", { className: "text-[10px]", style: { color: "#6B7280" } }, "\u0641\u0642\u0637 \u0628\u0627\u0632\u06AF\u0634\u062A \u062A\u0646\u0638\u06CC\u0645\u0627\u062A \u0633\u0641\u0627\u0631\u0634\u06CC \u0644\u0627\u06CC\u0647\u200C\u0647\u0627 \u0628\u0647 \u0645\u0642\u062F\u0627\u0631 \u0627\u0648\u0644\u06CC\u0647\u200C\u06CC \u06A9\u0627\u0631\u062E\u0627\u0646\u0647\u200C\u0627\u06CC (\u0645\u0639\u0627\u0645\u0644\u0627\u062A\u060C \u062D\u0633\u0627\u0628\u200C\u0647\u0627\u060C \u0627\u0633\u062A\u0631\u0627\u062A\u0698\u06CC\u060C \u0627\u0647\u062F\u0627\u0641 \u0648 \u0627\u062E\u0628\u0627\u0631 \u062F\u0633\u062A\u200C\u0646\u062E\u0648\u0631\u062F\u0647 \u0645\u06CC\u200C\u0645\u0648\u0646\u0646)")),
                     React.createElement("button", { onClick: () => askDeleteConfirm("تمام تنظیمات سفارشی لایه‌ها با مقادیر پیش‌فرض جایگزین بشه؟", applyDefaultTemplate), className: "px-3 py-1.5 rounded-lg text-[12px] font-medium", style: { background: "#D4A64A", color: "#0B0E11" } }, "\u0627\u0639\u0645\u0627\u0644")),
                 React.createElement("div", { className: "grid grid-cols-1 gap-2 mb-4" }, (templatesByUser[activeUserId] || []).map(tpl => (React.createElement("div", { key: tpl.id, className: "rounded-xl p-3 flex items-center justify-between gap-2", style: { background: "#12161C", border: "1px solid #1F242C" } },
                     React.createElement("span", { className: "text-sm", style: { color: "#E8EAED", minWidth: 0, overflowWrap: "break-word", wordBreak: "break-word" } }, tpl.name),
                     React.createElement("div", { className: "flex items-center gap-2 shrink-0" },
-                        React.createElement("button", { onClick: () => askDeleteConfirm(`تنظیمات فعلی همه‌ی لایه‌ها با تمپلیت «${tpl.name}» جایگزین بشه؟`, () => applyTemplateById(tpl.id)), className: "px-3 py-1.5 rounded-lg text-[12px] font-medium", style: { background: "#1A1F27", color: "#34D399" } }, "\u0627\u0639\u0645\u0627\u0644"),
+                        React.createElement("button", { onClick: () => askDeleteConfirm(`تمام تنظیمات، معاملات، حساب‌ها، استراتژی‌ها، اهداف و اخبار فعلی با تمپلیت «${tpl.name}» جایگزین بشه؟ این کار قابل بازگشت نیست.`, () => applyTemplateById(tpl.id)), className: "px-3 py-1.5 rounded-lg text-[12px] font-medium", style: { background: "#1A1F27", color: "#34D399" } }, "\u0627\u0639\u0645\u0627\u0644"),
                         React.createElement("button", { onClick: () => askDeleteConfirm(`تمپلیت «${tpl.name}» حذف بشه؟`, () => deleteTemplate(tpl.id)) },
                             React.createElement(Trash2, { size: 14, color: "#6B7280" }))))))),
                 React.createElement("div", { className: "flex gap-2 mb-2" },
