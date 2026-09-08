@@ -1320,6 +1320,9 @@ function App() {
     const [deleteAccountConfirm, setDeleteAccountConfirm] = useState(null);
     const [activeAccount, setActiveAccount] = useState(null);
     const [trades, setTrades] = useState([]);
+    const [statsAccountSelection, setStatsAccountSelection] = useState(null); // null = فقط حساب فعلی؛ آرایه = سفارشی‌شده
+    const [multiAccountTradesCache, setMultiAccountTradesCache] = useState({}); // { [accountCode]: trades[] }
+    const [showStatsAccountPicker, setShowStatsAccountPicker] = useState(false);
     const [accSettings, setAccSettings] = useState(DEFAULT_ACC_SETTINGS);
     const [users, setUsers] = useState([]); // [{id, name}]
     const [activeUserId, setActiveUserId] = useState(null);
@@ -1478,6 +1481,12 @@ function App() {
                 const r = await window.storage.get("namello_active_user_v1");
                 if (r)
                     setActiveUserId(JSON.parse(r.value));
+            }
+            catch (e) { }
+            try {
+                const r = await window.storage.get("namello_stats_account_selection_v1");
+                if (r)
+                    setStatsAccountSelection(JSON.parse(r.value));
             }
             catch (e) { }
             try {
@@ -1729,6 +1738,10 @@ function App() {
         await window.storage.set("namello_active_user_v1", JSON.stringify(next));
     }
     catch (e) { } }, []);
+    const persistStatsAccountSelection = useCallback(async (next) => { setStatsAccountSelection(next); try {
+        await window.storage.set("namello_stats_account_selection_v1", JSON.stringify(next));
+    }
+    catch (e) { } }, []);
     const persistTemplatesByUser = useCallback(async (next) => { setTemplatesByUser(next); try {
         await window.storage.set("namello_templates_v1", JSON.stringify(next));
     }
@@ -1752,6 +1765,26 @@ function App() {
         persistTemplatesByUser(next);
     }
     function selectUser(id) { persistActiveUserId(id); }
+    const persistStrategies = useCallback(async (next) => { setStrategies(next); try {
+        await window.storage.set("namello_strategies_v1", JSON.stringify(next));
+    }
+    catch (e) { } }, []);
+    const persistGoals = useCallback(async (next) => { setGoals(next); try {
+        await window.storage.set("namello_goals_v1", JSON.stringify(next));
+    }
+    catch (e) { } }, []);
+    const persistLifeGoals = useCallback(async (next) => { setLifeGoals(next); try {
+        await window.storage.set("namello_lifegoals_v1", JSON.stringify(next));
+    }
+    catch (e) { } }, []);
+    const persistGratitude = useCallback(async (next) => { setGratitude(next); try {
+        await window.storage.set("namello_gratitude_v1", JSON.stringify(next));
+    }
+    catch (e) { } }, []);
+    const persistCustomParams = useCallback(async (next) => { setCustomParams(next); try {
+        await window.storage.set("namello_customparams_v1", JSON.stringify(next));
+    }
+    catch (e) { } }, []);
     const templateFieldDefs = [
         { key: "config", value: config, persist: persistConfig, def: DEFAULT_CONFIG },
         { key: "pairs", value: pairs, persist: persistPairs, def: DEFAULT_PAIRS },
@@ -1819,26 +1852,6 @@ function App() {
         await applySettingsSnapshot(null);
         showToast("تنظیمات پیش‌فرض همه‌ی لایه‌ها بازگردانده شد.");
     }
-    const persistStrategies = useCallback(async (next) => { setStrategies(next); try {
-        await window.storage.set("namello_strategies_v1", JSON.stringify(next));
-    }
-    catch (e) { } }, []);
-    const persistGoals = useCallback(async (next) => { setGoals(next); try {
-        await window.storage.set("namello_goals_v1", JSON.stringify(next));
-    }
-    catch (e) { } }, []);
-    const persistLifeGoals = useCallback(async (next) => { setLifeGoals(next); try {
-        await window.storage.set("namello_lifegoals_v1", JSON.stringify(next));
-    }
-    catch (e) { } }, []);
-    const persistGratitude = useCallback(async (next) => { setGratitude(next); try {
-        await window.storage.set("namello_gratitude_v1", JSON.stringify(next));
-    }
-    catch (e) { } }, []);
-    const persistCustomParams = useCallback(async (next) => { setCustomParams(next); try {
-        await window.storage.set("namello_customparams_v1", JSON.stringify(next));
-    }
-    catch (e) { } }, []);
     const now = getNYNow();
     const schedule = buildSchedule(config, now.minutesOfDay, now.dst);
     const [jy, jm, jd] = gregorianToJalali(now.y, now.m, now.d);
@@ -1958,7 +1971,44 @@ function App() {
     }, [trades]);
     const openTrades = trades.filter(t => t.status === "open");
     const calcProbParams = useMemo(() => buildCalcProbParams(config, now.dst), [config, now.dst]);
-    const conditionStats = useMemo(() => computeConditionStats(closedTrades, calcProbParams), [trades, calcProbParams]);
+    const statsSelectionFiltered = (statsAccountSelection || []).filter(c => accounts.includes(c));
+    const selectedStatsAccounts = statsSelectionFiltered.length ? statsSelectionFiltered : (activeAccount ? [activeAccount] : []);
+    useEffect(() => {
+        const codesToFetch = selectedStatsAccounts.filter(code => code !== activeAccount && !(code in multiAccountTradesCache));
+        if (codesToFetch.length === 0)
+            return;
+        (async () => {
+            const updates = {};
+            for (const code of codesToFetch) {
+                try {
+                    const r = await window.storage.get(`namello_trades_${code}`);
+                    updates[code] = r ? JSON.parse(r.value) : [];
+                }
+                catch (e) {
+                    updates[code] = [];
+                }
+            }
+            setMultiAccountTradesCache(prev => ({ ...prev, ...updates }));
+        })();
+    }, [selectedStatsAccounts.join(","), activeAccount]);
+    const statsClosedTrades = useMemo(() => {
+        const all = [];
+        selectedStatsAccounts.forEach(code => {
+            const src = code === activeAccount ? trades : (multiAccountTradesCache[code] || []);
+            src.forEach(t => { if (t.status === "closed")
+                all.push(t); });
+        });
+        return all;
+    }, [selectedStatsAccounts.join(","), trades, multiAccountTradesCache, activeAccount]);
+    const conditionStats = useMemo(() => computeConditionStats(statsClosedTrades, calcProbParams), [statsClosedTrades, calcProbParams]);
+    function toggleStatsAccount(code) {
+        const cur = selectedStatsAccounts;
+        const next = cur.includes(code) ? cur.filter(c => c !== code) : [...cur, code];
+        persistStatsAccountSelection(next.length ? next : (activeAccount ? [activeAccount] : []));
+    }
+    function toggleAllStatsAccounts() {
+        persistStatsAccountSelection(selectedStatsAccounts.length === accounts.length ? (activeAccount ? [activeAccount] : []) : [...accounts]);
+    }
     const calcSuccessProbResult = useMemo(() => openForm ? computeCalculatedSuccessProb(openForm, conditionStats, calcProbWeights) : null, [openForm, conditionStats, calcProbWeights]);
     const todayClosed = closedTrades.filter(t => t.date === todayStr);
     const dailyPnl = todayClosed.reduce((s, t) => s + (t.pnl || 0), 0);
@@ -3655,7 +3705,20 @@ function App() {
                         React.createElement("h3", { className: "text-[13px] font-semibold", style: { color: "#D4A64A" } }, "\u0633\u0648\u062F\u0622\u0648\u0631\u062A\u0631\u06CC\u0646 \u0634\u0631\u0627\u06CC\u0637 \u0645\u0639\u0627\u0645\u0644\u0647"),
                         showBestConditionsList ? React.createElement(ChevronUp, { size: 16, color: "#D4A64A" }) : React.createElement(ChevronDown, { size: 16, color: "#D4A64A" })),
                     showBestConditionsList && (React.createElement("div", { className: "mt-3 pt-3", style: { borderTop: "1px solid #1F242C" } },
-                        React.createElement("p", { className: "text-[11px] mb-3 leading-5", style: { color: "#6B7280" } }, "\u0628\u0647\u06CC\u0646\u0647\u200C\u062A\u0631\u06CC\u0646 \u062D\u0627\u0644\u062A \u0647\u0631 \u067E\u0627\u0631\u0627\u0645\u062A\u0631 \u0645\u0639\u0627\u0645\u0644\u0627\u062A\u06CC\u060C \u0628\u0631 \u0627\u0633\u0627\u0633 \u0645\u062C\u0645\u0648\u0639 \u0633\u0648\u062F/\u0632\u06CC\u0627\u0646 \u0645\u0639\u0627\u0645\u0644\u0627\u062A \u0628\u0633\u062A\u0647\u200C\u0634\u062F\u0647\u200C\u06CC \u0627\u06CC\u0646 \u062D\u0633\u0627\u0628. \u0647\u0645\u06CC\u0646 \u0644\u06CC\u0633\u062A\u060C \u0645\u0628\u0646\u0627\u06CC \u0645\u062D\u0627\u0633\u0628\u0647\u200C\u06CC \u00AB\u0627\u062D\u062A\u0645\u0627\u0644 \u0645\u0648\u0641\u0642\u06CC\u062A \u0645\u062D\u0627\u0633\u0628\u0627\u062A\u06CC\u00BB \u062F\u0631 \u0641\u0631\u0645 \u062B\u0628\u062A \u0648\u0631\u0648\u062F \u0627\u0633\u062A."),
+                        React.createElement("p", { className: "text-[11px] mb-3 leading-5", style: { color: "#6B7280" } }, "\u0628\u0647\u06CC\u0646\u0647\u200C\u062A\u0631\u06CC\u0646 \u062D\u0627\u0644\u062A \u0647\u0631 \u067E\u0627\u0631\u0627\u0645\u062A\u0631 \u0645\u0639\u0627\u0645\u0644\u0627\u062A\u06CC\u060C \u0628\u0631 \u0627\u0633\u0627\u0633 \u0645\u062C\u0645\u0648\u0639 \u0633\u0648\u062F/\u0632\u06CC\u0627\u0646 \u0645\u0639\u0627\u0645\u0644\u0627\u062A \u0628\u0633\u062A\u0647\u200C\u0634\u062F\u0647\u200C\u06CC \u062D\u0633\u0627\u0628(\u0647\u0627\u06CC) \u0627\u0646\u062A\u062E\u0627\u0628\u200C\u0634\u062F\u0647. \u0647\u0645\u06CC\u0646 \u0644\u06CC\u0633\u062A\u060C \u0645\u0628\u0646\u0627\u06CC \u0645\u062D\u0627\u0633\u0628\u0647\u200C\u06CC \u00AB\u0627\u062D\u062A\u0645\u0627\u0644 \u0645\u0648\u0641\u0642\u06CC\u062A \u0645\u062D\u0627\u0633\u0628\u0627\u062A\u06CC\u00BB \u062F\u0631 \u0641\u0631\u0645 \u062B\u0628\u062A \u0648\u0631\u0648\u062F \u0627\u0633\u062A."),
+                        React.createElement("button", { type: "button", onClick: () => setShowStatsAccountPicker(v => !v), className: "w-full flex items-center justify-between rounded-lg px-3 py-2 mb-2", style: { background: "#1A1F27", border: "1px solid #262C36" } },
+                            React.createElement("span", { className: "text-[12px]", style: { color: "#E8EAED" } },
+                                "\u062D\u0633\u0627\u0628\u200C\u0647\u0627\u06CC \u0645\u0628\u0646\u0627: ",
+                                selectedStatsAccounts.length === accounts.length && accounts.length > 1 ? "همه‌ی حساب‌ها" : `${selectedStatsAccounts.length} حساب`),
+                            showStatsAccountPicker ? React.createElement(ChevronUp, { size: 14, color: "#6B7280" }) : React.createElement(ChevronDown, { size: 14, color: "#6B7280" })),
+                        showStatsAccountPicker && (React.createElement("div", { className: "rounded-lg p-2 mb-3", style: { background: "#1A1F27", border: "1px solid #262C36" } },
+                            accounts.length > 1 && (React.createElement("label", { className: "flex items-center gap-2 px-2 py-1.5 rounded-lg text-[12px] mb-1", style: { color: "#D4A64A", borderBottom: "1px solid #262C36" } },
+                                React.createElement("input", { type: "checkbox", checked: selectedStatsAccounts.length === accounts.length, onChange: toggleAllStatsAccounts }),
+                                "\u0647\u0645\u0647\u200C\u06CC \u062D\u0633\u0627\u0628\u200C\u0647\u0627")),
+                            accounts.map(code => (React.createElement("label", { key: code, className: "flex items-center gap-2 px-2 py-1.5 rounded-lg text-[12px] mono", style: { color: "#E8EAED", fontFamily: "JetBrains Mono, monospace" } },
+                                React.createElement("input", { type: "checkbox", checked: selectedStatsAccounts.includes(code), onChange: () => toggleStatsAccount(code) }),
+                                code,
+                                code === activeAccount && React.createElement("span", { className: "text-[10px]", style: { color: "#6B7280" } }, " (\u0641\u0639\u0644\u06CC)")))))),
                         React.createElement("div", { className: "grid grid-cols-1 gap-1.5" },
                             conditionStats.filter(p => p.best).map(p => (React.createElement("div", { key: p.key, className: "flex items-center justify-between gap-2 rounded-lg px-3 py-2 text-[12px]", style: { background: "#1A1F27" } },
                                 React.createElement("span", { style: { color: "#8B93A1" } }, p.label),
