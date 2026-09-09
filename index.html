@@ -94,7 +94,7 @@ function makeIcon(emoji) {
     return /* @__PURE__ */ React.createElement("span", { className, style: { fontSize: size, color, lineHeight: 1, display: "inline-flex", ...style } }, emoji);
   };
 }
-const Clock = makeIcon("⏱"), TrendingUp = makeIcon("📈"), TrendingDown = makeIcon("📉"), Plus = makeIcon("➕"), Trash2 = makeIcon("🗑️"), ChevronDown = makeIcon("▾"), ChevronUp = makeIcon("▴"), Target = makeIcon("🎯"), X = makeIcon("✕"), Check = makeIcon("✓"), Wallet = makeIcon("💰"), Hash = makeIcon("#️⃣"), Flame = makeIcon("🔥"), Snowflake = makeIcon("❄️"), AlertTriangle = makeIcon("⚠️"), SettingsIcon = makeIcon("⚙️"), Download = makeIcon("⬇️"), Bell = makeIcon("🔔"), BellOff = makeIcon("🔕"), PiggyBank = makeIcon("🐖"), Coffee = makeIcon("☕"), MoreHorizontal = makeIcon("⋯"), LineChartIcon = makeIcon("📈"), ListChecks = makeIcon("☑️"), Flag = makeIcon("🚩"), BarChart3 = makeIcon("📊"), FileSpreadsheet = makeIcon("📑"), Newspaper = makeIcon("📰"), Edit3 = makeIcon("✏️"), Heart = makeIcon("🙏"), User = makeIcon("👤");
+const Clock = makeIcon("⏱"), TrendingUp = makeIcon("📈"), TrendingDown = makeIcon("📉"), Plus = makeIcon("➕"), Trash2 = makeIcon("🗑️"), ChevronDown = makeIcon("▾"), ChevronUp = makeIcon("▴"), Target = makeIcon("🎯"), X = makeIcon("✕"), Check = makeIcon("✓"), Wallet = makeIcon("💰"), Hash = makeIcon("#️⃣"), Flame = makeIcon("🔥"), Snowflake = makeIcon("❄️"), AlertTriangle = makeIcon("⚠️"), SettingsIcon = makeIcon("⚙️"), Download = makeIcon("⬇️"), Bell = makeIcon("🔔"), BellOff = makeIcon("🔕"), PiggyBank = makeIcon("🐖"), Coffee = makeIcon("☕"), MoreHorizontal = makeIcon("⋯"), LineChartIcon = makeIcon("📈"), ListChecks = makeIcon("☑️"), Flag = makeIcon("🚩"), BarChart3 = makeIcon("📊"), FileSpreadsheet = makeIcon("📑"), Newspaper = makeIcon("📰"), Edit3 = makeIcon("✏️"), Heart = makeIcon("🙏"), User = makeIcon("👤"), Info = makeIcon("ℹ️");
 function findChild(children, Comp) {
   let found = null;
   React.Children.forEach(children, (c) => {
@@ -1000,6 +1000,33 @@ const DEFAULT_PREP_STEPS = [
     { id: "step4", text: "ساختار ICT تایم اصلی" },
     { id: "step5", text: "ساختار ICT تایم ورود" },
 ];
+const DEFAULT_ABOUT_SECTIONS = [
+    {
+        id: "about1",
+        title: "نامللو چیست؟",
+        content: "نامللو یک ژورنال معاملاتی جامع برای تریدرهاییه که به روش ICT و بر اساس سشن‌ها و کیل‌زون‌های نیویورک کار می‌کنن. این برنامه ساعت زنده‌ی سشن‌ها/کیل‌زون‌ها/سیلور بولت‌ها، ثبت دقیق معاملات، مدیریت مالی، تحلیل آماری و مدیریت اهداف رو در یک اپلیکیشن واحد و قابل‌نصب (PWA) کنار هم آورده.",
+    },
+    {
+        id: "about2",
+        title: "چرا ژورنال‌نویسی معاملاتی مهمه؟",
+        content: "بدون ثبت دقیق و منظم معاملات، هیچ تریدری نمی‌تونه نقاط قوت و ضعف واقعی سیستم معاملاتی‌ش رو پیدا کنه. ژورنال‌نویسی کمک می‌کنه بفهمی کدوم سشن، کدوم سیستم، کدوم فراکتال یا کدوم حالت روانی برات سودآورتره، احساس رو از تصمیم‌گیری جدا کنی، و به‌مرور یک روش معاملاتی پایدار و قابل‌تکرار بسازی.",
+    },
+    {
+        id: "about3",
+        title: "قابلیت‌های اصلی برنامه",
+        content: "کاربر (تعریف کاربر و تمپلیت‌های شخصی) • نشست‌ها (ساعت زنده‌ی سشن‌ها، کیل‌زون‌ها و سیلور بولت‌های نیویورک) • اخبار (ثبت و ردیابی رویدادهای تقویمی) • آماده‌سازی (چک‌لیست پیش از معامله) • ژورنال (ثبت ورود و نتیجه‌ی معاملات با ده‌ها پارامتر دقیق، به‌همراه مدیریت مالی) • سیستم‌های معاملاتی • استراتژی • اهداف معامله‌گری، اهداف زندگی و شکرگزاری • تحلیل (آمار سودآوری بر اساس هر پارامتر، سودآورترین شرایط معامله، احتمال موفقیت محاسباتی و نمودار سه‌بعدی).",
+    },
+    {
+        id: "about4",
+        title: "راهنمای شروع کار",
+        content: "۱) از تب «کاربر» یک کاربر و در صورت نیاز یک تمپلیت تنظیمات بساز. ۲) از تب «ژورنال» یک کد حساب تعریف کن. ۳) قبل از هر معامله، چک‌لیست «آماده‌سازی» رو مرور کن. ۴) موقع ورود به معامله، از دکمه‌ی «ثبت ورود» همه‌ی پارامترهای معامله رو دقیق ثبت کن. ۵) بعد از بستن معامله، از «ثبت نتیجه معامله» نتیجه‌ی نهایی رو وارد کن. ۶) به‌مرور که داده جمع شد، به تب «تحلیل» سر بزن تا ببینی کدوم شرایط برات سودآورتره.",
+    },
+    {
+        id: "about5",
+        title: "نکات و توصیه‌ها",
+        content: "هرچی پارامترهای معامله (فراکتال، الگوی برگشتی، سیستم‌ها، روانشناسی و…) رو دقیق‌تر و منظم‌تر ثبت کنی، تحلیل آماری برنامه (و «احتمال موفقیت محاسباتی») دقیق‌تر می‌شه. حداقل قبل از هر بار سفارشی‌سازی بزرگ تنظیمات، یک تمپلیت جدید از تب «کاربر» ذخیره کن تا در صورت نیاز بتونی برگردی. این لایه (درباره برنامه) رو هم می‌تونی مطابق سبک کاری خودت ویرایش، کم یا زیاد کنی.",
+    },
+];
 const DEFAULT_SUCCESS_PROB_OPTIONS = ["50", "60", "70", "80", "90"];
 const DEFAULT_PSYCH_OPTIONS = ["ترس", "استرس", "غصه", "خشم", "انتقام"];
 const DEFAULT_CLOSE_TYPE_OPTIONS = ["دستی", "حد سود (TP)", "حد ضرر (SL)"];
@@ -1315,6 +1342,9 @@ function App() {
     const newsAutoRef = useRef(false);
     const [prepSteps, setPrepSteps] = useState(DEFAULT_PREP_STEPS);
     const [newPrepStepText, setNewPrepStepText] = useState("");
+    const [aboutSections, setAboutSections] = useState(DEFAULT_ABOUT_SECTIONS);
+    const [newAboutTitle, setNewAboutTitle] = useState("");
+    const [newAboutContent, setNewAboutContent] = useState("");
     const [brokers, setBrokers] = useState(DEFAULT_BROKERS);
     const [accounts, setAccounts] = useState([]);
     const [deleteAccountConfirm, setDeleteAccountConfirm] = useState(null);
@@ -1556,6 +1586,12 @@ function App() {
             }
             catch (e) { }
             try {
+                const r = await window.storage.get("namello_about_sections_v1");
+                if (r)
+                    setAboutSections(JSON.parse(r.value));
+            }
+            catch (e) { }
+            try {
                 const r = await window.storage.get("namello_brokers_v1");
                 if (r)
                     setBrokers(JSON.parse(r.value));
@@ -1707,6 +1743,10 @@ function App() {
     catch (e) { } }, []);
     const persistPrepSteps = useCallback(async (next) => { setPrepSteps(next); try {
         await window.storage.set("namello_prepsteps_v1", JSON.stringify(next));
+    }
+    catch (e) { } }, []);
+    const persistAboutSections = useCallback(async (next) => { setAboutSections(next); try {
+        await window.storage.set("namello_about_sections_v1", JSON.stringify(next));
     }
     catch (e) { } }, []);
     const persistBrokers = useCallback(async (next) => { setBrokers(next); try {
@@ -2637,6 +2677,27 @@ function App() {
         const next = [...prepSteps];
         [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
         persistPrepSteps(next);
+    }
+    function addAboutSection() {
+        const title = newAboutTitle.trim();
+        const content = newAboutContent.trim();
+        if (!title && !content)
+            return;
+        persistAboutSections([...aboutSections, { id: Date.now().toString(36), title, content }]);
+        setNewAboutTitle("");
+        setNewAboutContent("");
+    }
+    function updateAboutSectionTitle(id, title) { persistAboutSections(aboutSections.map(s => s.id === id ? { ...s, title } : s)); }
+    function updateAboutSectionContent(id, content) { persistAboutSections(aboutSections.map(s => s.id === id ? { ...s, content } : s)); }
+    function deleteAboutSection(id) { persistAboutSections(aboutSections.filter(s => s.id !== id)); }
+    function moveAboutSection(id, dir) {
+        const idx = aboutSections.findIndex(s => s.id === id);
+        const swapIdx = idx + dir;
+        if (idx < 0 || swapIdx < 0 || swapIdx >= aboutSections.length)
+            return;
+        const next = [...aboutSections];
+        [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
+        persistAboutSections(next);
     }
     function addStrategyRow() {
         const v = newStrategyText.trim();
@@ -3884,6 +3945,31 @@ function App() {
             !activeAccount ? (React.createElement("div", { className: "rounded-xl p-4 text-center text-sm", style: { background: "#12161C", color: "#6B7280" } }, "\u0627\u0648\u0644 \u0627\u0632 \u062A\u0628 \u0698\u0648\u0631\u0646\u0627\u0644 \u06CC\u06A9 \u062D\u0633\u0627\u0628 \u0627\u06CC\u062C\u0627\u062F \u06A9\u0646.")) : (React.createElement("button", { onClick: exportAll, className: "w-full flex items-center justify-center gap-2 py-4 rounded-xl text-sm font-semibold", style: { background: "#D4A64A", color: "#0B0E11" } },
                 React.createElement(FileSpreadsheet, { size: 18 }),
                 " \u062E\u0631\u0648\u062C\u06CC \u06A9\u0644 \u0627\u06A9\u0633\u0644")))),
+        tab === "about" && (React.createElement("div", { className: "px-4 mt-4" },
+            React.createElement("h2", { className: "text-sm font-semibold mb-2", style: { color: "#E8EAED" } }, "\u062F\u0631\u0628\u0627\u0631\u0647 \u0628\u0631\u0646\u0627\u0645\u0647"),
+            React.createElement("p", { className: "text-[11px] mb-4 leading-5", style: { color: "#6B7280" } }, "\u0645\u062D\u062A\u0648\u0627\u06CC \u0627\u06CC\u0646 \u0644\u0627\u06CC\u0647 \u06A9\u0627\u0645\u0644\u0627\u064B \u0642\u0627\u0628\u0644 \u0648\u06CC\u0631\u0627\u06CC\u0634\u060C \u0627\u0641\u0632\u0648\u062F\u0646 \u0648 \u062D\u0630\u0641 \u0627\u0633\u062A \u2014 \u0645\u06CC\u200C\u062A\u0648\u0646\u06CC \u0645\u0637\u0627\u0628\u0642 \u0633\u0628\u06A9 \u06A9\u0627\u0631\u06CC \u062E\u0648\u062F\u062A \u062A\u063A\u06CC\u06CC\u0631\u0634 \u0628\u062F\u06CC."),
+            React.createElement("div", { className: "grid grid-cols-1 gap-2 mb-4" },
+                aboutSections.map((s, i) => (React.createElement("div", { key: s.id, className: "rounded-xl p-3", style: { background: "#12161C", border: "1px solid #1F242C" } },
+                    React.createElement("div", { className: "flex items-center gap-2 mb-2" },
+                        React.createElement("div", { className: "flex items-center gap-0.5 shrink-0" },
+                            React.createElement("button", { onClick: () => moveAboutSection(s.id, -1), disabled: i === 0, className: "p-1", style: { opacity: i === 0 ? 0.3 : 1 } },
+                                React.createElement(ChevronUp, { size: 16, color: "#6B7280" })),
+                            React.createElement("button", { onClick: () => moveAboutSection(s.id, 1), disabled: i === aboutSections.length - 1, className: "p-1", style: { opacity: i === aboutSections.length - 1 ? 0.3 : 1 } },
+                                React.createElement(ChevronDown, { size: 16, color: "#6B7280" }))),
+                        React.createElement("span", { className: "w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0", style: { background: "#D4A64A22", color: "#D4A64A" } }, i + 1),
+                        React.createElement(AutoGrowTextarea, { value: s.title, onChange: e => updateAboutSectionTitle(s.id, e.target.value), className: "flex-1 bg-transparent outline-none text-sm font-semibold", style: { color: "#E8EAED", minWidth: 0 }, placeholder: "\u0639\u0646\u0648\u0627\u0646 \u0628\u062E\u0634..." }),
+                        React.createElement("button", { onClick: () => askDeleteConfirm("این بخش حذف بشه؟", () => deleteAboutSection(s.id)), className: "shrink-0" },
+                            React.createElement(Trash2, { size: 14, color: "#6B7280" }))),
+                    React.createElement(AutoGrowTextarea, { value: s.content, onChange: e => updateAboutSectionContent(s.id, e.target.value), className: "w-full bg-transparent outline-none text-[12px] leading-6", style: { color: "#8B93A1", minWidth: 0 }, placeholder: "\u0645\u062A\u0646 \u0627\u06CC\u0646 \u0628\u062E\u0634..." })))),
+                aboutSections.length === 0 && (React.createElement("div", { className: "rounded-xl p-6 text-center text-sm", style: { background: "#12161C", color: "#6B7280" } }, "\u0647\u0646\u0648\u0632 \u0628\u062E\u0634\u06CC \u0627\u0636\u0627\u0641\u0647 \u0646\u0634\u062F\u0647."))),
+            React.createElement("div", { className: "rounded-xl p-3", style: { background: "#12161C", border: "1px solid #1F242C" } },
+                React.createElement(Field, { label: "\u0639\u0646\u0648\u0627\u0646 \u0628\u062E\u0634 \u062C\u062F\u06CC\u062F" },
+                    React.createElement("input", { type: "text", value: newAboutTitle, onChange: e => setNewAboutTitle(e.target.value), className: "w-full bg-transparent outline-none text-sm", style: { color: "#E8EAED" }, placeholder: "\u0645\u062B\u0644\u0627\u064B: \u0633\u0648\u0627\u0644\u0627\u062A \u0645\u062A\u062F\u0627\u0648\u0644" })),
+                React.createElement(Field, { label: "\u0645\u062A\u0646 \u0628\u062E\u0634 \u062C\u062F\u06CC\u062F" },
+                    React.createElement(AutoGrowTextarea, { value: newAboutContent, onChange: e => setNewAboutContent(e.target.value), className: "w-full bg-transparent outline-none text-sm", style: { color: "#E8EAED", minWidth: 0 } })),
+                React.createElement("button", { onClick: addAboutSection, className: "w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium mt-1", style: { background: "#D4A64A", color: "#0B0E11" } },
+                    React.createElement(Plus, { size: 16 }),
+                    " \u0627\u0641\u0632\u0648\u062F\u0646 \u0628\u062E\u0634")))),
         React.createElement("div", { className: "fixed bottom-0 left-0 right-0 flex overflow-x-auto", style: { background: "#12161C", borderTop: "1px solid #1F242C" } }, [
             { key: "user", label: "کاربر", Icon: User },
             { key: "live", label: "نشست‌ها", Icon: Clock },
@@ -3898,6 +3984,7 @@ function App() {
             { key: "gratitude", label: "شکر گزاری", Icon: Heart },
             { key: "analysis", label: "تحلیل", Icon: LineChartIcon },
             { key: "exportall", label: "خروجی کل", Icon: FileSpreadsheet },
+            { key: "about", label: "درباره برنامه", Icon: Info },
         ].map(({ key, label, Icon }) => (React.createElement("button", { key: key, onClick: () => setTab(key), className: "flex flex-col items-center gap-1 py-2.5 shrink-0", style: { width: 68, color: tab === key ? "#D4A64A" : "#6B7280" } },
             React.createElement(Icon, { size: 17 }),
             React.createElement("span", { className: "text-[10px] px-2 py-0.5 rounded-full", style: { background: tab === key ? "#D4A64A22" : "transparent", fontWeight: tab === key ? 700 : 400 } }, label))))),
