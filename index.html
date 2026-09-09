@@ -419,14 +419,25 @@ async function fetchJSONWithFallback(url) {
     const attempts = [
         { name: "مستقیم", url: url, unwrap: null },
         { name: "allorigins-raw", url: "https://api.allorigins.win/raw?url=" + encodeURIComponent(url), unwrap: null },
-        { name: "allorigins-get", url: "https://api.allorigins.win/get?url=" + encodeURIComponent(url), unwrap: "contents" },
-        { name: "corsproxy.io", url: "https://corsproxy.io/?url=" + encodeURIComponent(url), unwrap: null },
         { name: "codetabs", url: "https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(url), unwrap: null },
+        { name: "allorigins-get", url: "https://api.allorigins.win/get?url=" + encodeURIComponent(url), unwrap: "contents" },
+        { name: "thingproxy", url: "https://thingproxy.freeboard.io/fetch/" + url, unwrap: null },
+        { name: "corsfix", url: "https://proxy.corsfix.com/?" + url, unwrap: null },
+        { name: "cors.eu.org", url: "https://cors.eu.org/" + url, unwrap: null },
+        { name: "corsproxy.io", url: "https://corsproxy.io/?url=" + encodeURIComponent(url), unwrap: null },
     ];
     const errors = [];
     for (const attempt of attempts) {
         try {
-            const res = await fetch(attempt.url);
+            const controller = new AbortController();
+            const timer = setTimeout(() => controller.abort(), 9000);
+            let res;
+            try {
+                res = await fetch(attempt.url, { signal: controller.signal });
+            }
+            finally {
+                clearTimeout(timer);
+            }
             if (!res.ok) {
                 errors.push(`${attempt.name}: کد خطا ${res.status}`);
                 continue;
@@ -445,7 +456,7 @@ async function fetchJSONWithFallback(url) {
             }
         }
         catch (e) {
-            errors.push(`${attempt.name}: ${e.message || "خطای شبکه"}`);
+            errors.push(`${attempt.name}: ${e.name === "AbortError" ? "زمان درخواست تمام شد" : (e.message || "خطای شبکه")}`);
         }
     }
     throw new Error(errors.join(" | "));
@@ -857,9 +868,9 @@ const CALC_PROB_STATIC_PARAMS = [
     { key: "entryTimeSystems", label: "سیستم‌های معاملاتی تایم ورود", multi: true, get: t => t.entryTimeSystems || [] },
     { key: "trend", label: "هم راستایی معامله با روند اصلی", multi: false, get: t => t.tradeDirectionRel === "with" ? "هم جهت با روند اصلی" : t.tradeDirectionRel === "against" ? "خلاف جهت روند اصلی" : undefined },
     { key: "reversalPatterns", label: "الگوی کندل برگشتی تایم ورود", multi: true, get: t => (t.reversalPatterns && t.reversalPatterns.length) ? t.reversalPatterns : (t.reversalPattern ? [t.reversalPattern] : []) },
-    { key: "trig", label: "نقطه ورود", multi: false, get: t => t.trig || undefined },
-    { key: "target", label: "حد سود (TP)", multi: false, get: t => t.target || undefined },
-    { key: "stop", label: "حد ضرر (SL)", multi: false, get: t => t.stop || undefined },
+    { key: "trig", label: "نقطه ورود", multi: true, get: t => (t.trigs && t.trigs.length) ? t.trigs : (t.trig ? [t.trig] : []) },
+    { key: "target", label: "حد سود (TP)", multi: true, get: t => (t.targets && t.targets.length) ? t.targets : (t.target ? [t.target] : []) },
+    { key: "stop", label: "حد ضرر (SL)", multi: true, get: t => (t.stops && t.stops.length) ? t.stops : (t.stop ? [t.stop] : []) },
     { key: "rr", label: "R-multiple", multi: false, get: t => {
             const v = t.rrReward;
             if (v === null || v === undefined || v === "")
@@ -1060,9 +1071,9 @@ const PARAM_DEFS = {
     rr: { label: "R-multiple", get: t => (t.rrReward !== null && t.rrReward !== undefined) ? `1:${t.rrReward}` : "—" },
     bias: { label: "جهت روند تایم ورود", get: t => t.marketBias === "bullish" ? "صعودی" : t.marketBias === "bearish" ? "نزولی" : "—" },
     condition: { label: "بازار تایم ورود", get: t => t.marketCondition === "trend" ? "رونددار" : t.marketCondition === "range" ? "رنج" : t.marketCondition === "volatile" ? "پرنوسان" : "—" },
-    trig: { label: "نقطه ورود", get: t => t.trig || "—" },
-    target: { label: "حد سود (TP)", get: t => t.target || "—" },
-    stop: { label: "حد ضرر (SL)", get: t => t.stop || "—" },
+    trig: { label: "نقطه ورود", get: t => (t.trigs && t.trigs[0]) || t.trig || "—" },
+    target: { label: "حد سود (TP)", get: t => (t.targets && t.targets[0]) || t.target || "—" },
+    stop: { label: "حد ضرر (SL)", get: t => (t.stops && t.stops[0]) || t.stop || "—" },
     news: { label: "خبر", get: t => t.newsName || "بدون خبر" },
 };
 function build3DData(trades, paramAKey, paramBKey) {
@@ -1998,7 +2009,7 @@ function App() {
             persistNewsEvents([...manual, ...liveFiltered]);
         }
         catch (e) {
-            setNewsError(`دریافت خبرهای زنده ناموفق بود: ${e.message || e}`);
+            setNewsError(`دریافت خبرهای زنده ناموفق بود: ${e.message || e}\n\nاگه این خطا ادامه داشت، احتمالاً شبکه‌ی فعلی به این سرویس‌ها دسترسی نداره (مثلاً به‌خاطر فیلترینگ). می‌تونی یا با VPN دوباره امتحان کنی، یا خبرها رو دستی هم اضافه کنی.`);
         }
         finally {
             setNewsLoading(false);
@@ -2377,7 +2388,7 @@ function App() {
         systems: [], entryTimeSystems: [], fractal: "M15-M5",
         dailyCandleDirection: "", dailyTrendDirection: "",
         mainTrendDirection: "bullish", marketBias: "bullish", marketCondition: "trend",
-        wave: "", trig: "", target: "", stop: "", reversalPatterns: [],
+        wave: "", trigs: [], targets: [], stops: [], reversalPatterns: [],
     });
     function openNewTradeForm() {
         const d = lastTradeDefaultsRef.current;
@@ -2388,7 +2399,7 @@ function App() {
             dailyCandleDirection: d.dailyCandleDirection, dailyTrendDirection: d.dailyTrendDirection,
             mainTrendDirection: d.mainTrendDirection, entry: "", lot: String(derived.nextLot),
             rrReward: "", riskDollar: "",
-            marketBias: d.marketBias, marketCondition: d.marketCondition, wave: d.wave, trig: d.trig, target: d.target, stop: d.stop,
+            marketBias: d.marketBias, marketCondition: d.marketCondition, wave: d.wave, trigs: d.trigs || [], targets: d.targets || [], stops: d.stops || [],
             reversalPatterns: d.reversalPatterns || [],
             successProb: "", psychology: [],
         });
@@ -2411,7 +2422,9 @@ function App() {
             fractal: openForm.fractal, dailyCandleDirection: openForm.dailyCandleDirection, dailyTrendDirection: openForm.dailyTrendDirection,
             mainTrendDirection: openForm.mainTrendDirection,
             marketBias: openForm.marketBias, marketCondition: openForm.marketCondition, wave: openForm.wave,
-            trig: openForm.trig, target: openForm.target, stop: openForm.stop,
+            trigs: openForm.trigs || [], trig: (openForm.trigs && openForm.trigs[0]) || "",
+            targets: openForm.targets || [], target: (openForm.targets && openForm.targets[0]) || "",
+            stops: openForm.stops || [], stop: (openForm.stops && openForm.stops[0]) || "",
             reversalPatterns: openForm.reversalPatterns || [], reversalPattern: (openForm.reversalPatterns && openForm.reversalPatterns[0]) || "",
             entry: openForm.entry === "" ? null : parseFloat(openForm.entry),
             lot: openForm.lot, tags,
@@ -2428,7 +2441,7 @@ function App() {
             systems: openForm.systems || [], entryTimeSystems: openForm.entryTimeSystems || [], fractal: openForm.fractal,
             dailyCandleDirection: openForm.dailyCandleDirection, dailyTrendDirection: openForm.dailyTrendDirection,
             mainTrendDirection: openForm.mainTrendDirection, marketBias: openForm.marketBias, marketCondition: openForm.marketCondition,
-            wave: openForm.wave, trig: openForm.trig, target: openForm.target, stop: openForm.stop,
+            wave: openForm.wave, trigs: openForm.trigs || [], targets: openForm.targets || [], stops: openForm.stops || [],
             reversalPatterns: openForm.reversalPatterns || [],
         };
         persistTrades([trade, ...trades]);
@@ -2502,7 +2515,10 @@ function App() {
             entryTimeSystems: t.entryTimeSystems || [],
             fractal: t.fractal || "", dailyCandleDirection: t.dailyCandleDirection || "", dailyTrendDirection: t.dailyTrendDirection || "",
             mainTrendDirection: t.mainTrendDirection || "bullish", marketBias: t.marketBias || "bullish", marketCondition: t.marketCondition || "trend",
-            wave: t.wave || "", trig: t.trig || "", target: t.target || "", stop: t.stop || "",
+            wave: t.wave || "",
+            trigs: (t.trigs && t.trigs.length) ? t.trigs : (t.trig ? [t.trig] : []),
+            targets: (t.targets && t.targets.length) ? t.targets : (t.target ? [t.target] : []),
+            stops: (t.stops && t.stops.length) ? t.stops : (t.stop ? [t.stop] : []),
             reversalPatterns: (t.reversalPatterns && t.reversalPatterns.length) ? t.reversalPatterns : (t.reversalPattern ? [t.reversalPattern] : []),
             entry: t.entry === null || t.entry === undefined ? "" : String(t.entry),
             exit: t.exit === null || t.exit === undefined ? "" : String(t.exit),
@@ -2557,7 +2573,10 @@ function App() {
                 entryTimeSystems: editForm.entryTimeSystems || [],
                 fractal: editForm.fractal, dailyCandleDirection: editForm.dailyCandleDirection, dailyTrendDirection: editForm.dailyTrendDirection,
                 mainTrendDirection: editForm.mainTrendDirection, marketBias: editForm.marketBias, marketCondition: editForm.marketCondition,
-                wave: editForm.wave, trig: editForm.trig, target: editForm.target, stop: editForm.stop,
+                wave: editForm.wave,
+                trigs: editForm.trigs || [], trig: (editForm.trigs && editForm.trigs[0]) || "",
+                targets: editForm.targets || [], target: (editForm.targets && editForm.targets[0]) || "",
+                stops: editForm.stops || [], stop: (editForm.stops && editForm.stops[0]) || "",
                 reversalPatterns: editForm.reversalPatterns || [], reversalPattern: (editForm.reversalPatterns && editForm.reversalPatterns[0]) || "",
                 entry: editForm.entry === "" ? null : parseFloat(editForm.entry),
                 exit: editForm.exit === "" ? null : parseFloat(editForm.exit),
@@ -2614,7 +2633,7 @@ function App() {
             t.direction === "buy" ? "خرید" : "فروش", t.fractal || "", t.mainTrendDirection === "bullish" ? "صعودی" : t.mainTrendDirection === "bearish" ? "نزولی" : "", t.tradeDirectionRel === "with" ? "هم جهت با روند اصلی" : t.tradeDirectionRel === "against" ? "خلاف جهت روند اصلی" : "",
             t.marketBias === "bullish" ? "صعودی" : t.marketBias === "bearish" ? "نزولی" : "", t.marketCondition === "trend" ? "رونددار" : t.marketCondition === "range" ? "رنج" : t.marketCondition === "volatile" ? "پرنوسان" : "",
             t.system || "", t.entry ?? "", t.exit ?? "", t.pips ?? "",
-            t.lot, t.rrReward !== null && t.rrReward !== undefined ? `1:${t.rrReward}` : "", t.riskPercent ?? "", t.trig || "", t.target || "", t.stop || "", t.newsName || "",
+            t.lot, t.rrReward !== null && t.rrReward !== undefined ? `1:${t.rrReward}` : "", t.riskPercent ?? "", (t.trigs && t.trigs.length ? t.trigs.join("، ") : t.trig || ""), (t.targets && t.targets.length ? t.targets.join("، ") : t.target || ""), (t.stops && t.stops.length ? t.stops.join("، ") : t.stop || ""), t.newsName || "",
             t.pnl ?? "", closeTypeLabel(t), formatDurationFa(t.durationMinutes), derived.byId[t.id]?.balanceAfter ?? "", (t.tags || []).map(tg => tg.label).join("، "), t.note || "",
         ]);
         const sum = filtered.reduce((s, t) => s + (t.pnl || 0), 0);
@@ -3115,9 +3134,9 @@ function App() {
     const byEntryTimeSystemsMulti = useMemo(() => groupProfitabilityMulti(closedTrades, t => t.entryTimeSystems || []), [trades]);
     const byCondition = useMemo(() => groupProfitability(closedTrades, PARAM_DEFS.condition.get), [trades]);
     const byWave = useMemo(() => groupProfitability(closedTrades, t => t.wave || undefined), [trades]);
-    const byTrig = useMemo(() => groupProfitability(closedTrades, PARAM_DEFS.trig.get), [trades]);
-    const byTarget = useMemo(() => groupProfitability(closedTrades, PARAM_DEFS.target.get), [trades]);
-    const byStop = useMemo(() => groupProfitability(closedTrades, PARAM_DEFS.stop.get), [trades]);
+    const byTrig = useMemo(() => groupProfitabilityMulti(closedTrades, t => (t.trigs && t.trigs.length) ? t.trigs : (t.trig ? [t.trig] : [])), [trades]);
+    const byTarget = useMemo(() => groupProfitabilityMulti(closedTrades, t => (t.targets && t.targets.length) ? t.targets : (t.target ? [t.target] : [])), [trades]);
+    const byStop = useMemo(() => groupProfitabilityMulti(closedTrades, t => (t.stops && t.stops.length) ? t.stops : (t.stop ? [t.stop] : [])), [trades]);
     const byNews = useMemo(() => groupProfitability(closedTrades, PARAM_DEFS.news.get), [trades]);
     const bySystemWeekday = useMemo(() => groupProfitability(closedTrades, t => `${t.system || "-"} | ${weekdayFromDateStr(t.date)}`).slice(0, 8), [trades]);
     const bySessionLot = useMemo(() => groupProfitability(closedTrades, t => `${sessionLabelOf(t)} | لات ${t.lot}`).slice(0, 8), [trades]);
@@ -3158,7 +3177,7 @@ function App() {
         const jRows = allClosedAsc.map(t => [
             derived.byId[t.id]?.dailyIndex ?? "", t.date, weekdayFromDateStr(t.date), t.time, t.pair, t.direction === "buy" ? "خرید" : "فروش", t.fractal || "", t.mainTrendDirection === "bullish" ? "صعودی" : t.mainTrendDirection === "bearish" ? "نزولی" : "", t.tradeDirectionRel === "with" ? "هم جهت با روند اصلی" : t.tradeDirectionRel === "against" ? "خلاف جهت روند اصلی" : "",
             t.marketBias === "bullish" ? "صعودی" : t.marketBias === "bearish" ? "نزولی" : "", t.marketCondition === "trend" ? "رونددار" : t.marketCondition === "range" ? "رنج" : t.marketCondition === "volatile" ? "پرنوسان" : "",
-            t.system || "", t.entry ?? "", t.exit ?? "", t.pips ?? "", t.lot, t.rrReward !== null && t.rrReward !== undefined ? `1:${t.rrReward}` : "", t.riskPercent ?? "", t.trig || "", t.target || "", t.stop || "", t.newsName || "",
+            t.system || "", t.entry ?? "", t.exit ?? "", t.pips ?? "", t.lot, t.rrReward !== null && t.rrReward !== undefined ? `1:${t.rrReward}` : "", t.riskPercent ?? "", (t.trigs && t.trigs.length ? t.trigs.join("، ") : t.trig || ""), (t.targets && t.targets.length ? t.targets.join("، ") : t.target || ""), (t.stops && t.stops.length ? t.stops.join("، ") : t.stop || ""), t.newsName || "",
             t.pnl ?? "", closeTypeLabel(t), derived.byId[t.id]?.balanceAfter ?? "", (t.tags || []).map(tg => tg.label).join("، "), t.note || "",
         ]);
         XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([jHeader, ...jRows]), "ژورنال");
@@ -3325,7 +3344,7 @@ function App() {
                     React.createElement("button", { onClick: () => setShowNewsSettings(s => !s), className: "p-2 rounded-lg", style: { background: "#12161C", border: "1px solid #1F242C" }, "aria-label": "\u062A\u0646\u0638\u06CC\u0645\u0627\u062A" },
                         React.createElement(SettingsIcon, { size: 14, color: "#8B93A1" })))),
             React.createElement("p", { className: "text-[11px] leading-5 mb-3", style: { color: "#6B7280" } }, "\u0628\u0627 \u0632\u062F\u0646 \uD83D\uDD04 \u0622\u062E\u0631\u06CC\u0646 \u0627\u062E\u0628\u0627\u0631 \u067E\u0631\u062A\u0623\u062B\u06CC\u0631 \u0647\u0641\u062A\u0647 \u0627\u0632 \u06CC\u06A9 \u062A\u0642\u0648\u06CC\u0645 \u0627\u0642\u062A\u0635\u0627\u062F\u06CC \u0639\u0645\u0648\u0645\u06CC \u0645\u06CC\u200C\u0622\u062F. \u0627\u06AF\u0647 \u0627\u06CC\u0646\u062A\u0631\u0646\u062A\u062A \u0628\u0647 \u0627\u0648\u0646 \u0633\u0631\u0648\u06CC\u0633 \u062F\u0633\u062A\u0631\u0633\u06CC \u0646\u062F\u0627\u0634\u062A\u060C \u0645\u06CC\u200C\u062A\u0648\u0646\u06CC \u062E\u0628\u0631\u0647\u0627 \u0631\u0648 \u062F\u0633\u062A\u06CC \u0647\u0645 \u0627\u0636\u0627\u0641\u0647 \u06A9\u0646\u06CC. \u0627\u06AF\u0647 \u0645\u0639\u0627\u0645\u0644\u0647\u200C\u0627\u06CC \u062A\u0627 \u06F3\u06F0 \u062F\u0642\u06CC\u0642\u0647 \u0642\u0628\u0644 \u06CC\u0627 \u0628\u0639\u062F \u0627\u0632 \u06CC\u0647 \u062E\u0628\u0631 (\u0645\u0631\u062A\u0628\u0637 \u0628\u0627 \u062C\u0641\u062A\u200C\u0627\u0631\u0632 \u0647\u0645\u0648\u0646 \u0645\u0639\u0627\u0645\u0644\u0647) \u062B\u0628\u062A \u0628\u0634\u0647\u060C \u0627\u0633\u0645 \u062E\u0628\u0631 \u062E\u0648\u062F\u06A9\u0627\u0631 \u062A\u0648 \u0698\u0648\u0631\u0646\u0627\u0644 \u062B\u0628\u062A \u0645\u06CC\u200C\u0634\u0647."),
-            newsError && React.createElement("div", { className: "rounded-xl p-3 mb-3 text-[12px]", style: { background: "#F8717122", color: "#F87171" } }, newsError),
+            newsError && React.createElement("div", { className: "rounded-xl p-3 mb-3 text-[12px]", style: { background: "#F8717122", color: "#F87171", whiteSpace: "pre-wrap" } }, newsError),
             showNewsSettings && (React.createElement("div", { className: "rounded-xl p-3 mb-4", style: { background: "#12161C", border: "1px solid #1F242C" } },
                 React.createElement("h3", { className: "text-[12px] font-semibold mb-2", style: { color: "#D4A64A" } }, "\u0645\u0646\u0628\u0639 \u062F\u0631\u06CC\u0627\u0641\u062A \u062E\u0628\u0631 \u062E\u0648\u062F\u06A9\u0627\u0631"),
                 React.createElement("p", { className: "text-[11px] mb-2 leading-5", style: { color: "#6B7280" } }, "\u067E\u06CC\u0634\u200C\u0641\u0631\u0636 \u0627\u0632 \u0641\u06CC\u062F \u0639\u0645\u0648\u0645\u06CC \u0648 \u0631\u0627\u06CC\u06AF\u0627\u0646 ForexFactory \u0627\u0633\u062A\u0641\u0627\u062F\u0647 \u0645\u06CC\u200C\u0634\u0647. FXStreet \u0648 Investing.com \u0647\u0645 \u0628\u0647\u200C\u0639\u0646\u0648\u0627\u0646 \u0645\u0646\u0628\u0639 \u0642\u0627\u0628\u0644\u200C\u0627\u0646\u062A\u062E\u0627\u0628\u0646\u060C \u0648\u0644\u06CC \u0686\u0648\u0646 \u0627\u06CC\u0646 \u062F\u0648 \u062A\u0627 API \u0639\u0645\u0648\u0645\u06CC \u0648 \u0631\u0627\u06CC\u06AF\u0627\u0646 \u0646\u062F\u0627\u0631\u0646\u060C \u0628\u0639\u062F \u0627\u0632 \u0627\u0646\u062A\u062E\u0627\u0628\u0634\u0648\u0646 \u0628\u0627\u06CC\u062F \u0622\u062F\u0631\u0633 JSON \u06CC\u0627 API \u062E\u0648\u062F\u062A (\u0647\u0645\u0631\u0627\u0647 \u06A9\u0644\u06CC\u062F\u060C \u0627\u06AF\u0647 \u0644\u0627\u0632\u0645\u0647) \u0631\u0648 \u062A\u0648 \u0628\u0627\u06A9\u0633 \u067E\u0627\u06CC\u06CC\u0646 \u0648\u0627\u0631\u062F \u06A9\u0646\u06CC."),
@@ -3595,15 +3614,15 @@ function App() {
                     t.tradeDirectionRel && React.createElement("span", { className: "text-[10px] px-2 py-0.5 rounded-full", style: { background: t.tradeDirectionRel === "with" ? "#60A5FA22" : "#FBBF2422", color: t.tradeDirectionRel === "with" ? "#60A5FA" : "#FBBF24" } }, t.tradeDirectionRel === "with" ? "هم جهت با روند اصلی" : "خلاف جهت روند اصلی"),
                     t.marketBias && React.createElement("span", { className: "text-[10px] px-2 py-0.5 rounded-full", style: { background: t.marketBias === "bullish" ? "#34D39922" : "#F8717122", color: t.marketBias === "bullish" ? "#34D399" : "#F87171" } }, t.marketBias === "bullish" ? "صعودی" : "نزولی"),
                     t.marketCondition && React.createElement("span", { className: "text-[10px] px-2 py-0.5 rounded-full", style: { background: "#A855F722", color: "#A855F7" } }, t.marketCondition === "trend" ? "رونددار" : t.marketCondition === "range" ? "رنج" : "پرنوسان"),
-                    t.trig && React.createElement("span", { className: "text-[10px] px-2 py-0.5 rounded-full", style: { background: "#1A1F27", color: "#8B93A1" } },
-                        "Trig: ",
-                        t.trig),
-                    t.target && React.createElement("span", { className: "text-[10px] px-2 py-0.5 rounded-full", style: { background: "#1A1F27", color: "#8B93A1" } },
-                        "Target: ",
-                        t.target),
-                    t.stop && React.createElement("span", { className: "text-[10px] px-2 py-0.5 rounded-full", style: { background: "#1A1F27", color: "#8B93A1" } },
-                        "Stop: ",
-                        t.stop),
+                    ((t.trigs && t.trigs.length) ? t.trigs : (t.trig ? [t.trig] : [])).map((v, i) => React.createElement("span", { key: "trig" + i, className: "text-[10px] px-2 py-0.5 rounded-full", style: { background: "#1A1F27", color: "#8B93A1" } },
+                        "\u0646\u0642\u0637\u0647 \u0648\u0631\u0648\u062F: ",
+                        v)),
+                    ((t.targets && t.targets.length) ? t.targets : (t.target ? [t.target] : [])).map((v, i) => React.createElement("span", { key: "target" + i, className: "text-[10px] px-2 py-0.5 rounded-full", style: { background: "#1A1F27", color: "#8B93A1" } },
+                        "TP: ",
+                        v)),
+                    ((t.stops && t.stops.length) ? t.stops : (t.stop ? [t.stop] : [])).map((v, i) => React.createElement("span", { key: "stop" + i, className: "text-[10px] px-2 py-0.5 rounded-full", style: { background: "#1A1F27", color: "#8B93A1" } },
+                        "SL: ",
+                        v)),
                     t.newsName && React.createElement("span", { className: "text-[10px] px-2 py-0.5 rounded-full", style: { background: "#F59E0B22", color: "#F59E0B" } },
                         "\uD83D\uDCF0 ",
                         t.newsName),
@@ -4262,7 +4281,7 @@ function App() {
                             React.createElement("input", { type: "text", value: newReversalPatternText, onChange: e => setNewReversalPatternText(e.target.value), onKeyDown: e => e.key === "Enter" && addReversalPatternOptionInline(), placeholder: "\u0627\u0644\u06AF\u0648\u06CC \u062C\u062F\u06CC\u062F...", className: "flex-1 rounded-lg px-2.5 py-1.5 text-[12px] bg-transparent outline-none", style: { color: "#E8EAED", border: "1px solid #262C36" } }),
                             React.createElement("button", { type: "button", onClick: addReversalPatternOptionInline, className: "flex items-center gap-1 px-3 py-1.5 rounded-lg text-[12px]", style: { background: "#1A1F27", color: "#A855F7" } },
                                 React.createElement(Plus, { size: 12 }))))),
-                React.createElement(Field, { label: numLabel(18, hlLabel("نقطه ورود (به اشباع استوک دیفالت توجه شود.)")) },
+                React.createElement(Field, { label: numLabel(18, hlLabel("نقطه ورود (چند تا هم می‌تونی انتخاب کنی) (به اشباع استوک دیفالت توجه شود.)")) },
                     React.createElement("div", { style: { position: "relative", paddingTop: 6 } },
                         React.createElement("button", { type: "button", onClick: () => setTrigEditMode(m => !m), style: { position: "absolute", top: -6, left: -6, zIndex: 1, background: trigEditMode ? "#F8717122" : "#1A1F27", border: `1px solid ${trigEditMode ? "#F8717155" : "#262C36"}`, borderRadius: 8, padding: 4 }, "aria-label": "\u062D\u0630\u0641 \u06AF\u0632\u06CC\u0646\u0647\u200C\u0647\u0627" },
                             React.createElement(Trash2, { size: 11, color: trigEditMode ? "#F87171" : "#6B7280" })),
@@ -4272,15 +4291,18 @@ function App() {
                             React.createElement("button", { type: "button", onClick: () => moveTrigOption(i, 1), disabled: i === trigOptions.length - 1, style: { opacity: i === trigOptions.length - 1 ? 0.3 : 1 } },
                                 React.createElement(ChevronDown, { size: 12, color: "#6B7280" })),
                             React.createElement("input", { value: opt, onChange: e => renameTrigOption(i, e.target.value), className: "bg-transparent outline-none text-[12px] mono", style: { color: "#E8EAED", width: Math.max(3, opt.length) + "ch", fontFamily: "JetBrains Mono, monospace" } }),
-                            React.createElement("button", { type: "button", onClick: () => { removeTrigOption(opt); if (openForm.trig === opt)
-                                    setOpenForm(f => ({ ...f, trig: "" })); } },
-                                React.createElement(X, { size: 10, color: "#F87171" })))) : (React.createElement("span", { key: i, className: "flex items-center gap-1 px-3 py-2 rounded-lg text-[12px] mono", style: { background: openForm.trig === opt ? "#60A5FA22" : "#1A1F27", color: openForm.trig === opt ? "#60A5FA" : "#6B7280", fontFamily: "JetBrains Mono, monospace" } },
-                            React.createElement("button", { type: "button", onClick: () => setOpenForm({ ...openForm, trig: opt }) }, opt))))),
+                            React.createElement("button", { type: "button", onClick: () => { removeTrigOption(opt); setOpenForm(f => ({ ...f, trigs: (f.trigs || []).filter(x => x !== opt) })); } },
+                                React.createElement(X, { size: 10, color: "#F87171" })))) : (React.createElement("span", { key: i, className: "flex items-center gap-1 px-3 py-2 rounded-lg text-[12px] mono", style: { background: (openForm.trigs || []).includes(opt) ? "#60A5FA22" : "#1A1F27", color: (openForm.trigs || []).includes(opt) ? "#60A5FA" : "#6B7280", fontFamily: "JetBrains Mono, monospace" } },
+                            React.createElement("button", { type: "button", onClick: () => {
+                                    const cur = openForm.trigs || [];
+                                    const next = cur.includes(opt) ? cur.filter(x => x !== opt) : [...cur, opt];
+                                    setOpenForm({ ...openForm, trigs: next });
+                                } }, opt))))),
                         React.createElement("div", { className: "flex gap-1.5 mt-1.5" },
                             React.createElement("input", { type: "text", value: newTrigText, onChange: e => setNewTrigText(e.target.value), onKeyDown: e => e.key === "Enter" && addTrigOptionInline(), placeholder: "Trig \u062C\u062F\u06CC\u062F...", className: "flex-1 rounded-lg px-2.5 py-1.5 text-[12px] bg-transparent outline-none", style: { color: "#E8EAED", border: "1px solid #262C36" } }),
                             React.createElement("button", { type: "button", onClick: addTrigOptionInline, className: "flex items-center gap-1 px-3 py-1.5 rounded-lg text-[12px]", style: { background: "#1A1F27", color: "#60A5FA" } },
                                 React.createElement(Plus, { size: 12 }))))),
-                React.createElement(Field, { label: numLabel(19, "حد سود (TP)") },
+                React.createElement(Field, { label: numLabel(19, "حد سود (TP) (چند تا هم می‌تونی انتخاب کنی)") },
                     React.createElement("div", { style: { position: "relative", paddingTop: 6 } },
                         React.createElement("button", { type: "button", onClick: () => setTargetEditMode(m => !m), style: { position: "absolute", top: -6, left: -6, zIndex: 1, background: targetEditMode ? "#F8717122" : "#1A1F27", border: `1px solid ${targetEditMode ? "#F8717155" : "#262C36"}`, borderRadius: 8, padding: 4 }, "aria-label": "\u062D\u0630\u0641 \u06AF\u0632\u06CC\u0646\u0647\u200C\u0647\u0627" },
                             React.createElement(Trash2, { size: 11, color: targetEditMode ? "#F87171" : "#6B7280" })),
@@ -4290,15 +4312,18 @@ function App() {
                             React.createElement("button", { type: "button", onClick: () => moveTargetOption(i, 1), disabled: i === targetOptions.length - 1, style: { opacity: i === targetOptions.length - 1 ? 0.3 : 1 } },
                                 React.createElement(ChevronDown, { size: 12, color: "#6B7280" })),
                             React.createElement("input", { value: opt, onChange: e => renameTargetOption(i, e.target.value), className: "bg-transparent outline-none text-[12px] mono", style: { color: "#E8EAED", width: Math.max(3, opt.length) + "ch", fontFamily: "JetBrains Mono, monospace" } }),
-                            React.createElement("button", { type: "button", onClick: () => { removeTargetOption(opt); if (openForm.target === opt)
-                                    setOpenForm(f => ({ ...f, target: "" })); } },
-                                React.createElement(X, { size: 10, color: "#F87171" })))) : (React.createElement("span", { key: i, className: "flex items-center gap-1 px-3 py-2 rounded-lg text-[12px] mono", style: { background: openForm.target === opt ? "#34D39922" : "#1A1F27", color: openForm.target === opt ? "#34D399" : "#6B7280", fontFamily: "JetBrains Mono, monospace" } },
-                            React.createElement("button", { type: "button", onClick: () => setOpenForm({ ...openForm, target: opt }) }, opt))))),
+                            React.createElement("button", { type: "button", onClick: () => { removeTargetOption(opt); setOpenForm(f => ({ ...f, targets: (f.targets || []).filter(x => x !== opt) })); } },
+                                React.createElement(X, { size: 10, color: "#F87171" })))) : (React.createElement("span", { key: i, className: "flex items-center gap-1 px-3 py-2 rounded-lg text-[12px] mono", style: { background: (openForm.targets || []).includes(opt) ? "#34D39922" : "#1A1F27", color: (openForm.targets || []).includes(opt) ? "#34D399" : "#6B7280", fontFamily: "JetBrains Mono, monospace" } },
+                            React.createElement("button", { type: "button", onClick: () => {
+                                    const cur = openForm.targets || [];
+                                    const next = cur.includes(opt) ? cur.filter(x => x !== opt) : [...cur, opt];
+                                    setOpenForm({ ...openForm, targets: next });
+                                } }, opt))))),
                         React.createElement("div", { className: "flex gap-1.5 mt-1.5" },
                             React.createElement("input", { type: "text", value: newTargetText, onChange: e => setNewTargetText(e.target.value), onKeyDown: e => e.key === "Enter" && addTargetOptionInline(), placeholder: "Target \u062C\u062F\u06CC\u062F...", className: "flex-1 rounded-lg px-2.5 py-1.5 text-[12px] bg-transparent outline-none", style: { color: "#E8EAED", border: "1px solid #262C36" } }),
                             React.createElement("button", { type: "button", onClick: addTargetOptionInline, className: "flex items-center gap-1 px-3 py-1.5 rounded-lg text-[12px]", style: { background: "#1A1F27", color: "#34D399" } },
                                 React.createElement(Plus, { size: 12 }))))),
-                React.createElement(Field, { label: numLabel(20, "حد ضرر (SL) (میزان اسپرد یا ATR*(1-1.5) لحاظ گردد.)") },
+                React.createElement(Field, { label: numLabel(20, "حد ضرر (SL) (چند تا هم می‌تونی انتخاب کنی) (میزان اسپرد یا ATR*(1-1.5) لحاظ گردد.)") },
                     React.createElement("div", { style: { position: "relative", paddingTop: 6 } },
                         React.createElement("button", { type: "button", onClick: () => setStopEditMode(m => !m), style: { position: "absolute", top: -6, left: -6, zIndex: 1, background: stopEditMode ? "#F8717122" : "#1A1F27", border: `1px solid ${stopEditMode ? "#F8717155" : "#262C36"}`, borderRadius: 8, padding: 4 }, "aria-label": "\u062D\u0630\u0641 \u06AF\u0632\u06CC\u0646\u0647\u200C\u0647\u0627" },
                             React.createElement(Trash2, { size: 11, color: stopEditMode ? "#F87171" : "#6B7280" })),
@@ -4308,10 +4333,13 @@ function App() {
                             React.createElement("button", { type: "button", onClick: () => moveStopOption(i, 1), disabled: i === stopOptions.length - 1, style: { opacity: i === stopOptions.length - 1 ? 0.3 : 1 } },
                                 React.createElement(ChevronDown, { size: 12, color: "#6B7280" })),
                             React.createElement("input", { value: opt, onChange: e => renameStopOption(i, e.target.value), className: "bg-transparent outline-none text-[12px] mono", style: { color: "#E8EAED", width: Math.max(3, opt.length) + "ch", fontFamily: "JetBrains Mono, monospace" } }),
-                            React.createElement("button", { type: "button", onClick: () => { removeStopOption(opt); if (openForm.stop === opt)
-                                    setOpenForm(f => ({ ...f, stop: "" })); } },
-                                React.createElement(X, { size: 10, color: "#F87171" })))) : (React.createElement("span", { key: i, className: "flex items-center gap-1 px-3 py-2 rounded-lg text-[12px] mono", style: { background: openForm.stop === opt ? "#F8717122" : "#1A1F27", color: openForm.stop === opt ? "#F87171" : "#6B7280", fontFamily: "JetBrains Mono, monospace" } },
-                            React.createElement("button", { type: "button", onClick: () => setOpenForm({ ...openForm, stop: opt }) }, opt))))),
+                            React.createElement("button", { type: "button", onClick: () => { removeStopOption(opt); setOpenForm(f => ({ ...f, stops: (f.stops || []).filter(x => x !== opt) })); } },
+                                React.createElement(X, { size: 10, color: "#F87171" })))) : (React.createElement("span", { key: i, className: "flex items-center gap-1 px-3 py-2 rounded-lg text-[12px] mono", style: { background: (openForm.stops || []).includes(opt) ? "#F8717122" : "#1A1F27", color: (openForm.stops || []).includes(opt) ? "#F87171" : "#6B7280", fontFamily: "JetBrains Mono, monospace" } },
+                            React.createElement("button", { type: "button", onClick: () => {
+                                    const cur = openForm.stops || [];
+                                    const next = cur.includes(opt) ? cur.filter(x => x !== opt) : [...cur, opt];
+                                    setOpenForm({ ...openForm, stops: next });
+                                } }, opt))))),
                         React.createElement("div", { className: "flex gap-1.5 mt-1.5" },
                             React.createElement("input", { type: "text", value: newStopText, onChange: e => setNewStopText(e.target.value), onKeyDown: e => e.key === "Enter" && addStopOptionInline(), placeholder: "Stop \u062C\u062F\u06CC\u062F...", className: "flex-1 rounded-lg px-2.5 py-1.5 text-[12px] bg-transparent outline-none", style: { color: "#E8EAED", border: "1px solid #262C36" } }),
                             React.createElement("button", { type: "button", onClick: addStopOptionInline, className: "flex items-center gap-1 px-3 py-1.5 rounded-lg text-[12px]", style: { background: "#1A1F27", color: "#F87171" } },
@@ -4521,12 +4549,33 @@ function App() {
                                 onEditFieldChange("reversalPatterns", next);
                             }, className: "px-3 py-2 rounded-lg text-[12px]", style: { background: active ? "#A855F722" : "#1A1F27", color: active ? "#A855F7" : "#6B7280" } }, opt));
                     }))),
-                React.createElement(Field, { label: "\u0646\u0642\u0637\u0647 \u0648\u0631\u0648\u062F" },
-                    React.createElement(ChipGroup, { value: editForm.trig, options: trigOptions, onChange: v => onEditFieldChange("trig", v), mono: true })),
-                React.createElement(Field, { label: "\u062D\u062F \u0633\u0648\u062F (TP)" },
-                    React.createElement(ChipGroup, { value: editForm.target, options: targetOptions, onChange: v => onEditFieldChange("target", v), mono: true, activeColor: "#34D399" })),
-                React.createElement(Field, { label: "\u062D\u062F \u0636\u0631\u0631 (SL)" },
-                    React.createElement(ChipGroup, { value: editForm.stop, options: stopOptions, onChange: v => onEditFieldChange("stop", v), mono: true, activeColor: "#F87171" })),
+                React.createElement(Field, { label: "\u0646\u0642\u0637\u0647 \u0648\u0631\u0648\u062F (\u0686\u0646\u062F \u062A\u0627 \u0647\u0645 \u0645\u06CC\u200C\u062A\u0648\u0646\u06CC \u0627\u0646\u062A\u062E\u0627\u0628 \u06A9\u0646\u06CC)" },
+                    React.createElement("div", { className: "flex flex-wrap gap-1.5" }, trigOptions.map(opt => {
+                        const active = (editForm.trigs || []).includes(opt);
+                        return (React.createElement("button", { key: opt, type: "button", onClick: () => {
+                                const cur = editForm.trigs || [];
+                                const next = active ? cur.filter(x => x !== opt) : [...cur, opt];
+                                onEditFieldChange("trigs", next);
+                            }, className: "px-3 py-2 rounded-lg text-[12px] mono", style: { background: active ? "#60A5FA22" : "#1A1F27", color: active ? "#60A5FA" : "#6B7280", fontFamily: "JetBrains Mono, monospace" } }, opt));
+                    }))),
+                React.createElement(Field, { label: "\u062D\u062F \u0633\u0648\u062F (TP) (\u0686\u0646\u062F \u062A\u0627 \u0647\u0645 \u0645\u06CC\u200C\u062A\u0648\u0646\u06CC \u0627\u0646\u062A\u062E\u0627\u0628 \u06A9\u0646\u06CC)" },
+                    React.createElement("div", { className: "flex flex-wrap gap-1.5" }, targetOptions.map(opt => {
+                        const active = (editForm.targets || []).includes(opt);
+                        return (React.createElement("button", { key: opt, type: "button", onClick: () => {
+                                const cur = editForm.targets || [];
+                                const next = active ? cur.filter(x => x !== opt) : [...cur, opt];
+                                onEditFieldChange("targets", next);
+                            }, className: "px-3 py-2 rounded-lg text-[12px] mono", style: { background: active ? "#34D39922" : "#1A1F27", color: active ? "#34D399" : "#6B7280", fontFamily: "JetBrains Mono, monospace" } }, opt));
+                    }))),
+                React.createElement(Field, { label: "\u062D\u062F \u0636\u0631\u0631 (SL) (\u0686\u0646\u062F \u062A\u0627 \u0647\u0645 \u0645\u06CC\u200C\u062A\u0648\u0646\u06CC \u0627\u0646\u062A\u062E\u0627\u0628 \u06A9\u0646\u06CC)" },
+                    React.createElement("div", { className: "flex flex-wrap gap-1.5" }, stopOptions.map(opt => {
+                        const active = (editForm.stops || []).includes(opt);
+                        return (React.createElement("button", { key: opt, type: "button", onClick: () => {
+                                const cur = editForm.stops || [];
+                                const next = active ? cur.filter(x => x !== opt) : [...cur, opt];
+                                onEditFieldChange("stops", next);
+                            }, className: "px-3 py-2 rounded-lg text-[12px] mono", style: { background: active ? "#F8717122" : "#1A1F27", color: active ? "#F87171" : "#6B7280", fontFamily: "JetBrains Mono, monospace" } }, opt));
+                    }))),
                 React.createElement("div", { className: "grid grid-cols-2 gap-2 mb-2" },
                     React.createElement(Field, { label: "\u0642\u06CC\u0645\u062A \u0648\u0631\u0648\u062F" },
                         React.createElement("input", { type: "number", inputMode: "decimal", value: editForm.entry, onChange: e => onEditFieldChange("entry", e.target.value), className: "w-full bg-transparent outline-none text-sm mono", style: { color: "#E8EAED", fontFamily: "JetBrains Mono, monospace" } })),
