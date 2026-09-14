@@ -7,10 +7,11 @@
 // دفعات آفلاینِ بعدی کش می‌شه). فقط وقتی واقعاً آفلاینیم، از کش قدیمی استفاده می‌شه.
 // برای فایل‌های CDN (React, XLSX, Plotly, Tailwind, فونت‌ها) که نسخه‌شون پین‌شده و عوض نمی‌شه،
 // همچنان استراتژی "اول کش" (سریع‌تر و برای آفلاین قابل‌اعتمادتر) باقی مونده.
-const CACHE_NAME = "namello-v3";
+const CACHE_NAME = "namello-v4";
 
 const HTML_URLS = ["./", "./index.html"];
-const APP_SHELL = ["./manifest.json", "./icon-192.png", "./icon-512.png"];
+const WIDGET_URL = "./widget.html";
+const APP_SHELL = ["./manifest.json", "./icon-192.png", "./icon-512.png", WIDGET_URL];
 
 const RUNTIME_DEPS = [
   "https://cdn.jsdelivr.net/npm/react@18/umd/react.production.min.js",
@@ -49,10 +50,25 @@ self.addEventListener("activate", (event) => {
   self.clients.claim();
 });
 
+// دکمه‌ی «بازگشت به Namello»: وقتی برنامه پس‌زمینه می‌شه (طبق تنظیمات کاربر در تب «تنظیمات»)،
+// یک نوتیفیکیشن نشون داده می‌شه؛ با تپ روی خودِ نوتیفیکیشن، اگه یه تب/پنجره‌ی Namello باز باشه
+// فوکوس می‌گیره، وگرنه یه پنجره‌ی جدید باز می‌شه.
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
+      for (const client of clientList) {
+        if ("focus" in client) return client.focus();
+      }
+      if (self.clients.openWindow) return self.clients.openWindow("./index.html");
+    })
+  );
+});
+
 function isAppShellHtml(request) {
   if (request.mode === "navigate") return true;
   const url = new URL(request.url);
-  return url.origin === self.location.origin && (url.pathname.endsWith("/index.html") || url.pathname.endsWith("/"));
+  return url.origin === self.location.origin && (url.pathname.endsWith("/index.html") || url.pathname.endsWith("/") || url.pathname.endsWith("/widget.html"));
 }
 
 self.addEventListener("fetch", (event) => {
