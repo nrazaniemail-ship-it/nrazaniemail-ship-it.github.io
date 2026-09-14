@@ -1189,11 +1189,17 @@ const DEFAULT_ACC_SETTINGS = { startingBalance: 1000, baseLot: 0.01, minLot: 0.0
 // دکمه‌ی شناور اجرای سریع MT5/تریدینگ‌ویو: به‌جای بازکردن گوگل‌پلی، مستقیم اپ نصب‌شده روی گوشی را
 // با اینتنت اندروید (ACTION_MAIN + CATEGORY_LAUNCHER + package) باز می‌کند؛ جایگاه دکمه هم آزاد و
 // قابل جابه‌جایی با لمس است (مختصات به‌صورت درصدی از صفحه ذخیره می‌شود).
+// هر اپ حالا دکمه‌ی شناور مستقل و جایگاه ذخیره‌شده‌ی خودش را دارد (دیگر منوی موشکی/بینابینی وجود
+// ندارد). فیلد Scheme اختیاری است: چون کروم/سامسونگ‌اینترنت فقط اکتیویتی‌هایی را با intent://
+// باز می‌کنند که در مانیفست اپ مقصد دسته‌ی BROWSABLE داشته باشند (اکتیویتی اصلیِ لانچر معمولاً
+// این دسته را ندارد)، اگر روش package-only روی گوشیِ خاصی کار نکرد، کاربر می‌تواند اسکیم
+// اختصاصیِ همان اپ (مثلاً چیزی شبیه tradingview://) را اینجا وارد کند تا اول آن امتحان شود.
 const DEFAULT_QUICK_LAUNCH_SETTINGS = {
     enabled: true,
-    posXPercent: null, posYPercent: null, // null یعنی جایگاه پیش‌فرض (پایین-چپ)
-    mt5Enabled: true, mt5Package: "net.metaquotes.metatrader5", mt5Label: "متاتریدر ۵",
-    tvEnabled: true, tvPackage: "com.tradingview.tradingviewapp", tvLabel: "تریدینگ‌ویو",
+    mt5Enabled: true, mt5Package: "net.metaquotes.metatrader5", mt5Scheme: "", mt5Label: "متاتریدر ۵",
+    mt5PosXPercent: null, mt5PosYPercent: null,
+    tvEnabled: true, tvPackage: "com.tradingview.tradingviewapp", tvScheme: "", tvLabel: "تریدینگ‌ویو",
+    tvPosXPercent: null, tvPosYPercent: null,
 };
 // دکمه‌ی شناور بازگشت سریع به Namello: چون یک PWA/وب‌اپ نمی‌تواند مثل یک اپ نیتیو روی صفحه‌ی
 // اپ‌های دیگر (MT5/تریدینگ‌ویو) آیکن شناور نشان بدهد (این کار نیازمند مجوز سیستمی
@@ -1244,22 +1250,22 @@ function Field({ label, children }) {
    نگه داشته می‌شود تا روی هر سایز صفحه‌ای معنادار بماند؛ وقتی هنوز جایی ذخیره نشده (null)، از
    defaultCorner استفاده می‌شود. یک لمسِ کوتاه (بدون جابه‌جایی محسوس) هم‌چنان به onClick می‌رود؛
    کشیدن به هر جهت، جایگاه را عوض کرده و با onDrop ذخیره می‌شود. */
-function DraggableFab({ posXPercent, posYPercent, defaultCorner = "bottom-left", size = 48, onDrop, onClick, children, zIndex = 50 }) {
+function DraggableFab({ posXPercent, posYPercent, defaultCorner = "bottom-left", defaultOffsetY = 0, size = 48, onDrop, onClick, children, zIndex = 50 }) {
     const ref = useRef(null);
     const dragRef = useRef({ dragging: false, moved: false, startX: 0, startY: 0 });
     const [livePos, setLivePos] = useState(null);
     function clampPercent(v) { return Math.max(2, Math.min(98, v)); }
     function toXY(xPercent, yPercent) {
         if (typeof window === "undefined")
-            return { left: 16, top: 16 };
+            return { left: 16, top: 16 - defaultOffsetY };
         const w = window.innerWidth, h = window.innerHeight;
         if (xPercent == null || yPercent == null) {
             const margin = 16, bottomBarH = 84;
             if (defaultCorner === "bottom-left")
-                return { left: margin, top: h - bottomBarH - size };
+                return { left: margin, top: h - bottomBarH - size - defaultOffsetY };
             if (defaultCorner === "bottom-right")
-                return { left: w - margin - size, top: h - bottomBarH - size };
-            return { left: margin, top: 16 };
+                return { left: w - margin - size, top: h - bottomBarH - size - defaultOffsetY };
+            return { left: margin, top: 16 + defaultOffsetY };
         }
         return { left: (xPercent / 100) * w - size / 2, top: (yPercent / 100) * h - size / 2 };
     }
@@ -1395,11 +1401,9 @@ function App() {
     const [calcProbWeights, setCalcProbWeights] = useState(DEFAULT_CALC_PROB_WEIGHTS);
     const [showCalcProbWeights, setShowCalcProbWeights] = useState(false);
     const [showBestConditionsList, setShowBestConditionsList] = useState(false);
-    const [showQuickLaunch, setShowQuickLaunch] = useState(false);
     const [quickLaunchSettings, setQuickLaunchSettings] = useState(DEFAULT_QUICK_LAUNCH_SETTINGS);
     const [namelloReturnSettings, setNamelloReturnSettings] = useState(DEFAULT_NAMELLO_RETURN_SETTINGS);
     const [widgetSettings, setWidgetSettings] = useState(DEFAULT_WIDGET_SETTINGS);
-    const [quickLaunchDragHint, setQuickLaunchDragHint] = useState(false);
     const [closeTypeOptions, setCloseTypeOptions] = useState(DEFAULT_CLOSE_TYPE_OPTIONS);
     const [manualExitReasonOptions, setManualExitReasonOptions] = useState(DEFAULT_MANUAL_EXIT_REASON_OPTIONS);
     const [fractalEditMode, setFractalEditMode] = useState(false);
@@ -1971,19 +1975,47 @@ function App() {
     catch (e) { } }, []);
     /* ---------------- اجرای مستقیم اپ نصب‌شده (بدون گوگل‌پلی) ---------------- */
     const isIOS = typeof navigator !== "undefined" && /iPad|iPhone|iPod/.test(navigator.userAgent || "");
-    function launchInstalledApp(pkg, label) {
-        if (!pkg)
-            return;
+    // چرا روش قبلی (فقط intent://...category=LAUNCHER...package=) گاهی هیچ کاری نمی‌کرد:
+    // از نسخه‌ی ۳۹ به بعد، کروم (و مرورگرهای مبتنی‌بر آن مثل سامسونگ‌اینترنت) یک intent:// را فقط
+    // زمانی به اپ نصب‌شده می‌فرستد که اکتیویتیِ مقصد در مانیفست خودش دسته‌ی android.intent.category.
+    // BROWSABLE را داشته باشد؛ این محدودیتی امنیتی است تا هر صفحه‌ی وب نتواند هر اکتیویتیِ داخلیِ
+    // هر اپی را مستقیم باز کند. اکتیویتیِ لانچرِ اصلیِ MT5/تریدینگ‌ویو (همونی که با زدن آیکن‌شون از
+    // هوم‌اسکرین باز می‌شه) معمولاً این دسته را ندارد، پس این intent به‌خصوص روی کروم اغلب بی‌صدا
+    // نادیده گرفته می‌شود (نه خطا می‌دهد، نه پلی‌استور باز می‌کند — فقط هیچ اتفاقی نمی‌افتد).
+    // راه‌حل: تلاش زنجیره‌ای. اول (اگر کاربر در تنظیمات وارد کرده) اسکیم اختصاصیِ خودِ اپ را امتحان
+    // می‌کنیم (این‌ها معمولاً BROWSABLE هستند چون برای دیپ‌لینک طراحی شده‌اند)، و اگر صفحه بعد از
+    // ~۹۰۰ میلی‌ثانیه هنوز «دیده‌شدنی» بود (یعنی چیزی باز نشد)، همان intent قدیمیِ package-only را هم
+    // امتحان می‌کنیم — چون روی برخی گوشی‌ها/مرورگرها (خصوصاً سامسونگ‌اینترنت) همچنان جواب می‌دهد.
+    function launchInstalledApp(pkg, label, scheme) {
         if (isIOS) {
             showToast(`روی آیفون به‌خاطر محدودیت‌های اپل، اجرای مستقیم «${label || "اپ"}» از طریق مرورگر ممکن نیست.`);
             return;
         }
-        try {
-            // این روش، بدون هیچ فال‌بکی به گوگل‌پلی، مستقیماً اکتیویتیِ لانچر همان اپلیکیشن نصب‌شده را
-            // با پکیج‌نیم مشخص‌شده باز می‌کند. اگر اپ نصب نباشد، مرورگر کاری انجام نمی‌دهد (نه پلی‌استور).
-            window.location.href = `intent://#Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;package=${pkg};end`;
+        const attempts = [];
+        if (scheme && scheme.trim())
+            attempts.push(scheme.trim());
+        if (pkg && pkg.trim())
+            attempts.push(`intent://#Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;package=${pkg.trim()};end`);
+        if (!attempts.length)
+            return;
+        let i = 0;
+        function tryNext() {
+            if (i >= attempts.length) {
+                showToast(`«${label || "اپ"}» باز نشد. از تب «تنظیمات» مطمئن شو package name درست وارد شده، اپ روی گوشی نصبه، و در صورت لزوم یه اسکیم اختصاصی هم امتحان کن.`);
+                return;
+            }
+            const url = attempts[i++];
+            let left = false;
+            const onHide = () => { left = true; };
+            document.addEventListener("visibilitychange", onHide, { once: true });
+            try { window.location.href = url; } catch (e) { }
+            setTimeout(() => {
+                document.removeEventListener("visibilitychange", onHide);
+                if (!left && document.visibilityState === "visible")
+                    tryNext();
+            }, 900);
         }
-        catch (e) { }
+        tryNext();
     }
     /* ---------------- نوتیفیکیشن «بازگشت به Namello» وقتی برنامه پس‌زمینه می‌شود ---------------- */
     useEffect(() => {
@@ -4361,33 +4393,38 @@ function App() {
                 React.createElement("div", { className: "flex items-center justify-between mb-2" },
                     React.createElement("h3", { className: "text-[13px] font-semibold", style: { color: "#E8EAED" } }, "\u062F\u06A9\u0645\u0647\u200C\u06CC \u0634\u0646\u0627\u0648\u0631 \u0627\u062C\u0631\u0627\u06CC \u0633\u0631\u06CC\u0639 MT5/\u062A\u0631\u06CC\u062F\u06CC\u0646\u06AF\u200C\u0648\u06CC\u0648"),
                     React.createElement("button", { onClick: () => persistQuickLaunchSettings({ ...quickLaunchSettings, enabled: !quickLaunchSettings.enabled }), className: "px-3 py-1 rounded-full text-[11px] font-medium", style: { background: quickLaunchSettings.enabled ? "#34D39922" : "#1A1F27", color: quickLaunchSettings.enabled ? "#34D399" : "#6B7280" } }, quickLaunchSettings.enabled ? "فعال" : "غیرفعال")),
-                React.createElement("p", { className: "text-[11px] leading-5 mb-3", style: { color: "#6B7280" } }, "\u0628\u0627 \u062A\u0627\u0686 \u0648 \u0646\u06AF\u0647\u200C\u062F\u0627\u0634\u062A\u0646 \u0631\u0648\u06CC \u062E\u0648\u062F \u062F\u06A9\u0645\u0647\u200C\u06CC \u0634\u0646\u0627\u0648\u0631 (\uD83D\uDE80) \u0648 \u06A9\u0634\u06CC\u062F\u0646\u060C \u0645\u06CC\u200C\u062A\u0648\u0646\u06CC \u062C\u0627\u0634 \u0631\u0648 \u0647\u0631 \u062C\u0627\u06CC \u0635\u0641\u062D\u0647 \u06A9\u0647 \u062F\u0648\u0633\u062A \u062F\u0627\u0631\u06CC \u0628\u0628\u0631\u06CC\u061B \u062C\u0627\u06CC\u06AF\u0627\u0647 \u0628\u0647\u200C\u0635\u0648\u0631\u062A \u062E\u0648\u062F\u06A9\u0627\u0631 \u0630\u062E\u06CC\u0631\u0647 \u0645\u06CC\u200C\u0634\u0647. \u0628\u0627 \u0632\u062F\u0646\u0650 (\u0628\u062F\u0648\u0646 \u06A9\u0634\u06CC\u062F\u0646) \u0631\u0648\u06CC \u062F\u06A9\u0645\u0647\u060C \u0645\u0646\u0648\u06CC \u0627\u0646\u062A\u062E\u0627\u0628 \u0627\u067E \u0628\u0627\u0632 \u0645\u06CC\u200C\u0634\u0647."),
-                React.createElement("button", { onClick: () => persistQuickLaunchSettings({ ...quickLaunchSettings, posXPercent: null, posYPercent: null }), className: "w-full py-2 rounded-lg text-[12px] mb-3", style: { background: "#1A1F27", color: "#8B93A1" } }, "\u0628\u0627\u0632\u0646\u0634\u0627\u0646\u06CC \u062C\u0627\u06CC\u06AF\u0627\u0647 \u062F\u06A9\u0645\u0647 \u0628\u0647 \u062D\u0627\u0644\u062A \u067E\u06CC\u0634\u200C\u0641\u0631\u0636"),
+                React.createElement("p", { className: "text-[11px] leading-5 mb-3", style: { color: "#6B7280" } }, "دو دکمه‌ی شناور جدا روی صفحه ظاهر می‌شن: یکی برای MT5 و یکی برای TradingView (بدون منوی واسط). با لمس و نگه‌داشتنِ هرکدوم می‌تونی جاش رو هر جای صفحه ببری؛ جایگاه هرکدوم جدا ذخیره می‌شه. با یک ضربه‌ی ساده (بدون کشیدن)، همون اپ باز می‌شه."),
                 React.createElement("div", { className: "rounded-lg p-2.5 mb-2", style: { background: "#1A1F27", border: "1px solid #262C36" } },
                     React.createElement("div", { className: "flex items-center justify-between mb-1.5" },
                         React.createElement("span", { className: "text-[12px]", style: { color: "#E8EAED" } }, "\uD83D\uDCCA \u0645\u062A\u0627\u062A\u0631\u06CC\u062F\u0631 \u06F5 (MT5)"),
                         React.createElement("button", { onClick: () => persistQuickLaunchSettings({ ...quickLaunchSettings, mt5Enabled: !quickLaunchSettings.mt5Enabled }), className: "px-2.5 py-1 rounded-full text-[10px]", style: { background: quickLaunchSettings.mt5Enabled ? "#34D39922" : "#0B0E11", color: quickLaunchSettings.mt5Enabled ? "#34D399" : "#6B7280" } }, quickLaunchSettings.mt5Enabled ? "فعال" : "غیرفعال")),
-                    React.createElement("label", { className: "text-[10px] block mb-1", style: { color: "#6B7280" } }, "package name \u0627\u067E \u0646\u0635\u0628\u200C\u0634\u062F\u0647 \u0631\u0648\u06CC \u06AF\u0648\u0634\u06CC (\u0628\u0631\u0627\u06CC \u0627\u06A9\u062B\u0631 \u06AF\u0648\u0634\u06CC\u200C\u0647\u0627 \u0646\u06CC\u0627\u0632\u06CC \u0628\u0647 \u062A\u063A\u06CC\u06CC\u0631 \u0646\u06CC\u0633\u062A)"),
-                    React.createElement("input", { type: "text", value: quickLaunchSettings.mt5Package, onChange: e => persistQuickLaunchSettings({ ...quickLaunchSettings, mt5Package: e.target.value }), className: "w-full bg-transparent outline-none text-[12px] mono", style: { color: "#D4A64A", fontFamily: "JetBrains Mono, monospace" }, placeholder: "net.metaquotes.metatrader5" })),
-                React.createElement("div", { className: "rounded-lg p-2.5 mb-2", style: { background: "#1A1F27", border: "1px solid #262C36" } },
+                    React.createElement("label", { className: "text-[10px] block mb-1", style: { color: "#6B7280" } }, "package name اپ نصب‌شده روی گوشی (برای اکثر گوشی‌ها نیازی به تغییر نیست)"),
+                    React.createElement("input", { type: "text", value: quickLaunchSettings.mt5Package, onChange: e => persistQuickLaunchSettings({ ...quickLaunchSettings, mt5Package: e.target.value }), className: "w-full bg-transparent outline-none text-[12px] mono mb-2", style: { color: "#D4A64A", fontFamily: "JetBrains Mono, monospace" }, placeholder: "net.metaquotes.metatrader5" }),
+                    React.createElement("label", { className: "text-[10px] block mb-1", style: { color: "#6B7280" } }, "اسکیم اختصاصی اپ (اختیاری — فقط اگه روش بالا جواب نداد)"),
+                    React.createElement("input", { type: "text", value: quickLaunchSettings.mt5Scheme, onChange: e => persistQuickLaunchSettings({ ...quickLaunchSettings, mt5Scheme: e.target.value }), className: "w-full bg-transparent outline-none text-[12px] mono mb-2", style: { color: "#8B93A1", fontFamily: "JetBrains Mono, monospace" }, placeholder: "مثلاً metatrader5://..." }),
+                    React.createElement("button", { onClick: () => persistQuickLaunchSettings({ ...quickLaunchSettings, mt5PosXPercent: null, mt5PosYPercent: null }), className: "w-full py-1.5 rounded-lg text-[11px]", style: { background: "#0B0E11", color: "#8B93A1" } }, "بازنشانی جایگاه دکمه‌ی MT5")),
+                React.createElement("div", { className: "rounded-lg p-2.5 mb-3", style: { background: "#1A1F27", border: "1px solid #262C36" } },
                     React.createElement("div", { className: "flex items-center justify-between mb-1.5" },
                         React.createElement("span", { className: "text-[12px]", style: { color: "#E8EAED" } }, "\uD83D\uDCC8 \u062A\u0631\u06CC\u062F\u06CC\u0646\u06AF\u200C\u0648\u06CC\u0648 (TradingView)"),
                         React.createElement("button", { onClick: () => persistQuickLaunchSettings({ ...quickLaunchSettings, tvEnabled: !quickLaunchSettings.tvEnabled }), className: "px-2.5 py-1 rounded-full text-[10px]", style: { background: quickLaunchSettings.tvEnabled ? "#34D39922" : "#0B0E11", color: quickLaunchSettings.tvEnabled ? "#34D399" : "#6B7280" } }, quickLaunchSettings.tvEnabled ? "فعال" : "غیرفعال")),
-                    React.createElement("label", { className: "text-[10px] block mb-1", style: { color: "#6B7280" } }, "package name \u0627\u067E \u0646\u0635\u0628\u200C\u0634\u062F\u0647 \u0631\u0648\u06CC \u06AF\u0648\u0634\u06CC"),
-                    React.createElement("input", { type: "text", value: quickLaunchSettings.tvPackage, onChange: e => persistQuickLaunchSettings({ ...quickLaunchSettings, tvPackage: e.target.value }), className: "w-full bg-transparent outline-none text-[12px] mono", style: { color: "#D4A64A", fontFamily: "JetBrains Mono, monospace" }, placeholder: "com.tradingview.tradingviewapp" })),
-                React.createElement("p", { className: "text-[10px] leading-5", style: { color: "#6B7280" } }, "\u0628\u0627 \u0632\u062F\u0646 \u0631\u0648\u06CC \u0647\u0631\u06A9\u062F\u0648\u0645\u060C \u0645\u0633\u062A\u0642\u06CC\u0645 \u0647\u0645\u0648\u0646 \u0627\u067E\u0650 \u0646\u0635\u0628\u200C\u0634\u062F\u0647 \u0631\u0648\u06CC \u06AF\u0648\u0634\u06CC\u062A \u0627\u062C\u0631\u0627 \u0645\u06CC\u200C\u0634\u0647 (\u0646\u0647 \u06AF\u0648\u06AF\u0644\u200C\u067E\u0644\u06CC). \u0627\u06CC\u0646 \u0631\u0648\u0634 \u0645\u062E\u0635\u0648\u0635 \u0627\u0646\u062F\u0631\u0648\u06CC\u062F (\u06A9\u0631\u0648\u0645) \u0647\u0633\u062A\u061B \u0631\u0648\u06CC \u0622\u06CC\u0641\u0648\u0646 \u0628\u0647\u200C\u062E\u0627\u0637\u0631 \u0645\u062D\u062F\u0648\u062F\u06CC\u062A\u200C\u0647\u0627\u06CC \u0627\u067E\u0644\u060C \u0645\u0631\u0648\u0631\u06AF\u0631 \u0627\u062C\u0627\u0632\u0647\u200C\u06CC \u0628\u0627\u0632\u06A9\u0631\u062F\u0646 \u0645\u0633\u062A\u0642\u06CC\u0645\u0650 \u06CC\u06A9 \u0627\u067E \u062F\u06CC\u06AF\u0647 \u0631\u0648 \u0628\u0627 \u067E\u06A9\u06CC\u062C\u200C\u0646\u06CC\u0645 \u0646\u0645\u06CC\u200C\u062F\u0647.")),
+                    React.createElement("label", { className: "text-[10px] block mb-1", style: { color: "#6B7280" } }, "package name اپ نصب‌شده روی گوشی"),
+                    React.createElement("input", { type: "text", value: quickLaunchSettings.tvPackage, onChange: e => persistQuickLaunchSettings({ ...quickLaunchSettings, tvPackage: e.target.value }), className: "w-full bg-transparent outline-none text-[12px] mono mb-2", style: { color: "#D4A64A", fontFamily: "JetBrains Mono, monospace" }, placeholder: "com.tradingview.tradingviewapp" }),
+                    React.createElement("label", { className: "text-[10px] block mb-1", style: { color: "#6B7280" } }, "اسکیم اختصاصی اپ (اختیاری — فقط اگه روش بالا جواب نداد)"),
+                    React.createElement("input", { type: "text", value: quickLaunchSettings.tvScheme, onChange: e => persistQuickLaunchSettings({ ...quickLaunchSettings, tvScheme: e.target.value }), className: "w-full bg-transparent outline-none text-[12px] mono mb-2", style: { color: "#8B93A1", fontFamily: "JetBrains Mono, monospace" }, placeholder: "مثلاً tradingview://..." }),
+                    React.createElement("button", { onClick: () => persistQuickLaunchSettings({ ...quickLaunchSettings, tvPosXPercent: null, tvPosYPercent: null }), className: "w-full py-1.5 rounded-lg text-[11px]", style: { background: "#0B0E11", color: "#8B93A1" } }, "بازنشانی جایگاه دکمه‌ی TradingView")),
+                React.createElement("p", { className: "text-[10px] leading-5", style: { color: "#6B7280" } }, "چرا گاهی هنوز باز نمی‌شه: از نسخه‌های جدیدِ کروم/سامسونگ‌اینترنت به بعد، مرورگر یک اپ نصب‌شده را فقط وقتی مستقیم با intent باز می‌کند که همون اپ، اکتیویتیِ لانچرش را «قابل‌بازشدن از مرورگر» (BROWSABLE) اعلام کرده باشه؛ اکثر اپ‌های نصب‌شده (ازجمله معمولاً MT5/تریدینگ‌ویو) این را اعلام نمی‌کنن، پس این محدودیت از طرف خودِ مرورگره، نه Namello. با package name تلاش می‌کنیم و روی برخی مرورگرها (خصوصاً سامسونگ‌اینترنت) جواب می‌ده؛ اگه روی گوشی تو جواب نداد، اگه اپ مقصد یه لینک اختصاصی (اسکیم) داشته باشه، همون رو توی فیلد «اسکیم اختصاصی» بالا وارد کن تا اول آن امتحان بشه.")),
             React.createElement("div", { className: "rounded-xl p-3 mb-3", style: { background: "#12161C", border: "1px solid #1F242C" } },
                 React.createElement("div", { className: "flex items-center justify-between mb-2" },
-                    React.createElement("h3", { className: "text-[13px] font-semibold", style: { color: "#E8EAED" } }, "\u0628\u0627\u0632\u06AF\u0634\u062A \u0633\u0631\u06CC\u0639 \u0628\u0647 Namello"),
+                    React.createElement("h3", { className: "text-[13px] font-semibold", style: { color: "#E8EAED" } }, "نوتیفیکیشن بازگشت به Namello"),
                     React.createElement("button", { onClick: () => namelloReturnSettings.enabled ? persistNamelloReturnSettings({ ...namelloReturnSettings, enabled: false }) : enableNamelloReturn(), className: "px-3 py-1 rounded-full text-[11px] font-medium", style: { background: namelloReturnSettings.enabled ? "#34D39922" : "#1A1F27", color: namelloReturnSettings.enabled ? "#34D399" : "#6B7280" } }, namelloReturnSettings.enabled ? "فعال" : "غیرفعال")),
                 React.createElement("p", { className: "text-[11px] leading-6", style: { color: "#6B7280" } },
-                    "\u0646\u06A9\u062A\u0647\u200C\u06CC \u0645\u0647\u0645: \u0686\u0648\u0646 Namello \u06CC\u06A9 \u0648\u0628\u200C\u0627\u067E (PWA) \u0647\u0633\u062A\u060C \u0646\u0645\u06CC\u200C\u062A\u0648\u0646\u0647 \u0645\u062B\u0644 \u06CC\u06A9 \u0627\u067E\u0644\u06CC\u06A9\u06CC\u0634\u0646 \u0646\u0635\u0628\u200C\u0634\u062F\u0647\u060C \u0631\u0648\u06CC \u0635\u0641\u062D\u0647\u200C\u06CC \u0627\u067E\u200C\u0647\u0627\u06CC \u062F\u06CC\u06AF\u0647 (\u0645\u062B\u0644 MT5 \u06CC\u0627 \u062A\u0631\u06CC\u062F\u06CC\u0646\u06AF\u200C\u0648\u06CC\u0648) \u0622\u06CC\u06A9\u0646 \u0634\u0646\u0627\u0648\u0631 \u062F\u0627\u0626\u0645\u06CC \u0646\u0634\u0648\u0646 \u0628\u062F\u0647 \u2014 \u0627\u06CC\u0646 \u06A9\u0627\u0631 \u0641\u0642\u0637 \u0628\u0627 \u0645\u062C\u0648\u0632 \u0633\u06CC\u0633\u062A\u0645\u06CC\u0650 \u00AB\u0646\u0645\u0627\u06CC\u0634 \u0631\u0648\u06CC \u0633\u0627\u06CC\u0631 \u0628\u0631\u0646\u0627\u0645\u0647\u200C\u0647\u0627\u00BB \u0645\u0645\u06A9\u0646\u0647 \u06A9\u0647 \u0627\u0646\u062F\u0631\u0648\u06CC\u062F \u0641\u0642\u0637 \u0628\u0647 \u0627\u067E\u200C\u0647\u0627\u06CC \u0646\u0635\u0628\u200C\u0634\u062F\u0647 (APK) \u0645\u06CC\u200C\u062F\u0647\u060C \u0646\u0647 \u0628\u0647 \u062A\u0628\u0650 \u0645\u0631\u0648\u0631\u06AF\u0631.",
+                    "نکته‌ی مهم: چون Namello یک وب‌اپ (PWA) است، نمی‌تونه مثل یه اپلیکیشن نصب‌شده، روی صفحه‌ی اپ‌های دیگه (مثل MT5 یا تریدینگ‌ویو) یک آیکن شناور دائمی نشون بده — این کار فقط با مجوز سیستمیِ «نمایش روی سایر برنامه‌ها» ممکنه که فقط به اپ‌های نصب‌شده (APK) داده می‌شه، نه به تبِ مرورگر. نزدیک‌ترین جایگزینِ واقعی که از دل مرورگر قابل‌اجراست همین است: وقتی این گزینه فعاله و از Namello بری روی اپ دیگه، یک نوتیفیکیشن با متن «برای بازگشت سریع به Namello ضربه بزن» توی نوار اعلان‌ها ظاهر می‌شه؛ با زدنش برمی‌گردی به برنامه.",
                     React.createElement("br", null),
                     React.createElement("br", null),
-                    "\u0646\u0632\u062F\u06CC\u06A9\u200C\u062A\u0631\u06CC\u0646 \u062C\u0627\u06CC\u06AF\u0632\u06CC\u0646\u0650 \u0648\u0627\u0642\u0639\u06CC \u06A9\u0647 \u0627\u0632 \u062F\u0644 \u0645\u0631\u0648\u0631\u06AF\u0631 \u0642\u0627\u0628\u0644\u200C\u0627\u062C\u0631\u0627\u0633\u062A: \u0648\u0642\u062A\u06CC \u0627\u06CC\u0646 \u06AF\u0632\u06CC\u0646\u0647 \u0631\u0648 \u0641\u0639\u0627\u0644 \u06A9\u0646\u06CC\u060C \u0628\u0647 \u0645\u062D\u0636 \u0627\u06CC\u0646\u06A9\u0647 \u0627\u0632 Namello \u0628\u0631\u06CC \u062A\u0648 \u0627\u067E \u062F\u06CC\u06AF\u0647\u060C \u06CC\u06A9 \u0646\u0648\u062A\u06CC\u0641\u06CC\u06A9\u06CC\u0634\u0646 \u0628\u0627 \u062F\u06A9\u0645\u0647\u200C\u06CC \u00AB\u0628\u0627\u0632\u06A9\u0631\u062F\u0646 Namello\u00BB \u062A\u0648 \u0646\u0648\u0627\u0631 \u0627\u0639\u0644\u0627\u0646\u200C\u0647\u0627\u06CC \u06AF\u0648\u0634\u06CC \u0638\u0627\u0647\u0631 \u0645\u06CC\u200C\u0634\u0647 \u06A9\u0647 \u0628\u0627 \u06CC\u06A9 \u0636\u0631\u0628\u0647 \u0628\u0631\u062A \u0645\u06CC\u200C\u06AF\u0631\u062F\u0648\u0646\u0647 \u0628\u0647 \u0628\u0631\u0646\u0627\u0645\u0647. \u0628\u0627 \u0641\u0639\u0627\u0644\u200C\u06A9\u0631\u062F\u0646\u060C \u0645\u0631\u0648\u0631\u06AF\u0631 \u0627\u0632\u062A \u0627\u062C\u0627\u0632\u0647\u200C\u06CC \u0646\u0648\u062A\u06CC\u0641\u06CC\u06A9\u06CC\u0634\u0646 \u0645\u06CC\u200C\u062E\u0648\u0627\u062F.")),
+                    "اگه بعد از فعال‌کردن هنوز این نوتیفیکیشن ظاهر نمی‌شه، دلیلش تقریباً همیشه مدیریت باتریِ خودِ سامسونگه: چون Namello یه تبِ مرورگرِ پس‌زمینه است (نه اپ نصب‌شده)، سامسونگ اغلب پردازشش رو همون لحظه‌ای که ازش خارج می‌شی می‌بنده، قبل از اینکه فرصت کنه نوتیفیکیشن رو نشون بده. برای رفع این مورد: تنظیمات گوشی ← نرم‌افزارها (یا مراقبت از باتری) ← مرورگری که Namello رو باهاش باز کردی (کروم/سامسونگ‌اینترنت) ← مصرف باتری ← گزینه‌ی «بدون محدودیت» رو انتخاب کن، و مطمئن شو مرورگر تو لیست «اپ‌های خواب» یا «به‌خواب‌رفته» نیست. بدون این تنظیم، این قابلیت (و کلاً نوتیفیکیشن‌های Namello) روی گوشی‌های سامسونگ به‌طور نامنظم کار می‌کنن.")),
             React.createElement("div", { className: "rounded-xl p-3 mb-3", style: { background: "#12161C", border: "1px solid #1F242C" } },
                 React.createElement("h3", { className: "text-[13px] font-semibold mb-2", style: { color: "#E8EAED" } }, "\u0648\u06CC\u062C\u062A \u0633\u0627\u0639\u062A\u200C\u0634\u0645\u0627\u0631 \u0633\u0634\u0646\u200C\u0647\u0627"),
-                React.createElement("p", { className: "text-[11px] leading-6 mb-3", style: { color: "#6B7280" } }, "\u0646\u06A9\u062A\u0647\u200C\u06CC \u0645\u0647\u0645: \u0648\u06CC\u062C\u062A\u0650 \u0648\u0627\u0642\u0639\u06CC\u0650 \u0635\u0641\u062D\u0647\u200C\u06CC \u0627\u0635\u0644\u06CC\u0650 \u0627\u0646\u062F\u0631\u0648\u06CC\u062F (Home screen widget) \u0641\u0642\u0637 \u0628\u0627 \u06A9\u062F\u0646\u0648\u06CC\u0633\u06CC\u0650 \u0646\u06CC\u062A\u06CC\u0648 (Kotlin/Java + AppWidgetProvider) \u0633\u0627\u062E\u062A\u0647 \u0645\u06CC\u200C\u0634\u0647 \u0648 \u0627\u0632 \u062F\u0644 \u06CC\u06A9 \u0648\u0628\u200C\u0627\u067E/PWA \u0642\u0627\u0628\u0644\u200C\u0633\u0627\u062E\u062A \u0646\u06CC\u0633\u062A. \u0628\u0647\u200C\u062C\u0627\u0634\u060C \u06CC\u06A9 \u0635\u0641\u062D\u0647\u200C\u06CC \u0648\u0628\u0650 \u06A9\u0648\u0686\u06CC\u06A9 \u0648 \u0645\u0633\u062A\u0642\u0644 (widget.html) \u06A9\u0646\u0627\u0631 \u0628\u0631\u0646\u0627\u0645\u0647\u200C\u06CC \u0627\u0635\u0644\u06CC \u0633\u0627\u062E\u062A\u0647 \u0634\u062F\u0647 \u06A9\u0647 \u0641\u0642\u0637 \u0633\u0627\u0639\u062A\u200C\u0634\u0645\u0627\u0631\u0650 \u06AF\u0631\u062F \u0628\u0627\u0644\u0627\u06CC \u0633\u0634\u0646\u200C\u0647\u0627 \u0648 \u0633\u0634\u0646\u200C\u0647\u0627\u06CC \u0641\u0639\u0627\u0644 \u0631\u0648 \u0646\u0634\u0648\u0646 \u0645\u06CC\u200C\u062F\u0647 \u0648 \u0633\u0627\u06CC\u0632\u0634 \u0628\u0627 CSS \u0648\u0627\u06A9\u0646\u0634\u200C\u06AF\u0631\u0627\u0633\u062A. \u0645\u06CC\u200C\u062A\u0648\u0646\u06CC \u0627\u06CC\u0646 \u0635\u0641\u062D\u0647 \u0631\u0648 \u0645\u0633\u062A\u0642\u06CC\u0645 \u0628\u0627\u0632 \u06A9\u0646\u06CC\u060C \u0628\u0647\u200C\u0635\u0648\u0631\u062A \u0645\u06CC\u0627\u0646\u200C\u0628\u0631 \u0628\u0647 \u0647\u0648\u0645\u200C\u0627\u0633\u06A9\u0631\u06CC\u0646 \u0627\u0636\u0627\u0641\u0647 \u06A9\u0646\u06CC\u060C \u06CC\u0627 \u062F\u0627\u062E\u0644 \u0627\u067E\u200C\u0647\u0627\u06CC \u00AB\u0648\u06CC\u062C\u062A \u0648\u0628\u00BB (\u0645\u062B\u0644 KWGT \u06CC\u0627 \u0645\u0634\u0627\u0628\u0647) \u0628\u0647 \u0622\u062F\u0631\u0633\u0634 \u0644\u06CC\u0646\u06A9 \u0628\u062F\u06CC \u062A\u0627 \u0634\u0628\u06CC\u0647 \u06CC\u06A9 \u0648\u06CC\u062C\u062A \u0648\u0627\u0642\u0639\u06CC \u0631\u0648\u06CC \u0647\u0648\u0645\u200C\u0627\u0633\u06A9\u0631\u06CC\u0646 \u0628\u0634\u06CC\u0646\u0647."),
+                React.createElement("p", { className: "text-[11px] leading-6 mb-3", style: { color: "#6B7280" } }, "نکته‌ی مهم: یک ویجتِ واقعیِ صفحه‌ی اصلیِ اندروید (Home screen widget) فقط با کدنویسیِ نیتیو (Kotlin/Java + AppWidgetProvider) ساخته می‌شه — چیزیه که فقط داخل یه اپلیکیشن نصب‌شده (APK) وجود داره، نه یک صفحه‌ی وب، و از دل یک PWA قابل‌ساخت نیست؛ Namello در حال حاضر یک وب‌اپ است، نه یک اپ نیتیوِ کامپایل‌شده. نزدیک‌ترین معادلِ واقعی که از دل وب قابل‌ساخته، همین widget.html است: حالا به‌شکل یک دایره‌ی چندلایه طراحی شده که هر نشست (سیدنی/توکیو/لندن/نیویورک) به‌صورت یک قطاعِ رنگی روی حلقه‌ی خودش نشون داده می‌شه — نشست‌های فعال پررنگ و نشست‌های غیرفعال کم‌رنگ‌ترن، و یک خط شعاعی هم موقعیت لحظه‌ای زمان نیویورک رو نشون می‌ده. می‌تونی این صفحه رو مستقیم باز کنی، با «افزودن به صفحه‌ی اصلی» میان‌برش رو روی هوم‌اسکرین بذاری، یا داخل اپ‌های «ویجت وب» (مثل KWGT) به آدرسش لینک بدی تا شبیه یک ویجت واقعی روی هوم‌اسکرین بشینه."),
                 React.createElement("label", { className: "text-[11px] block mb-1.5", style: { color: "#6B7280" } }, "\u0633\u0627\u06CC\u0632 \u0646\u0645\u0627\u06CC\u0634 \u062F\u0631 widget.html"),
                 React.createElement("div", { className: "flex gap-2 mb-3" }, [[1, "کوچک"], [2, "متوسط"], [3, "بزرگ"]].map(([lvl, label]) => (React.createElement("button", { key: lvl, onClick: () => persistWidgetSettings({ ...widgetSettings, sizeLevel: lvl }), className: "flex-1 py-2 rounded-lg text-[12px]", style: { background: widgetSettings.sizeLevel === lvl ? "#D4A64A22" : "#1A1F27", color: widgetSettings.sizeLevel === lvl ? "#D4A64A" : "#6B7280" } }, label)))),
                 React.createElement("a", { href: "./widget.html", target: "_blank", rel: "noopener", className: "w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-[12px] font-medium", style: { background: "#1A1F27", color: "#D4A64A" } }, "\u0628\u0627\u0632 \u06A9\u0631\u062F\u0646 widget.html")))),
@@ -5168,16 +5205,10 @@ function App() {
                 React.createElement("div", { className: "flex gap-2" },
                     React.createElement("button", { onClick: () => persistCalcProbWeights(DEFAULT_CALC_PROB_WEIGHTS), className: "flex-1 py-2.5 rounded-xl text-sm", style: { background: "#1A1F27", color: "#E8EAED" } }, "\u0628\u0627\u0632\u06AF\u0634\u062A \u0628\u0647 \u067E\u06CC\u0634\u200C\u0641\u0631\u0636"),
                     React.createElement("button", { onClick: () => setShowCalcProbWeights(false), className: "flex-1 py-2.5 rounded-xl text-sm font-medium", style: { background: "#D4A64A", color: "#0B0E11" } }, "\u0628\u0627\u0634\u0647"))))),
-        quickLaunchSettings.enabled && (React.createElement(DraggableFab, { posXPercent: quickLaunchSettings.posXPercent, posYPercent: quickLaunchSettings.posYPercent, defaultCorner: "bottom-left", onDrop: (x, y) => persistQuickLaunchSettings({ ...quickLaunchSettings, posXPercent: x, posYPercent: y }), onClick: () => setShowQuickLaunch(v => !v) },
-            showQuickLaunch && (React.createElement("div", { className: "mb-2 rounded-xl p-2 flex flex-col gap-1.5", style: { background: "#12161C", border: "1px solid #1F242C", minWidth: 168, position: "absolute", bottom: 56 } },
-                quickLaunchSettings.mt5Enabled && (React.createElement("button", { onClick: () => { setShowQuickLaunch(false); launchInstalledApp(quickLaunchSettings.mt5Package, quickLaunchSettings.mt5Label); }, className: "flex items-center gap-2 px-3 py-2 rounded-lg text-[12px]", style: { background: "#1A1F27", color: "#E8EAED" } },
-                    "\uD83D\uDCCA ",
-                    quickLaunchSettings.mt5Label || "متاتریدر ۵")),
-                quickLaunchSettings.tvEnabled && (React.createElement("button", { onClick: () => { setShowQuickLaunch(false); launchInstalledApp(quickLaunchSettings.tvPackage, quickLaunchSettings.tvLabel); }, className: "flex items-center gap-2 px-3 py-2 rounded-lg text-[12px]", style: { background: "#1A1F27", color: "#E8EAED" } },
-                    "\uD83D\uDCC8 ",
-                    quickLaunchSettings.tvLabel || "تریدینگ‌ویو")),
-                !quickLaunchSettings.mt5Enabled && !quickLaunchSettings.tvEnabled && (React.createElement("span", { className: "text-[11px] px-2 py-1", style: { color: "#6B7280" } }, "\u0627\u0632 \u062A\u0628 \u00AB\u062A\u0646\u0638\u06CC\u0645\u0627\u062A\u00BB \u062D\u062F\u0627\u0642\u0644 \u06CC\u06A9\u06CC \u0631\u0648 \u0641\u0639\u0627\u0644 \u06A9\u0646.")))),
-            React.createElement("button", { className: "w-12 h-12 rounded-full flex items-center justify-center text-lg", style: { background: "#D4A64A", color: "#0B0E11", boxShadow: "0 4px 12px #00000066" }, "aria-label": "\u0627\u062C\u0631\u0627\u06CC \u0633\u0631\u06CC\u0639 \u0627\u067E\u0644\u06CC\u06A9\u06CC\u0634\u0646 \u0645\u0639\u0627\u0645\u0644\u0627\u062A\u06CC (\u0628\u0631\u0627\u06CC \u062C\u0627\u0628\u0647\u200C\u062C\u0627\u06CC\u06CC\u060C \u0628\u06A9\u0634)" }, "\uD83D\uDE80"))),
+        quickLaunchSettings.enabled && quickLaunchSettings.mt5Enabled && (React.createElement(DraggableFab, { posXPercent: quickLaunchSettings.mt5PosXPercent, posYPercent: quickLaunchSettings.mt5PosYPercent, defaultCorner: "bottom-left", defaultOffsetY: 0, onDrop: (x, y) => persistQuickLaunchSettings({ ...quickLaunchSettings, mt5PosXPercent: x, mt5PosYPercent: y }), onClick: () => launchInstalledApp(quickLaunchSettings.mt5Package, quickLaunchSettings.mt5Label, quickLaunchSettings.mt5Scheme) },
+            React.createElement("button", { className: "w-12 h-12 rounded-full flex items-center justify-center text-lg", style: { background: "#12161C", color: "#D4A64A", border: "1px solid #262C36", boxShadow: "0 4px 12px #00000066" }, "aria-label": quickLaunchSettings.mt5Label || "اجرای سریع متاتریدر ۵" }, "\uD83D\uDCCA"))),
+        quickLaunchSettings.enabled && quickLaunchSettings.tvEnabled && (React.createElement(DraggableFab, { posXPercent: quickLaunchSettings.tvPosXPercent, posYPercent: quickLaunchSettings.tvPosYPercent, defaultCorner: "bottom-left", defaultOffsetY: 64, onDrop: (x, y) => persistQuickLaunchSettings({ ...quickLaunchSettings, tvPosXPercent: x, tvPosYPercent: y }), onClick: () => launchInstalledApp(quickLaunchSettings.tvPackage, quickLaunchSettings.tvLabel, quickLaunchSettings.tvScheme) },
+            React.createElement("button", { className: "w-12 h-12 rounded-full flex items-center justify-center text-lg", style: { background: "#12161C", color: "#60A5FA", border: "1px solid #262C36", boxShadow: "0 4px 12px #00000066" }, "aria-label": quickLaunchSettings.tvLabel || "اجرای سریع تریدینگ‌ویو" }, "\uD83D\uDCC8"))),
         toast && (React.createElement("div", { className: "fixed left-1/2 z-50 px-4 py-2.5 rounded-xl text-[12px]", style: { bottom: 76, transform: "translateX(-50%)", background: "#1A1F27", color: "#E8EAED", border: "1px solid #262C36", maxWidth: "90%", textAlign: "center" } }, toast))));
 }
 

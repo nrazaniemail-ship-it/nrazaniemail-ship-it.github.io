@@ -16,17 +16,18 @@
     display: flex; flex-direction: column; align-items: center; justify-content: center;
     min-height: 100vh; padding: calc(10px * var(--scale));
   }
-  .card {
-    width: 100%; max-width: calc(320px * var(--scale)); text-align: center;
-  }
-  .ring-wrap { position: relative; width: calc(46vw * var(--scale)); height: calc(46vw * var(--scale)); max-width: calc(220px * var(--scale)); max-height: calc(220px * var(--scale)); min-width: 90px; min-height: 90px; margin: 0 auto; }
-  svg { width: 100%; height: 100%; transform: rotate(-90deg); }
-  .ring-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
-  .clock-time { font-family: 'JetBrains Mono', monospace; font-size: calc(15px * var(--scale)); color: #8B93A1; letter-spacing: 0.5px; }
-  .focus-name { font-size: calc(12px * var(--scale)); color: #D4A64A; font-weight: 700; margin-top: 2px; }
-  .focus-countdown { font-family: 'JetBrains Mono', monospace; font-size: calc(20px * var(--scale)); font-weight: 700; color: #E8EAED; }
-  .focus-sub { font-size: calc(10px * var(--scale)); color: #6B7280; }
-  .chips { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-top: calc(14px * var(--scale)); }
+  .card { width: 100%; max-width: calc(320px * var(--scale)); text-align: center; }
+  .ring-wrap { position: relative; width: calc(46vw * var(--scale)); height: calc(46vw * var(--scale)); max-width: calc(220px * var(--scale)); max-height: calc(220px * var(--scale)); min-width: 110px; min-height: 110px; margin: 0 auto; }
+  svg { width: 100%; height: 100%; display: block; }
+  .ring-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: calc(20px * var(--scale)); }
+  .clock-time { font-family: 'JetBrains Mono', monospace; font-size: calc(13px * var(--scale)); color: #8B93A1; letter-spacing: 0.5px; }
+  .focus-name { font-size: calc(11px * var(--scale)); color: #D4A64A; font-weight: 700; margin-top: 3px; text-align: center; line-height: 1.3; }
+  .focus-countdown { font-family: 'JetBrains Mono', monospace; font-size: calc(16px * var(--scale)); font-weight: 700; color: #E8EAED; }
+  .focus-sub { font-size: calc(9px * var(--scale)); color: #6B7280; }
+  .legend { display: flex; flex-wrap: wrap; gap: 5px; justify-content: center; margin-top: calc(10px * var(--scale)); }
+  .legend-item { display: flex; align-items: center; gap: 4px; font-size: calc(10px * var(--scale)); padding: 3px 8px; border-radius: 999px; white-space: nowrap; background: #12161C; border: 1px solid #1F242C; }
+  .legend-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-top: calc(10px * var(--scale)); }
   .chip { font-size: calc(11px * var(--scale)); padding: 4px 10px; border-radius: 999px; white-space: nowrap; }
   .empty { font-size: calc(11px * var(--scale)); color: #6B7280; }
   .sizebar { position: fixed; top: 8px; left: 8px; display: flex; gap: 4px; opacity: 0.55; }
@@ -44,10 +45,7 @@
   <div class="card">
     <div class="logo-row"><span class="logo-dot"></span><span class="logo-text">Namello</span></div>
     <div class="ring-wrap">
-      <svg viewBox="0 0 120 120">
-        <circle cx="60" cy="60" r="52" fill="none" stroke="#1A1F27" stroke-width="9" />
-        <circle id="ring" cx="60" cy="60" r="52" fill="none" stroke="#D4A64A" stroke-width="9" stroke-linecap="round" stroke-dasharray="326.7" stroke-dashoffset="326.7" />
-      </svg>
+      <svg viewBox="0 0 120 120" id="sessionSvg"></svg>
       <div class="ring-center">
         <div class="clock-time" id="nyClock">--:--:--</div>
         <div class="focus-name" id="focusName">—</div>
@@ -55,19 +53,23 @@
         <div class="focus-sub" id="focusSub"></div>
       </div>
     </div>
+    <div class="legend" id="legend"></div>
     <div class="chips" id="chips"></div>
   </div>
 
 <script>
-/* این صفحه، نسخه‌ی مستقل و سبکِ «فقط ساعت‌شمار گرد + سشن‌های فعال» از Namello است — چون یک
-   ویجتِ واقعیِ صفحه‌ی اصلیِ اندروید فقط با کد نیتیو (Kotlin/AppWidgetProvider) ساخته می‌شود،
-   این صفحه نزدیک‌ترین معادلِ قابل‌ساخت از دل وب است: می‌شه بازش کرد، به هوم‌اسکرین
-   میان‌بر زد، یا داخل اپ‌های «ویجت وب» به آدرسش لینک داد. تنظیمات سشن‌ها را از همان
-   حافظه‌ی محلیِ برنامه‌ی اصلی (در همین دامنه/PWA) می‌خواند تا با Namello هماهنگ بماند.
+/* این صفحه، نسخه‌ی مستقل و سبکِ Namello است که نشست‌های معاملاتی (سیدنی/توکیو/لندن/نیویورک) را
+   به‌صورت قطاع‌های رنگی روی یک دایره‌ی چندلایه (هر نشست یک حلقه‌ی مخصوص خودش) نشان می‌دهد؛ یک خط
+   شعاعی هم موقعیت لحظه‌ای زمان نیویورک را نشان می‌دهد و کیل‌زون‌ها/سیلور بولت‌ها با یک تیک کوچک
+   روی لبه‌ی بیرونی مشخص شده‌اند. چون یک ویجتِ واقعیِ صفحه‌ی اصلیِ اندروید فقط با کد نیتیو
+   (Kotlin/AppWidgetProvider) ساخته می‌شود و از دل HTML/CSS/JS قابل‌ساخت نیست، این صفحه نزدیک‌ترین
+   معادلِ قابل‌ساخت از دل وب است: می‌شه بازش کرد، به هوم‌اسکرین میان‌بر زد، یا داخل اپ‌های «ویجت
+   وب» (مثل KWGT) به آدرسش لینک داد. تنظیمات سشن‌ها را از همان حافظه‌ی محلیِ برنامه‌ی اصلی
+   (در همین دامنه/PWA) می‌خواند تا با Namello هماهنگ بماند.
 
-   NOTE: This is a lightweight, dependency-free reflection of the round session countdown +
-   active sessions from the main Namello app. A real Android home-screen widget cannot be
-   built from HTML/JS — it requires native code (Kotlin/Java + AppWidgetProvider). */
+   NOTE: This is a lightweight, dependency-free reflection of the active trading sessions from the
+   main Namello app, drawn as colored sector arcs on a multi-ring circle. A real Android home-screen
+   widget cannot be built from HTML/JS — it requires native code (Kotlin/Java + AppWidgetProvider). */
 
 function pad2(n) { return String(n).padStart(2, "0"); }
 
@@ -138,7 +140,7 @@ function evalEvent(ev, minutesOfDay, dst) {
     untilStart = (startMin - minutesOfDay + 1440) % 1440;
     remaining = 0; progress = 0;
   }
-  return { ...ev, duration, active, remaining, progress, untilStart };
+  return { ...ev, startMin, duration, active, remaining, progress, untilStart };
 }
 function fmtDur(min) {
   min = Math.max(0, Math.round(min));
@@ -146,49 +148,152 @@ function fmtDur(min) {
   return `${pad2(h)}:${pad2(m)}:00`;
 }
 
-const RING_CIRC = 2 * Math.PI * 52;
-const ringEl = document.getElementById("ring");
+/* ---------------- ریاضیِ رسم قطاع روی دایره (۰ دقیقه = بالای دایره، ساعت‌گرد) ---------------- */
+const SVG_NS = "http://www.w3.org/2000/svg";
+function polarToXY(cx, cy, r, angleDeg) {
+  const rad = (angleDeg - 90) * Math.PI / 180;
+  return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
+}
+function arcPath(cx, cy, r, startDeg, endDeg) {
+  let sweep = endDeg - startDeg;
+  if (sweep <= 0) sweep += 360;
+  if (sweep >= 359.99) sweep = 359.99; // جلوگیری از دایره‌ی کامل که SVG آرک را اشتباه رسم می‌کند
+  const end = startDeg + sweep;
+  const p0 = polarToXY(cx, cy, r, startDeg);
+  const p1 = polarToXY(cx, cy, r, end);
+  const largeArc = sweep > 180 ? 1 : 0;
+  return `M ${p0.x} ${p0.y} A ${r} ${r} 0 ${largeArc} 1 ${p1.x} ${p1.y}`;
+}
+function svgEl(tag, attrs) {
+  const el = document.createElementNS(SVG_NS, tag);
+  Object.keys(attrs).forEach(k => el.setAttribute(k, attrs[k]));
+  return el;
+}
+
+const CX = 60, CY = 60;
+const RING_STROKE = 7;
+// از بیرون به داخل: سیدنی، توکیو، لندن، نیویورک
+const RING_DEFS = [
+  { key: "sydney", r: 54 },
+  { key: "tokyo", r: 45 },
+  { key: "london", r: 36 },
+  { key: "newyork", r: 27 },
+];
+
+const svgRoot = document.getElementById("sessionSvg");
 const nyClockEl = document.getElementById("nyClock");
 const focusNameEl = document.getElementById("focusName");
 const focusCountdownEl = document.getElementById("focusCountdown");
 const focusSubEl = document.getElementById("focusSub");
 const chipsEl = document.getElementById("chips");
+const legendEl = document.getElementById("legend");
+
+let legendBuilt = false;
+function buildLegend(sessions) {
+  if (legendBuilt) return;
+  legendBuilt = true;
+  legendEl.innerHTML = "";
+  sessions.forEach(s => {
+    const item = document.createElement("span");
+    item.className = "legend-item";
+    const dot = document.createElement("span");
+    dot.className = "legend-dot";
+    dot.style.background = s.color || "#D4A64A";
+    item.appendChild(dot);
+    item.appendChild(document.createTextNode(s.name.replace("سشن ", "")));
+    legendEl.appendChild(item);
+  });
+}
+
+function drawSessionRings(sessions, minutesOfDay, dst) {
+  svgRoot.innerHTML = "";
+  RING_DEFS.forEach(def => {
+    const s = sessions.find(x => x.key === def.key);
+    if (!s) return;
+    const ev = evalEvent(s, minutesOfDay, dst);
+    const startDeg = (ev.startMin / 1440) * 360;
+    const endDeg = startDeg + (ev.duration / 1440) * 360;
+    const color = s.color || "#D4A64A";
+    // حلقه‌ی زمینه (کم‌رنگ، کامل)
+    svgRoot.appendChild(svgEl("circle", {
+      cx: CX, cy: CY, r: def.r, fill: "none", stroke: color, "stroke-opacity": 0.08, "stroke-width": RING_STROKE,
+    }));
+    // قطاعِ بازه‌ی زمانیِ همین نشست
+    svgRoot.appendChild(svgEl("path", {
+      d: arcPath(CX, CY, def.r, startDeg, endDeg),
+      fill: "none", stroke: color, "stroke-width": RING_STROKE, "stroke-linecap": "round",
+      "stroke-opacity": ev.active ? 1 : 0.38,
+    }));
+  });
+}
+
+function drawEdgeTicks(events) {
+  const rOuter = 60, rInner = 57.5;
+  events.forEach(ev => {
+    const deg = (ev.startMin / 1440) * 360;
+    const p0 = polarToXY(CX, CY, rInner, deg);
+    const p1 = polarToXY(CX, CY, rOuter, deg);
+    svgRoot.appendChild(svgEl("line", {
+      x1: p0.x, y1: p0.y, x2: p1.x, y2: p1.y,
+      stroke: ev.color || "#39FF6E", "stroke-width": ev.active ? 2.4 : 1.2,
+      "stroke-opacity": ev.active ? 1 : 0.55, "stroke-linecap": "round",
+    }));
+  });
+}
+
+function drawNowMarker(minutesOfDay, seconds) {
+  const preciseMin = minutesOfDay + seconds / 60;
+  const deg = (preciseMin / 1440) * 360;
+  const p0 = polarToXY(CX, CY, 21, deg);
+  const p1 = polarToXY(CX, CY, 58.5, deg);
+  svgRoot.appendChild(svgEl("line", {
+    x1: p0.x, y1: p0.y, x2: p1.x, y2: p1.y,
+    stroke: "#E8EAED", "stroke-width": 1.3, "stroke-opacity": 0.9,
+  }));
+  const tip = polarToXY(CX, CY, 58.5, deg);
+  svgRoot.appendChild(svgEl("circle", { cx: tip.x, cy: tip.y, r: 2.1, fill: "#E8EAED" }));
+}
 
 function tick() {
   const now = getNYNow();
   nyClockEl.textContent = `${pad2(now.hh)}:${pad2(now.mi)}:${pad2(now.ss)} NY`;
 
   const config = loadConfig();
-  const all = [
-    ...config.sessions.map(e => ({ ...evalEvent(e, now.minutesOfDay, now.dst), kind: "سشن" })),
-    ...config.killzones.map(e => ({ ...evalEvent(e, now.minutesOfDay, now.dst), kind: "کیل‌زون" })),
-    ...config.silverbullets.map(e => ({ ...evalEvent(e, now.minutesOfDay, now.dst), kind: "سیلور بولت" })),
-  ];
+  buildLegend(config.sessions);
 
-  const activeEvents = all.filter(e => e.active).sort((a, b) => a.remaining - b.remaining);
-  const focus = activeEvents[0] || all.slice().sort((a, b) => a.untilStart - b.untilStart)[0];
+  const sessionsEval = config.sessions.map(e => ({ ...evalEvent(e, now.minutesOfDay, now.dst), kind: "سشن" }));
+  const kzEval = config.killzones.map(e => ({ ...evalEvent(e, now.minutesOfDay, now.dst), kind: "کیل‌زون" }));
+  const sbEval = config.silverbullets.map(e => ({ ...evalEvent(e, now.minutesOfDay, now.dst), kind: "سیلور بولت" }));
+  const all = [...sessionsEval, ...kzEval, ...sbEval];
+
+  drawSessionRings(config.sessions, now.minutesOfDay, now.dst);
+  drawEdgeTicks([...kzEval, ...sbEval]);
+  drawNowMarker(now.minutesOfDay, now.ss);
+
+  // اولویتِ نمایش در مرکز: کیل‌زون/سیلور بولتِ فعال (چون بازه‌ی کوتاه‌تر و حساس‌تری دارن)، بعد سشن‌ها
+  const activeSessions = sessionsEval.filter(e => e.active);
+  const activeNarrow = [...kzEval, ...sbEval].filter(e => e.active).sort((a, b) => a.remaining - b.remaining);
+  const focus = activeNarrow[0] || activeSessions.slice().sort((a, b) => a.remaining - b.remaining)[0]
+    || all.slice().sort((a, b) => a.untilStart - b.untilStart)[0];
 
   if (focus) {
-    focusNameEl.textContent = focus.name;
     if (focus.active) {
       const secLeft = focus.remaining * 60 - now.ss;
+      focusNameEl.textContent = focus.name;
       focusCountdownEl.textContent = fmtDur(secLeft / 60);
-      focusSubEl.textContent = `${focus.kind} فعال — تا پایان`;
-      const off = RING_CIRC * (1 - focus.progress);
-      ringEl.setAttribute("stroke-dasharray", String(RING_CIRC));
-      ringEl.setAttribute("stroke-dashoffset", String(off));
-      ringEl.style.stroke = focus.color || "#D4A64A";
+      focusSubEl.textContent = activeNarrow[0]
+        ? `${focus.kind} فعال — تا پایان`
+        : (activeSessions.length > 1 ? `${activeSessions.length} نشست هم‌زمان فعال — تا پایانِ نزدیک‌ترین` : `${focus.kind} فعال — تا پایان`);
     } else {
       const secLeft = focus.untilStart * 60 - now.ss;
+      focusNameEl.textContent = focus.name;
       focusCountdownEl.textContent = fmtDur(secLeft / 60);
       focusSubEl.textContent = `${focus.kind} — تا شروع`;
-      ringEl.setAttribute("stroke-dasharray", String(RING_CIRC));
-      ringEl.setAttribute("stroke-dashoffset", String(RING_CIRC));
-      ringEl.style.stroke = "#262C36";
     }
   }
 
   chipsEl.innerHTML = "";
+  const activeEvents = all.filter(e => e.active).sort((a, b) => a.remaining - b.remaining);
   if (activeEvents.length) {
     activeEvents.forEach(e => {
       const span = document.createElement("span");
