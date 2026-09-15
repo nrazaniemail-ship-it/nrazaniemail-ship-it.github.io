@@ -7,11 +7,11 @@
 // دفعات آفلاینِ بعدی کش می‌شه). فقط وقتی واقعاً آفلاینیم، از کش قدیمی استفاده می‌شه.
 // برای فایل‌های CDN (React, XLSX, Plotly, Tailwind, فونت‌ها) که نسخه‌شون پین‌شده و عوض نمی‌شه،
 // همچنان استراتژی "اول کش" (سریع‌تر و برای آفلاین قابل‌اعتمادتر) باقی مونده.
-const CACHE_NAME = "namello-v5";
+const CACHE_NAME = "namello-v6";
 
 const HTML_URLS = ["./", "./index.html"];
 const WIDGET_URL = "./widget.html";
-const APP_SHELL = ["./manifest.json", "./icon-192.png", "./icon-512.png", WIDGET_URL];
+const APP_SHELL = ["./manifest.json", "./icon-192.png", "./icon-512.png", "./icon-mt5.jpg", "./icon-tradingview.png", WIDGET_URL];
 
 const RUNTIME_DEPS = [
   "https://cdn.jsdelivr.net/npm/react@18/umd/react.production.min.js",

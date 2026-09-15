@@ -271,6 +271,50 @@ function gregorianToJalali(gy, gm, gd) {
     }
     return [jy, jm, jd];
 }
+// همون الگوریتم بالا (gregorianToJalali) برعکس‌شده — با همون ثابت‌های ۱۶۰۰/۹۷۹/۶۲۱ تا با هم سازگار بمونن.
+function jalaliToGregorian(jy, jm, jd) {
+    let gy = jy <= 979 ? 621 : 1600;
+    jy = jy <= 979 ? jy : jy - 979;
+    let days = 365 * jy + Math.floor(jy / 33) * 8 + Math.floor(((jy % 33) + 3) / 4) + 78 + jd + (jm < 7 ? (jm - 1) * 31 : (jm - 7) * 30 + 186);
+    gy += 400 * Math.floor(days / 146097);
+    days %= 146097;
+    if (days > 36524) {
+        gy += 100 * Math.floor(--days / 36524);
+        days %= 36524;
+        if (days >= 365)
+            days++;
+    }
+    gy += 4 * Math.floor(days / 1461);
+    days %= 1461;
+    if (days > 365) {
+        gy += Math.floor((days - 1) / 365);
+        days = (days - 1) % 365;
+    }
+    let gd = days + 1;
+    const isLeapG = (gy % 4 === 0 && gy % 100 !== 0) || gy % 400 === 0;
+    const salA = [0, 31, isLeapG ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+    let gm = 1;
+    for (; gm <= 12; gm++) {
+        if (gd <= salA[gm])
+            break;
+        gd -= salA[gm];
+    }
+    return [gy, gm, gd];
+}
+function daysInGregorianMonth(gy, gm) {
+    return new Date(Date.UTC(gy, gm, 0)).getUTCDate();
+}
+function daysInJalaliMonth(jy, jm) {
+    const [gy1, gm1, gd1] = jalaliToGregorian(jy, jm, 1);
+    const nextJy = jm === 12 ? jy + 1 : jy;
+    const nextJm = jm === 12 ? 1 : jm + 1;
+    const [gy2, gm2, gd2] = jalaliToGregorian(nextJy, nextJm, 1);
+    const d1 = Date.UTC(gy1, gm1 - 1, gd1);
+    const d2 = Date.UTC(gy2, gm2 - 1, gd2);
+    return Math.round((d2 - d1) / 86400000);
+}
+function pad2Str(n) { return String(n).padStart(2, "0"); }
+function gregPartsToDateStr(gy, gm, gd) { return `${gy}-${pad2Str(gm)}-${pad2Str(gd)}`; }
 function weekdayFromDateStr(dateStr) {
     if (!dateStr)
         return "";
@@ -318,6 +362,7 @@ function durationBucketFa(minutes) {
 }
 const WEEKDAYS_FA = ["یکشنبه", "دوشنبه", "سه‌شنبه", "چهارشنبه", "پنجشنبه", "جمعه", "شنبه"];
 const JMONTHS_FA = ["فروردین", "اردیبهشت", "خرداد", "تیر", "مرداد", "شهریور", "مهر", "آبان", "آذر", "دی", "بهمن", "اسفند"];
+const GMONTHS_FA = ["ژانویه", "فوریه", "مارس", "آوریل", "مه", "ژوئن", "ژوئیه", "اوت", "سپتامبر", "اکتبر", "نوامبر", "دسامبر"];
 /* ------------------------- default session config (NY time) ------------------------- */
 const DEFAULT_CONFIG = {
     colors: { overlap: "#FDE047" },
@@ -1288,7 +1333,7 @@ function ChartImageField({ label, value, onChange }) {
     }
     return (React.createElement("div", { className: "mb-2" },
         React.createElement("label", { className: "text-[11px] block mb-1", style: { color: "var(--text-muted)" } }, label),
-        React.createElement("input", { ref: inputRef, type: "file", accept: "image/*", capture: "environment", onChange: handleFile, style: { display: "none" } }),
+        React.createElement("input", { ref: inputRef, type: "file", accept: "image/*", onChange: handleFile, style: { display: "none" } }),
         value
             ? (React.createElement("div", { className: "relative rounded-lg overflow-hidden", style: { border: "1px solid var(--border-2)" } },
                 React.createElement("img", { src: value, alt: label, className: "w-full object-cover", style: { maxHeight: 160 } }),
@@ -1479,6 +1524,123 @@ function GoalsLayer({ title, activeAccount, list, newText, setNewText, onAdd, on
                 " \u062E\u0631\u0648\u062C\u06CC \u0627\u06A9\u0633\u0644 ",
                 title)))));
 }
+/* ---------------- لایه‌ی «تقویم معاملاتی» ----------------
+   منطق تقویم (چه شمسی چه میلادی) کاملاً بر پایه‌ی رشته‌ی تاریخِ میلادیِ خودِ معامله‌ها
+   (t.date به فرمت YYYY-MM-DD) کار می‌کنه؛ سیستم نمایش فقط تعیین می‌کنه که ماه/روزها با چه
+   تقویمی روی صفحه چیده بشن، نه اینکه داده‌ها چطور ذخیره بشن. */
+function CalendarLayer({ trades, calendarSettings, onChangeSystem, cursorY, cursorM, setCursor, selectedDate, setSelectedDate, onEditTrade, todayDateStr }) {
+    const [showSettings, setShowSettings] = useState(false);
+    const isJalali = calendarSettings.system === "jalali";
+    const tradesByDate = useMemo(() => {
+        const map = {};
+        (trades || []).forEach(t => {
+            if (!t.date)
+                return;
+            (map[t.date] = map[t.date] || []).push(t);
+        });
+        return map;
+    }, [trades]);
+    // برچسب ماه/سال جاری برای هدر، به تفکیک سیستم انتخابی
+    const headerLabel = isJalali ? `${JMONTHS_FA[cursorM - 1]} ${cursorY}` : `${GMONTHS_FA[cursorM - 1]} ${cursorY}`;
+    // آرایه‌ی همه‌ی روزهای همین ماه (هرکدوم با رشته‌ی تاریخ میلادیِ معادل، برای پیوند به معامله‌ها)
+    const monthDays = useMemo(() => {
+        const days = [];
+        const n = isJalali ? daysInJalaliMonth(cursorY, cursorM) : daysInGregorianMonth(cursorY, cursorM);
+        for (let d = 1; d <= n; d++) {
+            let gDateStr, weekday;
+            if (isJalali) {
+                const [gy, gm, gd] = jalaliToGregorian(cursorY, cursorM, d);
+                gDateStr = gregPartsToDateStr(gy, gm, gd);
+                weekday = new Date(Date.UTC(gy, gm - 1, gd)).getUTCDay();
+            }
+            else {
+                gDateStr = gregPartsToDateStr(cursorY, cursorM, d);
+                weekday = new Date(Date.UTC(cursorY, cursorM - 1, d)).getUTCDay();
+            }
+            days.push({ d, gDateStr, weekday, count: (tradesByDate[gDateStr] || []).length });
+        }
+        return days;
+    }, [cursorY, cursorM, isJalali, tradesByDate]);
+    // چیدمان هفتگی: برای شمسی از شنبه شروع می‌کنیم (weekday=6)، برای میلادی از یکشنبه (weekday=0)
+    const weekStart = isJalali ? 6 : 0;
+    const leadBlanks = (monthDays.length ? (monthDays[0].weekday - weekStart + 7) % 7 : 0);
+    const weekdayHeaders = isJalali
+        ? ["ش", "ی", "د", "س", "چ", "پ", "ج"]
+        : ["ی", "د", "س", "چ", "پ", "ج", "ش"];
+    function goMonth(delta) {
+        let ny = cursorY, nm = cursorM + delta;
+        if (nm < 1) { nm = 12; ny -= 1; }
+        else if (nm > 12) { nm = 1; ny += 1; }
+        setCursor(ny, nm);
+    }
+    const monthTotal = monthDays.reduce((s, d) => s + d.count, 0);
+    const chartData = monthDays.map(d => ({ name: String(d.d), value: d.count }));
+    const selectedTrades = selectedDate ? (tradesByDate[selectedDate] || []) : [];
+    return (React.createElement("div", { className: "px-4 mt-4" },
+        React.createElement("div", { className: "flex items-center justify-between mb-2" },
+            React.createElement("h2", { className: "text-sm font-semibold", style: { color: "var(--text-primary)" } }, "تقویم معاملاتی"),
+            React.createElement("button", { onClick: () => setShowSettings(true), className: "p-2 rounded-lg", style: { background: "var(--bg-card2)", border: "1px solid var(--border-2)" }, "aria-label": "تنظیمات تقویم" },
+                React.createElement(SettingsIcon, { size: 14, color: "var(--text-secondary)" }))),
+        React.createElement("div", { className: "rounded-xl p-3 mb-3", style: { background: "var(--bg-card)", border: "1px solid var(--border-1)" } },
+            React.createElement("div", { className: "flex items-center justify-between mb-3" },
+                React.createElement("button", { onClick: () => goMonth(-1), className: "p-1.5 rounded-lg", style: { background: "var(--bg-card2)" } },
+                    React.createElement(ChevronUp, { size: 16, color: "var(--text-secondary)", style: { transform: "rotate(-90deg)" } })),
+                React.createElement("span", { className: "text-[13px] font-semibold", style: { color: "var(--accent-gold)" } },
+                    headerLabel,
+                    " ",
+                    React.createElement("span", { style: { color: "var(--text-muted)", fontWeight: 400 } },
+                        "(",
+                        monthTotal,
+                        " معامله)")),
+                React.createElement("button", { onClick: () => goMonth(1), className: "p-1.5 rounded-lg", style: { background: "var(--bg-card2)" } },
+                    React.createElement(ChevronUp, { size: 16, color: "var(--text-secondary)", style: { transform: "rotate(90deg)" } }))),
+            React.createElement("div", { className: "grid grid-cols-7 gap-1 mb-1" }, weekdayHeaders.map((w, i) => (React.createElement("div", { key: i, className: "text-center text-[10px]", style: { color: "var(--text-muted)" } }, w)))),
+            React.createElement("div", { className: "grid grid-cols-7 gap-1" },
+                Array.from({ length: leadBlanks }).map((_, i) => React.createElement("div", { key: "b" + i })),
+                monthDays.map(dObj => (React.createElement("button", { key: dObj.gDateStr, onClick: () => setSelectedDate(dObj.gDateStr === selectedDate ? null : dObj.gDateStr), className: "aspect-square rounded-lg flex flex-col items-center justify-center relative", style: {
+                        background: selectedDate === dObj.gDateStr ? "#D4A64A22" : dObj.gDateStr === todayDateStr ? "var(--bg-card2)" : "transparent",
+                        border: selectedDate === dObj.gDateStr ? "1px solid #D4A64A88" : dObj.gDateStr === todayDateStr ? "1px solid var(--border-2)" : "1px solid transparent",
+                    } },
+                    React.createElement("span", { className: "text-[11px]", style: { color: selectedDate === dObj.gDateStr ? "var(--accent-gold)" : "var(--text-primary)" } }, dObj.d),
+                    dObj.count > 0 && (React.createElement("span", { className: "text-[8px] mt-0.5 px-1 rounded-full", style: { background: "#D4A64A22", color: "var(--accent-gold)" } }, dObj.count))))))),
+        monthTotal > 0 && (React.createElement("div", { className: "rounded-xl p-3 mb-3", style: { background: "var(--bg-card)", border: "1px solid var(--border-1)" } },
+            React.createElement("h3", { className: "text-[12px] font-semibold mb-2", style: { color: "var(--text-primary)" } }, "تعداد معامله در روز (این ماه)"),
+            React.createElement(ResponsiveContainer, { width: "100%", height: Math.max(120, monthDays.length * 16) },
+                React.createElement(BarChart, { data: chartData },
+                    React.createElement(Bar, { dataKey: "value" }))))),
+        selectedDate ? (React.createElement("div", { className: "mb-4" },
+            React.createElement("h3", { className: "text-[12px] font-semibold mb-2", style: { color: "var(--text-primary)" } },
+                "معاملات ",
+                selectedDate,
+                " (",
+                selectedTrades.length,
+                ")"),
+            selectedTrades.length === 0
+                ? React.createElement("div", { className: "rounded-xl p-4 text-center text-[12px]", style: { background: "var(--bg-card)", color: "var(--text-muted)" } }, "معامله‌ای در این روز ثبت نشده.")
+                : selectedTrades.map(t => (React.createElement("div", { key: t.id, onClick: () => onEditTrade(t), className: "rounded-xl p-3 mb-2", style: { background: "var(--bg-card)", border: "1px solid var(--border-1)", cursor: "pointer" } },
+                    React.createElement("div", { className: "flex items-center justify-between mb-1" },
+                        React.createElement("span", { className: "text-[13px] font-semibold flex items-center gap-1.5", style: { color: "var(--text-primary)" } },
+                            t.direction === "sell" ? React.createElement(TrendingDown, { size: 13, color: "#F87171" }) : React.createElement(TrendingUp, { size: 13, color: "#34D399" }),
+                            t.pair || "—"),
+                        t.pnl !== undefined && t.pnl !== "" && (React.createElement("span", { className: "text-[12px] font-bold mono", style: { color: Number(t.pnlSign === "loss" ? -Math.abs(t.pnl) : t.pnl) >= 0 ? "#34D399" : "#F87171", fontFamily: "JetBrains Mono, monospace" } }, t.pnl))),
+                    React.createElement("div", { className: "flex flex-wrap gap-1.5 text-[10px]", style: { color: "var(--text-secondary)" } },
+                        t.time && React.createElement("span", null, "⏱ ", t.time),
+                        t.lot && React.createElement("span", null, "لات ", t.lot),
+                        t.session && React.createElement("span", null, t.session),
+                        (t.systems && t.systems[0] || t.system) && React.createElement("span", null, t.systems ? t.systems[0] : t.system)),
+                    t.note && React.createElement("p", { className: "text-[11px] mt-1.5 leading-5", style: { color: "var(--text-muted)" } }, t.note.length > 90 ? t.note.slice(0, 90) + "…" : t.note))))))
+            : (React.createElement("div", { className: "rounded-xl p-4 text-center text-[12px] mb-4", style: { background: "var(--bg-card)", color: "var(--text-muted)" } }, "روی یک روز از تقویم بزن تا معاملات همون روز رو ببینی.")),
+        showSettings && (React.createElement("div", { className: "fixed inset-0 z-50 flex items-end", style: { background: "#000000AA" }, onClick: () => setShowSettings(false) },
+            React.createElement("div", { className: "w-full rounded-t-2xl p-4", style: { background: "var(--bg-card)" }, onClick: e => e.stopPropagation() },
+                React.createElement("div", { className: "flex items-center justify-between mb-4" },
+                    React.createElement("h3", { className: "text-sm font-semibold", style: { color: "var(--text-primary)" } }, "تنظیمات تقویم معاملاتی"),
+                    React.createElement("button", { onClick: () => setShowSettings(false) },
+                        React.createElement(X, { size: 18, color: "var(--text-muted)" }))),
+                React.createElement(Field, { label: "نوع تقویم" },
+                    React.createElement("div", { className: "flex gap-2" },
+                        React.createElement("button", { onClick: () => onChangeSystem("jalali"), className: "flex-1 py-2.5 rounded-lg text-[12px] font-medium", style: { background: isJalali ? "#D4A64A22" : "var(--bg-card2)", color: isJalali ? "var(--accent-gold)" : "var(--text-secondary)" } }, "شمسی"),
+                        React.createElement("button", { onClick: () => onChangeSystem("gregorian"), className: "flex-1 py-2.5 rounded-lg text-[12px] font-medium", style: { background: !isJalali ? "#D4A64A22" : "var(--bg-card2)", color: !isJalali ? "var(--accent-gold)" : "var(--text-secondary)" } }, "میلادی"))))))));
+}
 /* ============================== APP ============================== */
 function App() {
     const [, forceTick] = useState(0);
@@ -1513,6 +1675,9 @@ function App() {
     const [showBestConditionsList, setShowBestConditionsList] = useState(false);
     const [quickLaunchSettings, setQuickLaunchSettings] = useState(DEFAULT_QUICK_LAUNCH_SETTINGS);
     const [themeMode, setThemeMode] = useState("dark");
+    const [calendarSettings, setCalendarSettings] = useState({ system: "jalali" });
+    const [calendarCursor, setCalendarCursor] = useState(null);
+    const [selectedCalendarDate, setSelectedCalendarDate] = useState(null);
     const [namelloReturnSettings, setNamelloReturnSettings] = useState(DEFAULT_NAMELLO_RETURN_SETTINGS);
     const [widgetSettings, setWidgetSettings] = useState(DEFAULT_WIDGET_SETTINGS);
     const [closeTypeOptions, setCloseTypeOptions] = useState(DEFAULT_CLOSE_TYPE_OPTIONS);
@@ -1775,6 +1940,12 @@ function App() {
                 const r = await window.storage.get("namello_theme_mode_v1");
                 if (r && (r.value === "dark" || r.value === "light"))
                     setThemeMode(r.value);
+            }
+            catch (e) { }
+            try {
+                const r = await window.storage.get("namello_calendar_settings_v1");
+                if (r && r.value)
+                    setCalendarSettings(JSON.parse(r.value));
             }
             catch (e) { }
             try {
@@ -2377,6 +2548,17 @@ function App() {
     const [jy, jm, jd] = gregorianToJalali(now.y, now.m, now.d);
     const todayStr = `${now.y}-${pad2(now.m)}-${pad2(now.d)}`;
     const todayWeekday = WEEKDAYS_FA[now.weekday];
+    const calendarCursorResolved = calendarCursor || (calendarSettings.system === "jalali" ? { y: jy, m: jm } : { y: now.y, m: now.m });
+    function setCalendarCursorYM(y, m) { setCalendarCursor({ y, m }); }
+    function changeCalendarSystem(system) {
+        const next = { ...calendarSettings, system };
+        setCalendarSettings(next);
+        setCalendarCursor(system === "jalali" ? { y: jy, m: jm } : { y: now.y, m: now.m });
+        try {
+            window.storage.set("namello_calendar_settings_v1", JSON.stringify(next));
+        }
+        catch (e) { }
+    }
     /* ---------------- alarm/notification edge detection ---------------- */
     useEffect(() => {
         const allEv = [
@@ -4159,6 +4341,19 @@ function App() {
             React.createElement("button", { onClick: () => doExport("all"), className: "w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-medium mb-4", style: { background: "var(--bg-card)", color: "var(--text-primary)", border: "1px solid var(--border-1)" } },
                 React.createElement(Download, { size: 16 }),
                 " \u062E\u0631\u0648\u062C\u06CC \u0627\u06A9\u0633\u0644 \u0698\u0648\u0631\u0646\u0627\u0644"))))),
+        tab === "calendar" && (!activeAccount ? (React.createElement("div", { className: "px-4 mt-4" },
+            React.createElement("div", { className: "rounded-xl p-4 text-center text-sm", style: { background: "var(--bg-card)", color: "var(--text-muted)" } }, "\u0627\u0648\u0644 \u0627\u0632 \u062A\u0628 \u0698\u0648\u0631\u0646\u0627\u0644 \u06CC\u06A9 \u062D\u0633\u0627\u0628 \u0627\u06CC\u062C\u0627\u062F \u06A9\u0646."))) : (React.createElement(CalendarLayer, {
+            trades: trades,
+            calendarSettings: calendarSettings,
+            onChangeSystem: changeCalendarSystem,
+            cursorY: calendarCursorResolved.y,
+            cursorM: calendarCursorResolved.m,
+            setCursor: setCalendarCursorYM,
+            selectedDate: selectedCalendarDate,
+            setSelectedDate: setSelectedCalendarDate,
+            onEditTrade: openEditTrade,
+            todayDateStr: todayStr,
+        }))),
         tab === "finance" && (React.createElement("div", { className: "px-4 mt-4" },
             React.createElement("h2", { className: "text-sm font-semibold mb-2", style: { color: "var(--text-primary)" } }, "\u0645\u062F\u06CC\u0631\u06CC\u062A \u0645\u0627\u0644\u06CC"),
             !activeAccount ? (React.createElement("div", { className: "rounded-xl p-4 text-center text-sm", style: { background: "var(--bg-card)", color: "var(--text-muted)" } }, "\u0627\u0648\u0644 \u0627\u0632 \u062A\u0628 \u0698\u0648\u0631\u0646\u0627\u0644 \u06CC\u06A9 \u062D\u0633\u0627\u0628 \u0627\u06CC\u062C\u0627\u062F \u06A9\u0646.")) : (React.createElement(React.Fragment, null,
@@ -4614,6 +4809,7 @@ function App() {
             { key: "news", label: "اخبار", Icon: Newspaper },
             { key: "prep", label: "آماده‌سازی", Icon: Check },
             { key: "journal", label: "ژورنال", Icon: TrendingUp },
+            { key: "calendar", label: "تقویم معاملاتی", Icon: CalendarIcon },
             { key: "finance", label: "مالی", Icon: Wallet },
             { key: "systems", label: "سیستم‌ها", Icon: BarChart3 },
             { key: "strategy", label: "استراتژی", Icon: ListChecks },
@@ -5370,9 +5566,9 @@ function App() {
                     React.createElement("button", { onClick: () => persistCalcProbWeights(DEFAULT_CALC_PROB_WEIGHTS), className: "flex-1 py-2.5 rounded-xl text-sm", style: { background: "var(--bg-card2)", color: "var(--text-primary)" } }, "\u0628\u0627\u0632\u06AF\u0634\u062A \u0628\u0647 \u067E\u06CC\u0634\u200C\u0641\u0631\u0636"),
                     React.createElement("button", { onClick: () => setShowCalcProbWeights(false), className: "flex-1 py-2.5 rounded-xl text-sm font-medium", style: { background: "var(--accent-gold)", color: "var(--bg-page)" } }, "\u0628\u0627\u0634\u0647"))))),
         quickLaunchSettings.enabled && quickLaunchSettings.mt5Enabled && (React.createElement(DraggableFab, { posXPercent: quickLaunchSettings.mt5PosXPercent, posYPercent: quickLaunchSettings.mt5PosYPercent, defaultCorner: "bottom-left", defaultOffsetY: 0, onDrop: (x, y) => persistQuickLaunchSettings({ ...quickLaunchSettings, mt5PosXPercent: x, mt5PosYPercent: y }), onClick: () => launchInstalledApp(quickLaunchSettings.mt5Package, quickLaunchSettings.mt5Label, quickLaunchSettings.mt5Scheme) },
-            React.createElement("button", { className: "w-12 h-12 rounded-full flex items-center justify-center text-lg", style: { background: "var(--bg-card)", color: "var(--accent-gold)", border: "1px solid var(--border-2)", boxShadow: "0 4px 12px #00000066" }, "aria-label": quickLaunchSettings.mt5Label || "اجرای سریع متاتریدر ۵" }, "\uD83D\uDCCA"))),
+            React.createElement("button", { className: "w-12 h-12 rounded-full overflow-hidden flex items-center justify-center", style: { background: "var(--bg-card)", border: "1px solid var(--border-2)", boxShadow: "0 4px 12px #00000066", padding: 0 }, "aria-label": quickLaunchSettings.mt5Label || "اجرای سریع متاتریدر ۵" }, React.createElement("img", { src: "icon-mt5.jpg", alt: "MT5", className: "w-full h-full object-cover" })))),
         quickLaunchSettings.enabled && quickLaunchSettings.tvEnabled && (React.createElement(DraggableFab, { posXPercent: quickLaunchSettings.tvPosXPercent, posYPercent: quickLaunchSettings.tvPosYPercent, defaultCorner: "bottom-left", defaultOffsetY: 64, onDrop: (x, y) => persistQuickLaunchSettings({ ...quickLaunchSettings, tvPosXPercent: x, tvPosYPercent: y }), onClick: () => launchInstalledApp(quickLaunchSettings.tvPackage, quickLaunchSettings.tvLabel, quickLaunchSettings.tvScheme) },
-            React.createElement("button", { className: "w-12 h-12 rounded-full flex items-center justify-center text-lg", style: { background: "var(--bg-card)", color: "#60A5FA", border: "1px solid var(--border-2)", boxShadow: "0 4px 12px #00000066" }, "aria-label": quickLaunchSettings.tvLabel || "اجرای سریع تریدینگ‌ویو" }, "\uD83D\uDCC8"))),
+            React.createElement("button", { className: "w-12 h-12 rounded-full overflow-hidden flex items-center justify-center", style: { background: "var(--bg-card)", border: "1px solid var(--border-2)", boxShadow: "0 4px 12px #00000066", padding: 0 }, "aria-label": quickLaunchSettings.tvLabel || "اجرای سریع تریدینگ‌ویو" }, React.createElement("img", { src: "icon-tradingview.png", alt: "TradingView", className: "w-full h-full object-cover" })))),
         toast && (React.createElement("div", { className: "fixed left-1/2 z-50 px-4 py-2.5 rounded-xl text-[12px]", style: { bottom: 76, transform: "translateX(-50%)", background: "var(--bg-card2)", color: "var(--text-primary)", border: "1px solid var(--border-2)", maxWidth: "90%", textAlign: "center" } }, toast))));
 }
 
