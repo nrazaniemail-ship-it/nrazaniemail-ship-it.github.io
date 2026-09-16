@@ -1975,6 +1975,7 @@ function App() {
     const [showSessionSettings, setShowSessionSettings] = useState(false);
     const [sessionSettingsCat, setSessionSettingsCat] = useState("sessions");
     const [configForm, setConfigForm] = useState(DEFAULT_CONFIG);
+    const [customEventForms, setCustomEventForms] = useState({ killzones: { name: "", start: "", end: "" }, silverbullets: { name: "", start: "", end: "" } });
     const [notifPermission, setNotifPermission] = useState(typeof Notification !== "undefined" ? Notification.permission : "unsupported");
     const prevActiveRef = useRef({});
     const [pairs, setPairs] = useState(DEFAULT_PAIRS);
@@ -2056,6 +2057,7 @@ function App() {
     const [newsSourcePreset, setNewsSourcePreset] = useState("forexfactory");
     const [appFont, setAppFont] = useState("vazirmatn");
     const [soundAlarmEnabled, setSoundAlarmEnabled] = useState(true);
+    const [alarmTone, setAlarmTone] = useState("classic");
     const [popupAlarmEnabled, setPopupAlarmEnabled] = useState(true);
     const [sessionAlarmPopup, setSessionAlarmPopup] = useState(null);
     const alarmPopupTimerRef = useRef(null);
@@ -2429,6 +2431,12 @@ function App() {
                 const r = await window.storage.get("namello_sound_alarm_v1");
                 if (r)
                     setSoundAlarmEnabled(JSON.parse(r.value));
+            }
+            catch (e) { }
+            try {
+                const r = await window.storage.get("namello_alarm_tone_v1");
+                if (r && r.value)
+                    setAlarmTone(r.value);
             }
             catch (e) { }
             try {
@@ -3038,6 +3046,25 @@ function App() {
             ...f,
             [category]: f[category].map(e => e.key === key ? { ...e, [variant]: { ...e[variant], [part]: hhmmToArr(val) } } : e),
         }));
+    }
+    function addCustomScheduleEvent(category, name, startHHMM, endHHMM) {
+        const cleanName = (name || "").trim();
+        if (!cleanName || !startHHMM || !endHHMM)
+            return;
+        const s = hhmmToArr(startHHMM), e = hhmmToArr(endHHMM);
+        const ev = {
+            key: "custom_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+            name: cleanName, short: cleanName.slice(0, 10).toUpperCase(),
+            color: category === "silverbullets" ? "#FDBA74" : "#39FF6E",
+            dst: { s, e }, std: { s, e }, alarmStart: false, alarmEnd: false, custom: true,
+        };
+        setConfigForm(f => ({ ...f, [category]: [...f[category], ev] }));
+    }
+    function removeCustomScheduleEvent(category, key) {
+        setConfigForm(f => ({ ...f, [category]: f[category].filter(e => e.key !== key) }));
+    }
+    function renameCustomScheduleEvent(category, key, name) {
+        setConfigForm(f => ({ ...f, [category]: f[category].map(e => e.key === key ? { ...e, name, short: name.slice(0, 10).toUpperCase() } : e) }));
     }
     /* ---------------- journal derived ---------------- */
     const derived = useMemo(() => computeDerived(trades, accSettings), [trades, accSettings]);
@@ -4024,6 +4051,13 @@ function App() {
         }
         catch (e) { }
     }
+    function changeAlarmTone(tone) {
+        setAlarmTone(tone);
+        try {
+            window.storage.set("namello_alarm_tone_v1", tone);
+        }
+        catch (e) { }
+    }
     function togglePopupAlarm() {
         const next = !popupAlarmEnabled;
         setPopupAlarmEnabled(next);
@@ -4032,6 +4066,11 @@ function App() {
         }
         catch (e) { }
     }
+    const ALARM_TONES = {
+        classic: { freqs: [880, 880, 1046.5], offsets: [0, 0.22, 0.44] },
+        simple: { freqs: [660], offsets: [0] },
+        double: { freqs: [740, 740], offsets: [0, 0.28] },
+    };
     function playAlarmBeep() {
         try {
             const Ctx = window.AudioContext || window.webkitAudioContext;
@@ -4039,11 +4078,12 @@ function App() {
                 return;
             const ctx = new Ctx();
             const now0 = ctx.currentTime;
-            [0, 0.22, 0.44].forEach((offset, i) => {
+            const tone = ALARM_TONES[alarmTone] || ALARM_TONES.classic;
+            tone.offsets.forEach((offset, i) => {
                 const osc = ctx.createOscillator();
                 const gain = ctx.createGain();
                 osc.type = "sine";
-                osc.frequency.value = i === 2 ? 1046.5 : 880;
+                osc.frequency.value = tone.freqs[i];
                 gain.gain.setValueAtTime(0.0001, now0 + offset);
                 gain.gain.exponentialRampToValueAtTime(0.35, now0 + offset + 0.02);
                 gain.gain.exponentialRampToValueAtTime(0.0001, now0 + offset + 0.18);
@@ -5237,6 +5277,12 @@ function App() {
                             React.createElement("span", { className: "text-sm", style: { color: "var(--text-primary)" } }, "\u0622\u0644\u0627\u0631\u0645 \u0635\u0648\u062A\u06CC \u0634\u0631\u0648\u0639/\u067E\u0627\u06CC\u0627\u0646 \u0633\u0634\u0646")),
                         React.createElement("button", { onClick: toggleSoundAlarm, className: "rounded-full px-1 flex items-center", style: { width: 40, height: 22, background: soundAlarmEnabled ? "var(--accent-gold)" : "var(--border-2)", justifyContent: soundAlarmEnabled ? "flex-end" : "flex-start" } },
                             React.createElement("span", { className: "rounded-full", style: { width: 16, height: 16, background: "var(--bg-page)" } }))),
+                    React.createElement("div", { className: "rounded-lg p-2.5 mb-2", style: { background: "var(--bg-card2)", border: "1px solid var(--border-2)" } },
+                        React.createElement("div", { className: "text-[11px] mb-1.5", style: { color: "var(--text-muted)" } }, "\u062A\u0646 \u0635\u062F\u0627\u06CC \u0622\u0644\u0627\u0631\u0645"),
+                        React.createElement("div", { className: "flex gap-1.5" },
+                            [["classic", "کلاسیک"], ["simple", "زنگ ساده"], ["double", "دو ضربه"]].map(([key, label]) => (React.createElement("button", { key: key, onClick: () => changeAlarmTone(key), className: "flex-1 py-1.5 rounded text-[11px]", style: { background: alarmTone === key ? "#D4A64A22" : "var(--bg-page)", color: alarmTone === key ? "var(--accent-gold)" : "var(--text-secondary)" } }, label))),
+                            React.createElement("button", { onClick: playAlarmBeep, className: "px-3 py-1.5 rounded text-[11px]", style: { background: "var(--bg-page)", color: "var(--text-secondary)" } }, "\u062A\u0633\u062A"))),
+                    React.createElement("p", { className: "text-[10px] leading-5 mb-2", style: { color: "var(--text-muted)" } }, "\u0628\u0631\u0627\u06CC \u0647\u0631 \u0633\u0634\u0646/\u06A9\u06CC\u0644\u200C\u0632\u0648\u0646/\u0633\u06CC\u0644\u0648\u0631 \u0628\u0648\u0644\u062A\u06CC \u06A9\u0647 \u0645\u06CC\u200C\u062E\u0648\u0627\u06CC \u0647\u0634\u062F\u0627\u0631\u0634 \u0641\u0639\u0627\u0644 \u0628\u0634\u0647\u060C \u0627\u0632 \u062A\u0628 \u00AB\u0646\u0634\u0633\u062A\u200C\u0647\u0627\u00BB \u0631\u0648\u06CC \u0622\u06CC\u06A9\u0646 \u0632\u0646\u06AF \u06A9\u0646\u0627\u0631 \u0647\u0631 \u0631\u0648\u06CC\u062F\u0627\u062F \u0628\u0632\u0646. \u0627\u06CC\u0646 \u0647\u0634\u062F\u0627\u0631 \u062D\u062A\u06CC \u0648\u0642\u062A\u06CC \u0631\u0648\u06CC \u0627\u067E \u062F\u06CC\u06AF\u0647\u200C\u0627\u06CC \u0647\u0633\u062A\u06CC \u0647\u0645 \u06A9\u0627\u0631 \u0645\u06CC\u200C\u06A9\u0646\u0647 (\u0645\u0631\u0648\u0631\u06AF\u0631 \u0627\u06CC\u0646 \u062A\u0628 \u0631\u0648 \u067E\u0633\u200C\u0632\u0645\u06CC\u0646\u0647 \u0646\u06AF\u0647 \u062F\u0627\u0631\u0647)\u061B \u0645\u062B\u0644 \u0646\u0648\u062A\u06CC\u0641\u06CC\u06A9\u06CC\u0634\u0646 \u00AB\u0628\u0627\u0632\u06AF\u0634\u062A \u0628\u0647 Namello\u00BB \u0631\u0648\u06CC \u0633\u0627\u0645\u0633\u0648\u0646\u06AF \u0645\u0645\u06A9\u0646\u0647 \u062A\u0623\u062E\u06CC\u0631\u06CC \u062F\u0627\u0634\u062A\u0647 \u0628\u0627\u0634\u0647 \u06CC\u0627 \u0627\u0635\u0644\u0627\u064B \u062E\u0627\u0645\u0648\u0634 \u0628\u0634\u0647\u060C \u0645\u06AF\u0631 \u0627\u06CC\u0646\u06A9\u0647 \u0645\u0631\u0648\u0631\u06AF\u0631 \u0631\u0648 \u0627\u0632 \u0645\u062F\u06CC\u0631\u06CC\u062A \u0628\u0627\u062A\u0631\u06CC \u0645\u0633\u062A\u062B\u0646\u0627 \u06A9\u0631\u062F\u0647 \u0628\u0627\u0634\u06CC (\u0647\u0645\u0648\u0646 \u062A\u0646\u0638\u06CC\u0645 \u06A9\u0647 \u0628\u0631\u0627\u06CC \u0628\u0627\u0632\u06AF\u0634\u062A \u0628\u0647 Namello \u0644\u0627\u0632\u0645\u0647)."),
                     React.createElement("div", { className: "rounded-lg px-3 py-2 mb-2 flex items-center justify-between", style: { background: "var(--bg-card2)", border: "1px solid var(--border-2)" } },
                         React.createElement("div", { className: "flex items-center gap-2" },
                             React.createElement(Bell, { size: 15, color: popupAlarmEnabled ? "var(--accent-gold)" : "var(--text-muted)" }),
@@ -5251,7 +5297,12 @@ function App() {
                         React.createElement("h4", { className: "text-[13px] font-bold", style: { color: "var(--accent-gold)" } }, cat === "sessions" ? `سشن‌ها (${configForm.sessions.length})` : cat === "killzones" ? `کیل‌زون‌ها (${configForm.killzones.length})` : `سیلور بولت (${configForm.silverbullets.length})`)),
                     configForm[cat].map(ev => (React.createElement("div", { key: ev.key, className: "rounded-lg p-2 mb-2", style: { background: "var(--bg-card2)" } },
                         React.createElement("div", { className: "flex items-center justify-between mb-1.5" },
-                            React.createElement("div", { className: "text-[12px] font-medium", style: { color: "var(--text-primary)" } }, ev.name),
+                            React.createElement("div", { className: "flex items-center gap-1.5" },
+                                ev.custom
+                                    ? React.createElement("input", { type: "text", value: ev.name, onChange: e => renameCustomScheduleEvent(cat, ev.key, e.target.value), className: "text-[12px] font-medium bg-transparent outline-none", style: { color: "var(--text-primary)", width: 110 } })
+                                    : React.createElement("div", { className: "text-[12px] font-medium", style: { color: "var(--text-primary)" } }, ev.name),
+                                ev.custom && React.createElement("button", { onClick: () => removeCustomScheduleEvent(cat, ev.key) },
+                                    React.createElement(Trash2, { size: 12, color: "#F87171" }))),
                             React.createElement("input", { type: "color", value: ev.color, onChange: e => setConfigForm(f => ({ ...f, [cat]: f[cat].map(s => s.key === ev.key ? { ...s, color: e.target.value } : s) })), className: "w-7 h-7 bg-transparent" })),
                         React.createElement("div", { className: "grid grid-cols-2 gap-1.5 mb-1.5" },
                             React.createElement("label", { className: "text-[10px]", style: { color: "var(--text-muted)" } },
@@ -5265,7 +5316,16 @@ function App() {
                                 React.createElement("input", { type: "time", value: minToHHMM(ev.std.s), onChange: e => updateConfigTime(cat, ev.key, "std", "s", e.target.value), className: "w-full bg-transparent outline-none text-[11px] mt-0.5", style: { color: "var(--text-primary)" } })),
                             React.createElement("label", { className: "text-[10px]", style: { color: "var(--text-muted)" } },
                                 "\u067E\u0627\u06CC\u0627\u0646 (EST)",
-                                React.createElement("input", { type: "time", value: minToHHMM(ev.std.e), onChange: e => updateConfigTime(cat, ev.key, "std", "e", e.target.value), className: "w-full bg-transparent outline-none text-[11px] mt-0.5", style: { color: "var(--text-primary)" } }))))))))),
+                                React.createElement("input", { type: "time", value: minToHHMM(ev.std.e), onChange: e => updateConfigTime(cat, ev.key, "std", "e", e.target.value), className: "w-full bg-transparent outline-none text-[11px] mt-0.5", style: { color: "var(--text-primary)" } })))))),
+                    cat !== "sessions" && (React.createElement("div", { className: "rounded-lg p-2 mt-1", style: { background: "var(--bg-card2)", border: "1px dashed var(--border-2)" } },
+                        React.createElement("div", { className: "text-[10px] mb-1.5", style: { color: "var(--text-muted)" } }, cat === "killzones" ? "افزودن کیل‌زون سفارشی" : "افزودن سیلور بولت سفارشی"),
+                        React.createElement("div", { className: "grid grid-cols-3 gap-1.5 mb-1.5" },
+                            React.createElement("input", { type: "text", placeholder: "\u0646\u0627\u0645", value: customEventForms[cat].name, onChange: e => setCustomEventForms(f => ({ ...f, [cat]: { ...f[cat], name: e.target.value } })), className: "bg-transparent outline-none text-[11px] px-1.5 py-1 rounded", style: { color: "var(--text-primary)", border: "1px solid var(--border-2)" } }),
+                            React.createElement("input", { type: "time", value: customEventForms[cat].start, onChange: e => setCustomEventForms(f => ({ ...f, [cat]: { ...f[cat], start: e.target.value } })), className: "bg-transparent outline-none text-[11px] px-1.5 py-1 rounded", style: { color: "var(--text-primary)", border: "1px solid var(--border-2)" } }),
+                            React.createElement("input", { type: "time", value: customEventForms[cat].end, onChange: e => setCustomEventForms(f => ({ ...f, [cat]: { ...f[cat], end: e.target.value } })), className: "bg-transparent outline-none text-[11px] px-1.5 py-1 rounded", style: { color: "var(--text-primary)", border: "1px solid var(--border-2)" } })),
+                        React.createElement("button", { onClick: () => { addCustomScheduleEvent(cat, customEventForms[cat].name, customEventForms[cat].start, customEventForms[cat].end); setCustomEventForms(f => ({ ...f, [cat]: { name: "", start: "", end: "" } })); }, className: "w-full flex items-center justify-center gap-1.5 py-1.5 rounded text-[11px]", style: { background: "var(--bg-page)", color: "var(--accent-gold)" } },
+                            React.createElement(Plus, { size: 12 }),
+                            " \u0627\u0641\u0632\u0648\u062F\u0646")))))),
                 React.createElement("button", { onClick: saveSessionSettings, className: "w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-medium mt-2 mb-2", style: { background: "var(--accent-gold)", color: "var(--bg-page)" } },
                     React.createElement(Check, { size: 16 }),
                     " \u0630\u062E\u06CC\u0631\u0647 \u062A\u0646\u0638\u06CC\u0645\u0627\u062A"),
