@@ -906,6 +906,156 @@ function computeFinancialMetrics(trades, startingBalance) {
     }
     return { total, wins, losses, winRate, profitFactor, avgWin, avgLoss, netPnl, maxDD: Math.round(maxDD * 100) / 100, maxDDPercent: Math.round(maxDDPercent * 10) / 10, biggestWin, biggestLoss, maxWinStreak, maxLossStreak, curve, finalBalance: balance, expectancy, riskOfRuin, avgRiskPercent: avgRiskPercent !== null ? Math.round(avgRiskPercent * 100) / 100 : null, avgDurationMinutes };
 }
+/* ---------------- تجزیه‌ی فایل استیتمنت (MT4/MT5) یا CSV ----------------
+   چون فرمت خروجی بروکرها یکدست نیست، این تابع به‌جای فرض‌کردن یک قالب ثابت، ستون‌ها رو با
+   تطبیق کلیدواژه‌ی هدر (case-insensitive) شناسایی می‌کنه؛ جدولی که بیشترین تطبیق رو داشته باشه
+   به‌عنوان جدول معاملات انتخاب می‌شه. نتیجه best-effort است — برای هر بروکر ممکنه دقیقاً یکی
+   نباشه، برای همین لیست استخراج‌شده رو حتماً باید قبل از اعتماد کامل چک کرد. */
+const STATEMENT_COLUMN_KEYWORDS = {
+    ticket: ["ticket", "order", "deal", "position"],
+    openTime: ["open time"],
+    time: ["time"],
+    type: ["type"],
+    volume: ["volume", "size", "lots"],
+    symbol: ["symbol", "item"],
+    price: ["price"],
+    closeTime: ["close time"],
+    commission: ["commission"],
+    swap: ["swap"],
+    profit: ["profit"],
+};
+function headerMatchScore(headerRow) {
+    let score = 0;
+    (headerRow || []).forEach(cell => {
+        const h = String(cell || "").trim().toLowerCase();
+        if (!h)
+            return;
+        for (const kw of Object.values(STATEMENT_COLUMN_KEYWORDS).flat())
+            if (h === kw || h.includes(kw)) { score++; break; }
+    });
+    return score;
+}
+function mapStatementColumns(headerRow) {
+    const cols = {};
+    let priceSeen = 0;
+    (headerRow || []).forEach((cell, idx) => {
+        const h = String(cell || "").trim().toLowerCase();
+        if (!h)
+            return;
+        if (h.includes("open time"))
+            cols.openTime = idx;
+        else if (h.includes("close time"))
+            cols.closeTime = idx;
+        else if (h === "time" && cols.openTime === undefined)
+            cols.openTime = idx;
+        else if (h.includes("ticket") || h.includes("order") || h.includes("deal") || h.includes("position"))
+            cols.ticket = cols.ticket === undefined ? idx : cols.ticket;
+        else if (h.includes("type"))
+            cols.type = idx;
+        else if (h.includes("volume") || h.includes("size") || h.includes("lots"))
+            cols.volume = idx;
+        else if (h.includes("symbol") || h.includes("item"))
+            cols.symbol = idx;
+        else if (h.includes("commission"))
+            cols.commission = idx;
+        else if (h.includes("swap"))
+            cols.swap = idx;
+        else if (h.includes("profit"))
+            cols.profit = idx;
+        else if (h.includes("price")) {
+            priceSeen++;
+            if (priceSeen === 1)
+                cols.openPrice = idx;
+            else if (priceSeen === 2)
+                cols.closePrice = idx;
+        }
+    });
+    return cols;
+}
+// رشته‌ی تاریخِ بروکر معمولاً به شکل «۲۰۲۶.۰۱.۱۵ ۱۰:۲۳:۴۵» یا با جداکننده‌ی - یا / میاد؛
+// این تابع بدون فرض قطعی روی timezone، فقط تاریخ/ساعت رو استخراج می‌کنه.
+function parseBrokerDateTime(raw) {
+    if (!raw)
+        return null;
+    const s = String(raw).trim();
+    const m = s.match(/(\d{4})[.\-\/](\d{1,2})[.\-\/](\d{1,2})[ T]?(\d{1,2})?:?(\d{1,2})?/);
+    if (!m)
+        return null;
+    const [, y, mo, d, h, mi] = m;
+    return {
+        date: `${y}-${pad2Str(Number(mo))}-${pad2Str(Number(d))}`,
+        time: h ? `${pad2Str(Number(h))}:${pad2Str(Number(mi || 0))}` : "",
+    };
+}
+function normalizeStatementRows(rows) {
+    if (!rows || !rows.length)
+        return [];
+    let bestIdx = 0, bestScore = -1;
+    rows.slice(0, 15).forEach((r, i) => {
+        const sc = headerMatchScore(r);
+        if (sc > bestScore) { bestScore = sc; bestIdx = i; }
+    });
+    if (bestScore < 3)
+        return [];
+    const cols = mapStatementColumns(rows[bestIdx]);
+    if (cols.symbol === undefined || cols.type === undefined)
+        return [];
+    const out = [];
+    for (let i = bestIdx + 1; i < rows.length; i++) {
+        const r = rows[i];
+        if (!r || !r.length)
+            continue;
+        const typeRaw = String(r[cols.type] ?? "").trim().toLowerCase();
+        const symbol = String(r[cols.symbol] ?? "").trim();
+        if (!symbol || !(typeRaw.includes("buy") || typeRaw.includes("sell")))
+            continue;
+        const direction = typeRaw.includes("sell") ? "sell" : "buy";
+        const openDT = parseBrokerDateTime(r[cols.openTime]) || {};
+        const closeDT = cols.closeTime !== undefined ? parseBrokerDateTime(r[cols.closeTime]) : null;
+        const profit = Number(String(r[cols.profit] ?? "0").replace(/[^0-9.\-]/g, "")) || 0;
+        const swap = cols.swap !== undefined ? Number(String(r[cols.swap] ?? "0").replace(/[^0-9.\-]/g, "")) || 0 : 0;
+        const commission = cols.commission !== undefined ? Number(String(r[cols.commission] ?? "0").replace(/[^0-9.\-]/g, "")) || 0 : 0;
+        out.push({
+            id: "stmt_" + (r[cols.ticket] ?? i) + "_" + i,
+            ticket: cols.ticket !== undefined ? String(r[cols.ticket] ?? "") : "",
+            date: openDT.date || "", time: openDT.time || "",
+            closedDate: closeDT ? closeDT.date : "", closedTime: closeDT ? closeDT.time : "",
+            pair: symbol, direction,
+            lot: cols.volume !== undefined ? String(r[cols.volume] ?? "") : "",
+            entry: cols.openPrice !== undefined ? String(r[cols.openPrice] ?? "") : "",
+            exit: cols.closePrice !== undefined ? String(r[cols.closePrice] ?? "") : "",
+            swap, commission, pnl: profit + swap + commission,
+            status: "closed", source: "statement",
+        });
+    }
+    return out;
+}
+function tableToRows(table) {
+    return Array.from(table.querySelectorAll("tr")).map(tr => Array.from(tr.querySelectorAll("td,th")).map(td => td.textContent.trim()));
+}
+function parseStatementHtml(htmlText) {
+    const doc = new DOMParser().parseFromString(htmlText, "text/html");
+    const tables = Array.from(doc.querySelectorAll("table"));
+    let best = [], bestScore = -1;
+    tables.forEach(tb => {
+        const rows = tableToRows(tb);
+        rows.slice(0, 15).forEach(r => {
+            const sc = headerMatchScore(r);
+            if (sc > bestScore) { bestScore = sc; best = rows; }
+        });
+    });
+    return normalizeStatementRows(best);
+}
+function parseStatementSheet(arrayBuffer) {
+    const wb = XLSX.read(arrayBuffer, { type: "array" });
+    let all = [];
+    wb.SheetNames.forEach(name => {
+        const rows = XLSX.utils.sheet_to_json(wb.Sheets[name], { header: 1, raw: false });
+        const parsed = normalizeStatementRows(rows);
+        all = all.concat(parsed);
+    });
+    return all;
+}
 function groupProfitability(trades, keyFn) {
     const map = {};
     trades.forEach(t => { const k = keyFn(t); if (k === undefined || k === null || k === "")
@@ -1524,6 +1674,181 @@ function GoalsLayer({ title, activeAccount, list, newText, setNewText, onAdd, on
                 " \u062E\u0631\u0648\u062C\u06CC \u0627\u06A9\u0633\u0644 ",
                 title)))));
 }
+/* ---------------- تحلیل بر پایه‌ی معاملات استخراج‌شده از استیتمنت ----------------
+   چون گزارش بروکر برچسب‌هایی مثل سشن/سیستم/بایاس/فرکتال رو نداره (این‌ها فقط در فرم ثبت ژورنال
+   دستی انتخاب می‌شن)، این نما فقط چیزهایی رو نشون می‌ده که واقعاً از داده‌ی خام استیتمنت
+   قابل‌محاسبه‌ست: آمار کلی، منحنی سرمایه، و شکست بر اساس نماد. */
+/* ---------------- تحلیل روانشناسی (SWOT) ----------------
+   همه‌ی جمله‌ها از روی آمار واقعیِ همون معاملات ساخته می‌شن، نه متن ثابت؛ اگر داده کافی نباشه
+   برای یک بخش، اون بخش خالی می‌مونه به‌جای این‌که چیزی جعلی نشون بده. */
+function minutesBetween(dateA, timeA, dateB, timeB) {
+    if (!dateA || !timeA || !dateB || !timeB)
+        return null;
+    const a = new Date(`${dateA}T${timeA}:00`);
+    const b = new Date(`${dateB}T${timeB}:00`);
+    if (isNaN(a) || isNaN(b))
+        return null;
+    return (b - a) / 60000;
+}
+function computePsychologyInsights(trades, psychOptions) {
+    const closed = (trades || []).filter(t => t.pnl !== undefined && t.pnl !== null && t.date);
+    const strengths = [], weaknesses = [], threats = [], opportunities = [];
+    if (closed.length < 5)
+        return { strengths, weaknesses, threats, opportunities, insufficient: true };
+    const overall = computeFinancialMetrics(closed, 0);
+    // ۱) همبستگیِ برچسب‌های احساسیِ منفی با نتیجه‌ی معامله (فقط دادهٔ ژورنال این برچسب‌ها رو داره)
+    const hasPsychTags = closed.some(t => (t.psychology || []).length > 0);
+    if (hasPsychTags) {
+        (psychOptions || []).forEach(tag => {
+            const withTag = closed.filter(t => (t.psychology || []).includes(tag));
+            if (withTag.length >= 3) {
+                const m = computeFinancialMetrics(withTag, 0);
+                if (m.netPnl < 0 || (m.winRate !== null && overall.winRate !== null && m.winRate < overall.winRate - 10))
+                    weaknesses.push(`در ${withTag.length} معامله همراه با «${tag}»، نرخ برد ${m.winRate ?? "—"}٪ و سود خالص ${m.netPnl} بوده — پایین‌تر از میانگین کلی (${overall.winRate ?? "—"}٪).`);
+            }
+        });
+        const clean = closed.filter(t => !(t.psychology || []).length);
+        const tagged = closed.filter(t => (t.psychology || []).length > 0);
+        if (clean.length >= 5 && tagged.length >= 3) {
+            const mc = computeFinancialMetrics(clean, 0), mt = computeFinancialMetrics(tagged, 0);
+            if (mc.winRate !== null && mt.winRate !== null && mc.winRate > mt.winRate)
+                strengths.push(`وقتی هیچ احساس منفی‌ای ثبت نکردی (${clean.length} معامله)، نرخ برد ${mc.winRate}٪ بوده — در برابر ${mt.winRate}٪ در معامله‌های همراه با احساسات منفی.`);
+        }
+    }
+    // ۲) نرخ بستن دستی (می‌تونه نشونه‌ی دخالت احساسی به‌جای پایبندی به SL/TP از پیش تعیین‌شده باشه)
+    const manualCount = closed.filter(t => t.closeType === "دستی" || t.closeType === "manual").length;
+    const manualRate = Math.round((manualCount / closed.length) * 100);
+    if (closed.length >= 8 && manualRate >= 55)
+        weaknesses.push(`${manualRate}٪ از معاملات با بستن دستی تمام شدن، نه با حد سود/ضرر از پیش تعیین‌شده — می‌تونه نشونه‌ی دخالت احساسی در مدیریت معامله باشه.`);
+    else if (closed.length >= 8 && manualRate <= 20)
+        strengths.push(`فقط ${manualRate}٪ از معاملات با بستن دستی تمام شدن — پایبندی خوبی به حد سود/ضرر از پیش تعیین‌شده نشون می‌ده.`);
+    // ۳) روند اخیر (۱۰ معامله‌ی آخر)
+    const asc = sortAsc(closed);
+    const recent = asc.slice(-10);
+    const recentLosses = recent.filter(t => (t.pnl || 0) < 0).length;
+    if (recent.length >= 6 && recentLosses / recent.length >= 0.6)
+        threats.push(`در ${recent.length} معامله‌ی اخیر، ${recentLosses} تا ضررده بودن — احتمال افت روانی یا نیاز به یک وقفه‌ی کوتاه از معامله وجود داره.`);
+    const recentWins = recent.filter(t => (t.pnl || 0) > 0).length;
+    if (recent.length >= 6 && recentWins / recent.length >= 0.7)
+        strengths.push(`در ${recent.length} معامله‌ی اخیر، ${recentWins} تا سودده بودن — روند فعلی مثبته.`);
+    // ۴) معامله‌ی انتقامی: باز شدن معامله‌ی بعدی خیلی زود بعد از یک ضرر
+    let revengeCount = 0, revengeTotal = 0;
+    for (let i = 1; i < asc.length; i++) {
+        const prev = asc[i - 1], cur = asc[i];
+        if ((prev.pnl || 0) < 0) {
+            const gap = minutesBetween(prev.closedDate || prev.date, prev.closedTime || prev.time, cur.date, cur.time);
+            if (gap !== null && gap >= 0) {
+                revengeTotal++;
+                if (gap < 15)
+                    revengeCount++;
+            }
+        }
+    }
+    if (revengeTotal >= 5 && revengeCount / revengeTotal >= 0.3)
+        threats.push(`${revengeCount} از ${revengeTotal} بار بعد از یک معامله‌ی ضررده، معامله‌ی بعدی در کمتر از ۱۵ دقیقه باز شده — الگوی احتمالیِ معامله‌ی انتقامی.`);
+    else if (revengeTotal >= 5 && revengeCount === 0)
+        strengths.push(`بعد از معامله‌های ضررده، همیشه بیشتر از ۱۵ دقیقه فاصله تا معامله‌ی بعدی گذاشتی — نشونه‌ی خوبی از خونسردی و عدم معامله‌ی انتقامی.`);
+    // ۵) بهترین/ضعیف‌ترین سیستم (فرصت / ضعف)
+    const bySys = groupProfitability(closed, t => (t.systems && t.systems[0]) || t.system);
+    const sysCounts = {};
+    closed.forEach(t => { const s = (t.systems && t.systems[0]) || t.system; if (s)
+        sysCounts[s] = (sysCounts[s] || 0) + 1; });
+    const bestSys = bySys.filter(s => (sysCounts[s.name] || 0) >= 3).sort((a, b) => b.value - a.value)[0];
+    const worstSys = bySys.filter(s => (sysCounts[s.name] || 0) >= 3).sort((a, b) => a.value - b.value)[0];
+    if (bestSys && bestSys.value > 0)
+        opportunities.push(`سیستم «${bestSys.name}» با ${sysCounts[bestSys.name]} معامله، سودآورترین سیستمِ فعلیته (سود خالص ${bestSys.value}) — تمرکز بیشتر روش می‌تونه فرصت باشه.`);
+    if (worstSys && worstSys.value < 0 && worstSys.name !== (bestSys && bestSys.name))
+        weaknesses.push(`سیستم «${worstSys.name}» با ${sysCounts[worstSys.name]} معامله، ضررده‌ترین سیستمِ فعلیته (سود خالص ${worstSys.value}).`);
+    // ۶) پرافیت فکتور و انتظار ریاضی کلی
+    if (overall.profitFactor !== null && overall.profitFactor >= 1.5)
+        strengths.push(`پرافیت فکتور کلی ${overall.profitFactor} — سیستم معاملاتی در مجموع سودآوره.`);
+    else if (overall.profitFactor !== null && overall.profitFactor < 1)
+        weaknesses.push(`پرافیت فکتور کلی ${overall.profitFactor} (زیر ۱) — در مجموع ضرر بیشتر از سوده؛ نیاز به بازبینی استراتژی یا مدیریت ریسک.`);
+    if (overall.maxLossStreak >= 4)
+        threats.push(`طولانی‌ترین زنجیره‌ی باخت پشت‌سرهم تا الان ${overall.maxLossStreak} معامله بوده — برای این حالت از پیش یک قانون توقف (مثل استراحت بعد از N باخت) داشته باش.`);
+    return { strengths, weaknesses, threats, opportunities, insufficient: false, overall };
+}
+function PsychologyLayer({ journalTrades, statementTrades, source, setSource, psychOptions }) {
+    const trades = source === "statement" ? statementTrades : journalTrades;
+    const insights = useMemo(() => computePsychologyInsights(trades, psychOptions), [trades, psychOptions]);
+    const quads = [
+        { key: "strengths", title: "نقاط قوت", color: "#34D399", items: insights.strengths },
+        { key: "weaknesses", title: "نقاط ضعف", color: "#F87171", items: insights.weaknesses },
+        { key: "threats", title: "تهدیدها", color: "#FBBF24", items: insights.threats },
+        { key: "opportunities", title: "فرصت‌ها", color: "#60A5FA", items: insights.opportunities },
+    ];
+    return (React.createElement("div", { className: "px-4 mt-4" },
+        React.createElement("h2", { className: "text-sm font-semibold mb-2", style: { color: "var(--text-primary)" } }, "روانشناسی معامله‌گری"),
+        React.createElement("div", { className: "flex gap-2 mb-4" },
+            React.createElement("button", { onClick: () => setSource("journal"), className: "flex-1 py-2.5 rounded-lg text-[12px] font-medium", style: { background: source === "journal" ? "#D4A64A22" : "var(--bg-card2)", color: source === "journal" ? "var(--accent-gold)" : "var(--text-secondary)" } }, "معاملات ژورنال"),
+            React.createElement("button", { onClick: () => setSource("statement"), className: "flex-1 py-2.5 rounded-lg text-[12px] font-medium", style: { background: source === "statement" ? "#D4A64A22" : "var(--bg-card2)", color: source === "statement" ? "var(--accent-gold)" : "var(--text-secondary)" } }, "معاملات استیتمنت")),
+        insights.insufficient ? (React.createElement("div", { className: "rounded-xl p-6 text-center text-sm mb-4", style: { background: "var(--bg-card)", color: "var(--text-muted)" } }, "برای این تحلیل حداقل ۵ معامله‌ی بسته‌شده لازمه.")) : (React.createElement(React.Fragment, null,
+            source === "statement" && (React.createElement("div", { className: "rounded-xl p-3 mb-3 text-[11px] leading-6", style: { background: "#D4A64A11", border: "1px solid #D4A64A33", color: "var(--text-secondary)" } }, "چون استیتمنت برچسب‌های احساسی رو نداره، این تحلیل فقط از الگوهای زمانی و آماری خام قابل استخراجه؛ برای تحلیل عمیق‌تر روانشناسی، از ژورنال استفاده کن.")),
+            quads.map(q => (React.createElement("div", { key: q.key, className: "rounded-xl p-3 mb-3", style: { background: "var(--bg-card)", border: `1px solid ${q.color}33` } },
+                React.createElement("h3", { className: "text-[12px] font-semibold mb-2", style: { color: q.color } }, q.title),
+                q.items.length === 0
+                    ? React.createElement("p", { className: "text-[11px]", style: { color: "var(--text-muted)" } }, "داده‌ی کافی برای این بخش هنوز جمع نشده.")
+                    : q.items.map((txt, i) => React.createElement("p", { key: i, className: "text-[11px] leading-6 mb-1.5", style: { color: "var(--text-secondary)" } }, "• ", txt)))))))));
+}
+function StatementAnalysisView({ statementTrades }) {
+    const stats = useMemo(() => computeFinancialMetrics(statementTrades, 0), [statementTrades]);
+    const bySymbol = useMemo(() => groupProfitability(statementTrades, t => t.pair), [statementTrades]);
+    if (!statementTrades.length) {
+        return React.createElement("div", { className: "rounded-xl p-6 text-center text-sm mb-4", style: { background: "var(--bg-card)", color: "var(--text-muted)" } }, "هنوز معامله‌ای از استیتمنت استخراج نشده — اول از تب «ارزیابی استیتمنت» یک فایل بارگذاری کن.");
+    }
+    return (React.createElement(React.Fragment, null,
+        React.createElement("div", { className: "rounded-xl p-3 mb-3 text-[11px] leading-6", style: { background: "#D4A64A11", border: "1px solid #D4A64A33", color: "var(--text-secondary)" } }, "این تحلیل فقط از داده‌ی خامِ استیتمنت (بدون برچسب سشن/سیستم/بایاس که فقط در ژورنال دستی ثبت می‌شن) محاسبه شده."),
+        React.createElement("div", { className: "grid grid-cols-2 gap-2 mb-4" },
+            [["تعداد معاملات", stats.total], ["نرخ برد", stats.winRate !== null ? stats.winRate + "%" : "—"], ["سود خالص", stats.netPnl], ["پرافیت فکتور", stats.profitFactor ?? "—"]].map(([label, val]) => (React.createElement("div", { key: label, className: "rounded-xl p-3", style: { background: "var(--bg-card)", border: "1px solid var(--border-1)" } },
+                React.createElement("div", { className: "text-[10px] mb-1", style: { color: "var(--text-muted)" } }, label),
+                React.createElement("div", { className: "text-[15px] font-bold mono", style: { color: "var(--text-primary)", fontFamily: "JetBrains Mono, monospace" } }, val))))),
+        React.createElement("div", { className: "rounded-xl p-3 mb-4", style: { background: "var(--bg-card)", border: "1px solid var(--border-1)" } },
+            React.createElement("h3", { className: "text-[12px] font-semibold mb-2", style: { color: "var(--accent-gold)" } }, "منحنی سرمایه"),
+            React.createElement(ResponsiveContainer, { width: "100%", height: 160 },
+                React.createElement(LineChart, { data: stats.curve },
+                    React.createElement(Line, { dataKey: "balance" })))),
+        bySymbol.length > 0 && (React.createElement("div", { className: "mb-4" },
+            React.createElement("h3", { className: "text-[12px] font-semibold mb-2", style: { color: "var(--accent-gold)" } }, "سودآوری بر اساس نماد"),
+            React.createElement("div", { className: "rounded-xl p-2", style: { background: "var(--bg-card)" } },
+                React.createElement(ResponsiveContainer, { width: "100%", height: Math.max(120, bySymbol.length * 30) },
+                    React.createElement(BarChart, { data: bySymbol, layout: "vertical", margin: { left: 10, right: 10 } },
+                        React.createElement(Bar, { dataKey: "value" }))))))));
+}
+function StatementLayer({ statementTrades, onImport, onClear, importing, importError }) {
+    const inputRef = useRef(null);
+    async function handleFiles(e) {
+        const files = Array.from(e.target.files || []);
+        e.target.value = "";
+        if (files.length)
+            onImport(files);
+    }
+    const totalPnl = statementTrades.reduce((s, t) => s + (t.pnl || 0), 0);
+    const wins = statementTrades.filter(t => (t.pnl || 0) > 0).length;
+    return (React.createElement("div", { className: "px-4 mt-4" },
+        React.createElement("h2", { className: "text-sm font-semibold mb-2", style: { color: "var(--text-primary)" } }, "ارزیابی استیتمنت"),
+        React.createElement("p", { className: "text-[11px] leading-6 mb-3", style: { color: "var(--text-muted)" } }, "فایل گزارش استیتمنت متاتریدر ۴/۵ (خروجی HTML) یا فایل CSV/Excel رو اینجا بارگذاری کن تا معاملاتش استخراج بشه. چون فرمت خروجی هر بروکر می‌تونه کمی فرق داشته باشه، این استخراج best-effort است — لیست زیر رو قبل از اعتماد کامل مرور کن."),
+        React.createElement("input", { ref: inputRef, type: "file", accept: ".csv,.xlsx,.xls,.htm,.html", multiple: true, onChange: handleFiles, style: { display: "none" } }),
+        React.createElement("button", { onClick: () => inputRef.current && inputRef.current.click(), disabled: importing, className: "w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-medium mb-3", style: { background: "var(--accent-gold)", color: "#0B0E11", opacity: importing ? 0.6 : 1 } },
+            React.createElement(UploadIcon, { size: 16 }),
+            importing ? " در حال پردازش..." : " بارگذاری فایل استیتمنت / CSV"),
+        importError && (React.createElement("div", { className: "rounded-xl p-3 mb-3 text-[12px]", style: { background: "#F8717122", color: "#F87171", border: "1px solid #F8717155" } }, importError)),
+        statementTrades.length > 0 && (React.createElement("div", { className: "rounded-xl p-3 mb-3", style: { background: "var(--bg-card)", border: "1px solid var(--border-1)" } },
+            React.createElement("div", { className: "flex items-center justify-between mb-1" },
+                React.createElement("span", { className: "text-[12px]", style: { color: "var(--text-secondary)" } },
+                    statementTrades.length,
+                    " معامله استخراج شد — ",
+                    wins,
+                    " برد"),
+                React.createElement("span", { className: "text-[13px] font-bold mono", style: { color: totalPnl >= 0 ? "#34D399" : "#F87171", fontFamily: "JetBrains Mono, monospace" } }, Math.round(totalPnl * 100) / 100)),
+            React.createElement("button", { onClick: onClear, className: "text-[11px] mt-2", style: { color: "#F87171" } }, "\u067E\u0627\u06A9 \u06A9\u0631\u062F\u0646 \u0644\u06CC\u0633\u062A \u0648 \u0634\u0631\u0648\u0639 \u0627\u0632 \u0627\u0648\u0644"))),
+        statementTrades.length > 0 && (React.createElement("div", { className: "mb-4" }, statementTrades.slice(0, 200).map(t => (React.createElement("div", { key: t.id, className: "rounded-xl p-2.5 mb-1.5 flex items-center justify-between", style: { background: "var(--bg-card)", border: "1px solid var(--border-1)" } },
+            React.createElement("div", { className: "flex items-center gap-2" },
+                t.direction === "sell" ? React.createElement(TrendingDown, { size: 12, color: "#F87171" }) : React.createElement(TrendingUp, { size: 12, color: "#34D399" }),
+                React.createElement("span", { className: "text-[12px]", style: { color: "var(--text-primary)" } }, t.pair),
+                React.createElement("span", { className: "text-[10px]", style: { color: "var(--text-muted)" } }, t.date)),
+            React.createElement("span", { className: "text-[12px] font-bold mono", style: { color: (t.pnl || 0) >= 0 ? "#34D399" : "#F87171", fontFamily: "JetBrains Mono, monospace" } }, Math.round((t.pnl || 0) * 100) / 100)))))),
+        statementTrades.length === 0 && !importing && (React.createElement("div", { className: "rounded-xl p-5 text-center text-[12px]", style: { background: "var(--bg-card)", color: "var(--text-muted)" } }, "\u0647\u0646\u0648\u0632 \u0641\u0627\u06CC\u0644\u06CC \u0628\u0627\u0631\u06AF\u0630\u0627\u0631\u06CC \u0646\u0634\u062F\u0647."))));
+}
 /* ---------------- لایه‌ی «تقویم معاملاتی» ----------------
    منطق تقویم (چه شمسی چه میلادی) کاملاً بر پایه‌ی رشته‌ی تاریخِ میلادیِ خودِ معامله‌ها
    (t.date به فرمت YYYY-MM-DD) کار می‌کنه؛ سیستم نمایش فقط تعیین می‌کنه که ماه/روزها با چه
@@ -1678,6 +2003,10 @@ function App() {
     const [calendarSettings, setCalendarSettings] = useState({ system: "jalali" });
     const [calendarCursor, setCalendarCursor] = useState(null);
     const [selectedCalendarDate, setSelectedCalendarDate] = useState(null);
+    const [statementTrades, setStatementTrades] = useState([]);
+    const [statementImporting, setStatementImporting] = useState(false);
+    const [statementImportError, setStatementImportError] = useState("");
+    const [analysisSource, setAnalysisSource] = useState("journal");
     const [namelloReturnSettings, setNamelloReturnSettings] = useState(DEFAULT_NAMELLO_RETURN_SETTINGS);
     const [widgetSettings, setWidgetSettings] = useState(DEFAULT_WIDGET_SETTINGS);
     const [closeTypeOptions, setCloseTypeOptions] = useState(DEFAULT_CLOSE_TYPE_OPTIONS);
@@ -2116,6 +2445,7 @@ function App() {
     useEffect(() => {
         if (!activeAccount) {
             setTrades([]);
+            setStatementTrades([]);
             return;
         }
         (async () => {
@@ -2125,6 +2455,13 @@ function App() {
             }
             catch (e) {
                 setTrades([]);
+            }
+            try {
+                const r2 = await window.storage.get(`namello_statement_trades_${activeAccount}`);
+                setStatementTrades(r2 ? JSON.parse(r2.value) : []);
+            }
+            catch (e) {
+                setStatementTrades([]);
             }
         })();
     }, [activeAccount]);
@@ -2245,6 +2582,46 @@ function App() {
         await window.storage.set(`namello_trades_${activeAccount}`, JSON.stringify(next));
     }
     catch (e) { } }, [activeAccount]);
+    const persistStatementTrades = useCallback(async (next) => { setStatementTrades(next); if (!activeAccount)
+        return; try {
+        await window.storage.set(`namello_statement_trades_${activeAccount}`, JSON.stringify(next));
+    }
+    catch (e) { } }, [activeAccount]);
+    async function importStatementFiles(files) {
+        setStatementImporting(true);
+        setStatementImportError("");
+        try {
+            let collected = [];
+            for (const file of files) {
+                const ext = (file.name.split(".").pop() || "").toLowerCase();
+                if (ext === "htm" || ext === "html") {
+                    const text = await file.text();
+                    collected = collected.concat(parseStatementHtml(text));
+                }
+                else {
+                    const buf = await file.arrayBuffer();
+                    collected = collected.concat(parseStatementSheet(buf));
+                }
+            }
+            if (!collected.length) {
+                setStatementImportError("هیچ معامله‌ای از فایل(های) انتخاب‌شده استخراج نشد. مطمئن شو فایل، گزارش استیتمنت MT4/MT5 یا CSV معتبره.");
+            }
+            else {
+                const existingTickets = new Set(statementTrades.map(t => t.ticket).filter(Boolean));
+                const fresh = collected.filter(t => !t.ticket || !existingTickets.has(t.ticket));
+                await persistStatementTrades([...statementTrades, ...fresh]);
+                showToast(`${fresh.length} معامله از استیتمنت اضافه شد.`);
+            }
+        }
+        catch (e) {
+            setStatementImportError("خطا در خواندن فایل. فرمت فایل رو بررسی کن.");
+        }
+        setStatementImporting(false);
+    }
+    async function clearStatementTrades() {
+        await persistStatementTrades([]);
+        setStatementImportError("");
+    }
     const persistAccSettings = useCallback(async (next) => { setAccSettings(next); try {
         await window.storage.set("namello_settings_v1", JSON.stringify(next));
     }
@@ -4587,8 +4964,20 @@ function App() {
         tab === "goals" && (React.createElement(GoalsLayer, { title: "\u0627\u0647\u062F\u0627\u0641 \u0645\u0639\u0627\u0645\u0644\u0647 \u06AF\u0631\u06CC", activeAccount: activeAccount, list: goals, newText: newGoalText, setNewText: setNewGoalText, onAdd: addGoalRow, onUpdateText: updateGoalRow, onUpdateProgress: updateGoalProgress, onDelete: deleteGoalRow, onMove: moveGoalRow, onExport: exportGoals, askDeleteConfirm: askDeleteConfirm })),
         tab === "lifegoals" && (React.createElement(GoalsLayer, { title: "\u0627\u0647\u062F\u0627\u0641 \u0632\u0646\u062F\u06AF\u06CC", activeAccount: activeAccount, list: lifeGoals, newText: newLifeGoalText, setNewText: setNewLifeGoalText, onAdd: addLifeGoalRow, onUpdateText: updateLifeGoalRow, onUpdateProgress: updateLifeGoalProgress, onDelete: deleteLifeGoalRow, onMove: moveLifeGoalRow, onExport: exportLifeGoals, askDeleteConfirm: askDeleteConfirm })),
         tab === "gratitude" && (React.createElement(GoalsLayer, { title: "\u0634\u06A9\u0631 \u06AF\u0632\u0627\u0631\u06CC", activeAccount: activeAccount, list: gratitude, newText: newGratitudeText, setNewText: setNewGratitudeText, onAdd: addGratitudeRow, onUpdateText: updateGratitudeRow, onUpdateProgress: updateGratitudeProgress, onDelete: deleteGratitudeRow, onMove: moveGratitudeRow, onExport: exportGratitude, askDeleteConfirm: askDeleteConfirm, itemLabel: "\u0645\u062A\u0646" })),
+        tab === "statement" && (!activeAccount ? (React.createElement("div", { className: "px-4 mt-4" },
+            React.createElement("div", { className: "rounded-xl p-4 text-center text-sm", style: { background: "var(--bg-card)", color: "var(--text-muted)" } }, "\u0627\u0648\u0644 \u0627\u0632 \u062A\u0628 \u0698\u0648\u0631\u0646\u0627\u0644 \u06CC\u06A9 \u062D\u0633\u0627\u0628 \u0627\u06CC\u062C\u0627\u062F \u06A9\u0646."))) : (React.createElement(StatementLayer, {
+            statementTrades: statementTrades,
+            onImport: importStatementFiles,
+            onClear: clearStatementTrades,
+            importing: statementImporting,
+            importError: statementImportError,
+        }))),
         tab === "analysis" && (React.createElement("div", { className: "px-4 mt-4" },
             React.createElement("h2", { className: "text-sm font-semibold mb-2", style: { color: "var(--text-primary)" } }, "\u062A\u062D\u0644\u06CC\u0644 \u0622\u0645\u0627\u0631\u06CC \u2014 \u0633\u0648\u062F\u0622\u0648\u0631\u062A\u0631\u06CC\u0646 \u067E\u0627\u0631\u0627\u0645\u062A\u0631\u0647\u0627"),
+            React.createElement("div", { className: "flex gap-2 mb-4" },
+                React.createElement("button", { onClick: () => setAnalysisSource("journal"), className: "flex-1 py-2.5 rounded-lg text-[12px] font-medium", style: { background: analysisSource === "journal" ? "#D4A64A22" : "var(--bg-card2)", color: analysisSource === "journal" ? "var(--accent-gold)" : "var(--text-secondary)" } }, "معاملات ژورنال"),
+                React.createElement("button", { onClick: () => setAnalysisSource("statement"), className: "flex-1 py-2.5 rounded-lg text-[12px] font-medium", style: { background: analysisSource === "statement" ? "#D4A64A22" : "var(--bg-card2)", color: analysisSource === "statement" ? "var(--accent-gold)" : "var(--text-secondary)" } }, "معاملات استیتمنت")),
+            analysisSource === "statement" ? (React.createElement(StatementAnalysisView, { statementTrades: statementTrades })) : (
             closedTrades.length === 0 ? (React.createElement("div", { className: "rounded-xl p-6 text-center text-sm mb-4", style: { background: "var(--bg-card)", color: "var(--text-muted)" } }, "\u0628\u0631\u0627\u06CC \u062A\u062D\u0644\u06CC\u0644\u060C \u062D\u062F\u0627\u0642\u0644 \u0686\u0646\u062F \u0645\u0639\u0627\u0645\u0644\u0647\u200C\u06CC \u0628\u0633\u062A\u0647\u200C\u0634\u062F\u0647 \u0644\u0627\u0632\u0645 \u0627\u0633\u062A.")) : (React.createElement(React.Fragment, null,
                 React.createElement("div", { className: "rounded-xl p-3 mb-5", style: { background: "var(--bg-card)", border: "1px solid var(--border-1)" } },
                     React.createElement("button", { type: "button", onClick: () => setShowBestConditionsList(v => !v), className: "w-full flex items-center justify-between" },
@@ -4718,7 +5107,15 @@ function App() {
                                 React.createElement(Bar, { dataKey: "value", radius: [0, 4, 4, 0] }, chart.data.map((d, i) => React.createElement(Cell, { key: i, fill: d.value >= 0 ? "#34D399" : "#F87171" }))))))))),
                 React.createElement("button", { onClick: exportAnalysis, className: "w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-medium mb-4", style: { background: "var(--bg-card)", color: "var(--text-primary)", border: "1px solid var(--border-1)" } },
                     React.createElement(Download, { size: 16 }),
-                    " \u062E\u0631\u0648\u062C\u06CC \u0627\u06A9\u0633\u0644 \u062A\u062D\u0644\u06CC\u0644 \u0622\u0645\u0627\u0631\u06CC"))))),
+                    " \u062E\u0631\u0648\u062C\u06CC \u0627\u06A9\u0633\u0644 \u062A\u062D\u0644\u06CC\u0644 \u0622\u0645\u0627\u0631\u06CC")))))),
+        tab === "psychology" && (!activeAccount ? (React.createElement("div", { className: "px-4 mt-4" },
+            React.createElement("div", { className: "rounded-xl p-4 text-center text-sm", style: { background: "var(--bg-card)", color: "var(--text-muted)" } }, "\u0627\u0648\u0644 \u0627\u0632 \u062A\u0628 \u0698\u0648\u0631\u0646\u0627\u0644 \u06CC\u06A9 \u062D\u0633\u0627\u0628 \u0627\u06CC\u062C\u0627\u062F \u06A9\u0646."))) : (React.createElement(PsychologyLayer, {
+            journalTrades: closedTrades,
+            statementTrades: statementTrades,
+            source: analysisSource,
+            setSource: setAnalysisSource,
+            psychOptions: psychOptions,
+        }))),
         tab === "exportall" && (React.createElement("div", { className: "px-4 mt-4" },
             React.createElement("h2", { className: "text-sm font-semibold mb-2", style: { color: "var(--text-primary)" } }, "\u062E\u0631\u0648\u062C\u06CC \u06A9\u0627\u0645\u0644 \u0627\u06A9\u0633\u0644"),
             React.createElement("p", { className: "text-[12px] leading-6 mb-4", style: { color: "var(--text-secondary)" } }, "\u0628\u0627 \u0632\u062F\u0646 \u062F\u06A9\u0645\u0647\u200C\u06CC \u0632\u06CC\u0631\u060C \u06CC\u06A9 \u0641\u0627\u06CC\u0644 \u0627\u06A9\u0633\u0644 \u0633\u0627\u062E\u062A\u0647 \u0645\u06CC\u200C\u0634\u0648\u062F \u06A9\u0647 \u062A\u0645\u0627\u0645 \u0644\u0627\u06CC\u0647\u200C\u0647\u0627 (\u0698\u0648\u0631\u0646\u0627\u0644\u060C \u0645\u062F\u06CC\u0631\u06CC\u062A \u0645\u0627\u0644\u06CC\u060C \u0633\u06CC\u0633\u062A\u0645\u200C\u0647\u0627\u06CC \u0645\u0639\u0627\u0645\u0644\u0627\u062A\u06CC\u060C \u0627\u0633\u062A\u0631\u0627\u062A\u0698\u06CC\u060C \u0627\u0647\u062F\u0627\u0641\u060C \u062A\u062D\u0644\u06CC\u0644 \u0622\u0645\u0627\u0631\u06CC) \u0647\u0631\u06A9\u062F\u0627\u0645 \u062F\u0631 \u06CC\u06A9 \u0634\u06CC\u062A \u062C\u062F\u0627\u06AF\u0627\u0646\u0647 \u0642\u0631\u0627\u0631 \u0645\u06CC\u200C\u06AF\u06CC\u0631\u0646\u062F."),
@@ -4816,7 +5213,9 @@ function App() {
             { key: "goals", label: "اهداف معامله گری", Icon: Flag },
             { key: "lifegoals", label: "اهداف زندگی", Icon: Flag },
             { key: "gratitude", label: "شکر گزاری", Icon: Heart },
+            { key: "statement", label: "ارزیابی استیتمنت", Icon: UploadIcon },
             { key: "analysis", label: "تحلیل", Icon: LineChartIcon },
+            { key: "psychology", label: "روانشناسی", Icon: Brain },
             { key: "exportall", label: "خروجی کل", Icon: FileSpreadsheet },
             { key: "settings", label: "تنظیمات", Icon: SettingsIcon },
             { key: "about", label: "درباره برنامه", Icon: Info },
