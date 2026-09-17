@@ -103,6 +103,7 @@
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" onerror="showBootError('Failed to load XLSX', 'cdn.jsdelivr.net may be blocked on this network.')"></script>
 <script src="https://cdn.jsdelivr.net/npm/plotly.js-dist-min@2.32.0/plotly.min.js" onerror="showBootError('Failed to load Plotly', 'cdn.jsdelivr.net may be blocked on this network.')"></script>
 <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4" onerror="showBootError('Failed to load Tailwind', 'cdn.jsdelivr.net may be blocked on this network.')"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <script>
   document.getElementById('boot-status').textContent = 'Starting app…';
   if (typeof React === 'undefined') showBootError('React did not load', 'window.React is undefined. Likely a network/CDN block.');
@@ -393,6 +394,67 @@ const I18N = {
     },
 };
 function translate(lang, key) { return (I18N[lang] && I18N[lang][key]) || I18N.fa[key] || key; }
+/* ---------------- پشتیبان‌گیری ابری (گوگل‌درایو - پوشه‌ی appData) ----------------
+   پوشه‌ی appData یک پوشه‌ی مخفیِ مخصوصِ همین اپه که تو لیست عادیِ درایوِ کاربر دیده نمی‌شه؛
+   یعنی هم خصوصی‌تره، هم نیازی به دسترسیِ کامل به کل درایوِ کاربر نداریم (فقط اسکوپ drive.appdata).
+   کل داده‌ی برنامه (هر چیزی که کلیدش با namello شروع می‌شه) رو با window.storage.list جمع می‌کنیم
+   و به‌صورت یک فایل JSON آپلود/آپدیت می‌کنیم — پس با هر ویژگیِ جدیدی که بعداً کلید ذخیره‌ی جدید
+   اضافه کنه، بکاپ خودکار پوششش می‌ده، بدون نیاز به لیست‌کردن دستیِ کلیدها.
+*/
+const DRIVE_BACKUP_FILENAME = "namello-backup.json";
+async function gatherAllAppData() {
+    const out = {};
+    const res = await window.storage.list("namello", false);
+    if (!res || !res.keys)
+        return out;
+    for (const k of res.keys) {
+        try {
+            const r = await window.storage.get(k);
+            if (r)
+                out[k] = r.value;
+        }
+        catch (e) { }
+    }
+    return out;
+}
+async function restoreAllAppData(data) {
+    for (const [k, v] of Object.entries(data || {})) {
+        try {
+            await window.storage.set(k, v);
+        }
+        catch (e) { }
+    }
+}
+async function driveFindBackupFileId(accessToken) {
+    const url = "https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=" + encodeURIComponent(`name='${DRIVE_BACKUP_FILENAME}'`) + "&fields=files(id,modifiedTime)";
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
+    if (!res.ok)
+        throw new Error("drive-list-failed");
+    const j = await res.json();
+    return j.files && j.files[0] ? j.files[0] : null;
+}
+async function driveUploadBackup(accessToken, fileId, jsonObj) {
+    const boundary = "namello_boundary_" + Date.now();
+    const metadata = fileId ? {} : { name: DRIVE_BACKUP_FILENAME, parents: ["appDataFolder"] };
+    const body = `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(metadata)}\r\n--${boundary}\r\nContent-Type: application/json\r\n\r\n${JSON.stringify(jsonObj)}\r\n--${boundary}--`;
+    const url = fileId
+        ? `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=multipart`
+        : "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart";
+    const res = await fetch(url, {
+        method: fileId ? "PATCH" : "POST",
+        headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": `multipart/related; boundary=${boundary}` },
+        body,
+    });
+    if (!res.ok)
+        throw new Error("drive-upload-failed");
+    return res.json();
+}
+async function driveDownloadBackup(accessToken, fileId) {
+    const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, { headers: { Authorization: `Bearer ${accessToken}` } });
+    if (!res.ok)
+        throw new Error("drive-download-failed");
+    return res.json();
+}
 /* ------------------------- default session config (NY time) ------------------------- */
 const DEFAULT_CONFIG = {
     colors: { overlap: "#FDE047" },
@@ -2084,8 +2146,11 @@ function App() {
     const [themeMode, setThemeMode] = useState("dark");
     const [appLanguage, setAppLanguage] = useState("fa");
     const [storageMode, setStorageMode] = useState("local");
-    const [cloudAuthForm, setCloudAuthForm] = useState({ email: "", password: "" });
+    const [googleClientId, setGoogleClientId] = useState("");
+    const [googleAccessToken, setGoogleAccessToken] = useState("");
     const [cloudUser, setCloudUser] = useState(null);
+    const [cloudBusy, setCloudBusy] = useState(false);
+    const [lastBackupAt, setLastBackupAt] = useState("");
     const [calendarSettings, setCalendarSettings] = useState({ system: "jalali" });
     const [calendarCursor, setCalendarCursor] = useState(null);
     const [selectedCalendarDate, setSelectedCalendarDate] = useState(null);
@@ -2368,6 +2433,12 @@ function App() {
                 const r = await window.storage.get("namello_storage_mode_v1");
                 if (r && (r.value === "local" || r.value === "cloud"))
                     setStorageMode(r.value);
+            }
+            catch (e) { }
+            try {
+                const r = await window.storage.get("namello_google_client_id_v1");
+                if (r && r.value)
+                    setGoogleClientId(r.value);
             }
             catch (e) { }
             try {
@@ -2755,16 +2826,103 @@ function App() {
         await window.storage.set("namello_storage_mode_v1", next);
     }
     catch (e) { } }, []);
-    // چون اینجا هیچ پروژه‌ی Firebase/بک‌اندی وصل نیست، این سه تابع بی‌سروصدا شکست نمی‌خورن یا
-    // قلابی موفق نشون نمی‌دن — با یک پیام صادقانه به کاربر می‌گن دقیقاً چی لازمه تا واقعاً کار کنه.
-    function cloudSignUp() {
-        showToast("برای فعال‌شدنِ واقعیِ ثبت‌نام ابری، این اپ باید به یک پروژه‌ی Firebase (یا مشابه) وصل بشه. فعلاً فقط حالت «ذخیره محلی» کار می‌کنه.");
+    const persistGoogleClientId = useCallback(async (next) => { setGoogleClientId(next); try {
+        await window.storage.set("namello_google_client_id_v1", next);
     }
-    function cloudSignIn() {
-        showToast("برای فعال‌شدنِ واقعیِ ورود ابری، این اپ باید به یک پروژه‌ی Firebase (یا مشابه) وصل بشه. فعلاً فقط حالت «ذخیره محلی» کار می‌کنه.");
+    catch (e) { } }, []);
+    // ورود با گوگل، فقط برای دسترسی به پوشه‌ی مخفیِ appData (نه کل درایو)؛ توکن فقط در حافظه‌ی
+    // همین session نگه داشته می‌شه (نه ذخیره‌ی دائمی) چون کوتاه‌عمره و برای امنیت بهتره هر بار
+    // تازه گرفته بشه.
+    function googleSignIn() {
+        if (!window.google || !window.google.accounts || !window.google.accounts.oauth2) {
+            showToast("سرویس ورود گوگل هنوز بارگذاری نشده. چند ثانیه صبر کن و دوباره امتحان کن.");
+            return;
+        }
+        if (!googleClientId.trim()) {
+            showToast("اول Client ID گوگل رو از Google Cloud Console بگیر و همین‌جا وارد کن.");
+            return;
+        }
+        setCloudBusy(true);
+        try {
+            const client = window.google.accounts.oauth2.initTokenClient({
+                client_id: googleClientId.trim(),
+                scope: "https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/userinfo.email",
+                callback: async (resp) => {
+                    if (resp.error) {
+                        setCloudBusy(false);
+                        showToast("ورود با گوگل ناموفق بود: " + resp.error);
+                        return;
+                    }
+                    setGoogleAccessToken(resp.access_token);
+                    try {
+                        const r = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", { headers: { Authorization: `Bearer ${resp.access_token}` } });
+                        const j = await r.json();
+                        setCloudUser(j.email || "حساب گوگل");
+                    }
+                    catch (e) {
+                        setCloudUser("حساب گوگل");
+                    }
+                    setCloudBusy(false);
+                    showToast("با گوگل وارد شدی.");
+                },
+            });
+            client.requestAccessToken();
+        }
+        catch (e) {
+            setCloudBusy(false);
+            showToast("خطا در راه‌اندازی ورود گوگل. Client ID رو بررسی کن.");
+        }
     }
-    function cloudSignOut() {
+    function googleSignOut() {
+        try {
+            if (googleAccessToken && window.google && window.google.accounts && window.google.accounts.oauth2)
+                window.google.accounts.oauth2.revoke(googleAccessToken, () => { });
+        }
+        catch (e) { }
+        setGoogleAccessToken("");
         setCloudUser(null);
+    }
+    async function backupToCloud() {
+        if (!googleAccessToken) {
+            showToast("اول با گوگل وارد شو.");
+            return;
+        }
+        setCloudBusy(true);
+        try {
+            const data = await gatherAllAppData();
+            const existing = await driveFindBackupFileId(googleAccessToken);
+            await driveUploadBackup(googleAccessToken, existing ? existing.id : null, data);
+            const stamp = new Date().toLocaleString("fa-IR");
+            setLastBackupAt(stamp);
+            showToast("پشتیبان‌گیری تو گوگل‌درایو انجام شد.");
+        }
+        catch (e) {
+            showToast("پشتیبان‌گیری ناموفق بود. دوباره امتحان کن.");
+        }
+        setCloudBusy(false);
+    }
+    async function restoreFromCloud() {
+        if (!googleAccessToken) {
+            showToast("اول با گوگل وارد شو.");
+            return;
+        }
+        setCloudBusy(true);
+        try {
+            const existing = await driveFindBackupFileId(googleAccessToken);
+            if (!existing) {
+                showToast("هیچ بکاپی تو گوگل‌درایو پیدا نشد.");
+                setCloudBusy(false);
+                return;
+            }
+            const data = await driveDownloadBackup(googleAccessToken, existing.id);
+            await restoreAllAppData(data);
+            showToast("بازیابی انجام شد — در حال بارگذاری مجدد برنامه...");
+            setTimeout(() => window.location.reload(), 1200);
+        }
+        catch (e) {
+            showToast("بازیابی ناموفق بود. دوباره امتحان کن.");
+            setCloudBusy(false);
+        }
     }
     const t = useCallback((key) => translate(appLanguage, key), [appLanguage]);
     // چون خودِ رشته‌های محتوای برنامه (ژورنال، تحلیل و ...) فعلاً فقط فارسی‌ان، وقتی زبان روی
@@ -5490,17 +5648,20 @@ function App() {
                 storageMode === "local"
                     ? React.createElement("p", { className: "text-[10px] leading-6", style: { color: "var(--text-muted)" } }, "اطلاعات فقط روی همین دستگاه/مرورگر ذخیره می‌شه. این همون رفتار پیش‌فرض فعلیه و به هیچ حساب یا اینترنتی نیاز نداره؛ فقط یادت باشه بین گوشی‌های مختلف یا بعد از پاک‌کردن داده‌ی مرورگر همگام نمی‌شه.")
                     : (React.createElement(React.Fragment, null,
-                        React.createElement("p", { className: "text-[10px] leading-6 mb-2", style: { color: "var(--text-muted)" } }, "برای این‌که Sign up/Sign in/Sign out و همگام‌سازی ابریِ واقعی کار کنه، این اپ باید به یک پایگاه‌داده‌ی ابری (مثلاً Firebase — رایگان و بدون نیاز به سرور جدا) وصل بشه؛ چون از دل یک وب‌اپ ساده نمی‌شه چنین زیرساختی رو بدون کلیدهای یک پروژه‌ی واقعی ساخت. فرم زیر آماده‌ست، ولی تا وصل‌نشدنِ Firebase فقط همین پیام رو نشون می‌ده."),
+                        !cloudUser && (React.createElement("div", { className: "mb-2" },
+                            React.createElement("label", { className: "text-[10px] block mb-1", style: { color: "var(--text-muted)" } }, "Google OAuth Client ID (از Google Cloud Console)"),
+                            React.createElement("input", { type: "text", value: googleClientId, onChange: e => persistGoogleClientId(e.target.value), placeholder: "xxxxxxxx.apps.googleusercontent.com", className: "w-full bg-transparent outline-none text-[11px] mono px-2.5 py-2 rounded-lg", style: { color: "var(--text-primary)", border: "1px solid var(--border-2)", fontFamily: "JetBrains Mono, monospace" } }))),
                         cloudUser
-                            ? (React.createElement("div", { className: "flex items-center justify-between rounded-lg p-2.5", style: { background: "var(--bg-card2)" } },
-                                React.createElement("span", { className: "text-[12px]", style: { color: "var(--text-primary)" } }, cloudUser),
-                                React.createElement("button", { onClick: cloudSignOut, className: "px-3 py-1.5 rounded-lg text-[11px]", style: { background: "var(--bg-page)", color: "#F87171" } }, "\u062E\u0631\u0648\u062C")))
-                            : (React.createElement(React.Fragment, null,
-                                React.createElement("input", { type: "email", placeholder: "\u0627\u06CC\u0645\u06CC\u0644", value: cloudAuthForm.email, onChange: e => setCloudAuthForm(f => ({ ...f, email: e.target.value })), className: "w-full mb-1.5 bg-transparent outline-none text-[12px] px-2.5 py-2 rounded-lg", style: { color: "var(--text-primary)", border: "1px solid var(--border-2)" } }),
-                                React.createElement("input", { type: "password", placeholder: "\u0631\u0645\u0632 \u0639\u0628\u0648\u0631", value: cloudAuthForm.password, onChange: e => setCloudAuthForm(f => ({ ...f, password: e.target.value })), className: "w-full mb-2 bg-transparent outline-none text-[12px] px-2.5 py-2 rounded-lg", style: { color: "var(--text-primary)", border: "1px solid var(--border-2)" } }),
-                                React.createElement("div", { className: "flex gap-2" },
-                                    React.createElement("button", { onClick: cloudSignUp, className: "flex-1 py-2 rounded-lg text-[11px]", style: { background: "var(--bg-card2)", color: "var(--text-secondary)" } }, "\u062B\u0628\u062A\u200C\u0646\u0627\u0645"),
-                                    React.createElement("button", { onClick: cloudSignIn, className: "flex-1 py-2 rounded-lg text-[11px]", style: { background: "var(--accent-gold)", color: "var(--bg-page)" } }, "\u0648\u0631\u0648\u062F"))))))),
+                            ? (React.createElement(React.Fragment, null,
+                                React.createElement("div", { className: "flex items-center justify-between rounded-lg p-2.5 mb-2", style: { background: "var(--bg-card2)" } },
+                                    React.createElement("span", { className: "text-[12px]", style: { color: "var(--text-primary)" } }, cloudUser),
+                                    React.createElement("button", { onClick: googleSignOut, className: "px-3 py-1.5 rounded-lg text-[11px]", style: { background: "var(--bg-page)", color: "#F87171" } }, "\u062E\u0631\u0648\u062C")),
+                                React.createElement("div", { className: "flex gap-2 mb-1.5" },
+                                    React.createElement("button", { onClick: backupToCloud, disabled: cloudBusy, className: "flex-1 py-2.5 rounded-lg text-[11px] font-medium", style: { background: "var(--accent-gold)", color: "var(--bg-page)", opacity: cloudBusy ? 0.6 : 1 } }, cloudBusy ? "..." : "\u067E\u0634\u062A\u06CC\u0628\u0627\u0646‌\u06AF\u06CC\u0631\u06CC \u062F\u0631 \u062F\u0631\u0627\u06CC\u0648"),
+                                    React.createElement("button", { onClick: restoreFromCloud, disabled: cloudBusy, className: "flex-1 py-2.5 rounded-lg text-[11px] font-medium", style: { background: "var(--bg-card2)", color: "var(--text-primary)", opacity: cloudBusy ? 0.6 : 1 } }, "\u0628\u0627\u0632\u06CC\u0627\u0628\u06CC \u0627\u0632 \u062F\u0631\u0627\u06CC\u0648")),
+                                lastBackupAt && React.createElement("p", { className: "text-[10px]", style: { color: "var(--text-muted)" } }, "\u0622\u062E\u0631\u06CC\u0646 \u067E\u0634\u062A\u06CC\u0628\u0627\u0646: ", lastBackupAt)))
+                            : (React.createElement("button", { onClick: googleSignIn, disabled: cloudBusy, className: "w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-[12px] font-medium", style: { background: "var(--bg-card2)", color: "var(--text-primary)", border: "1px solid var(--border-2)", opacity: cloudBusy ? 0.6 : 1 } }, cloudBusy ? "..." : "\u0648\u0631\u0648\u062F \u0628\u0627 \u06AF\u0648\u06AF\u0644 (\u06AF\u0648\u06AF\u0644‌\u062F\u0631\u0627\u06CC\u0648)")),
+                        React.createElement("p", { className: "text-[10px] leading-6 mt-2", style: { color: "var(--text-muted)" } }, "داده‌ها تو یه فایل مخفی داخل پوشه‌ی «appData» حساب گوگلِ خودت ذخیره می‌شن — همون‌جایی که فقط خودِ Namello بهش دسترسی داره، نه تو لیست عادیِ درایوت.")))),
             React.createElement("div", { className: "rounded-xl p-3 mb-3", style: { background: "var(--bg-card)", border: "1px solid var(--border-1)" } },
                 React.createElement("h3", { className: "text-[13px] font-semibold mb-2", style: { color: "var(--text-primary)" } }, "فونت برنامه"),
                 React.createElement("div", { className: "flex flex-wrap gap-1.5" }, FONT_OPTIONS.map(f => (React.createElement("button", { key: f.key, onClick: () => changeAppFont(f.key), className: "px-3 py-2 rounded-lg text-[12px]", style: { background: appFont === f.key ? "#D4A64A22" : "var(--bg-card2)", color: appFont === f.key ? "var(--accent-gold)" : "var(--text-secondary)", border: `1px solid ${appFont === f.key ? "#D4A64A55" : "var(--border-2)"}`, fontFamily: f.css } }, f.label))))),
