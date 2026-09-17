@@ -363,6 +363,36 @@ function durationBucketFa(minutes) {
 const WEEKDAYS_FA = ["یکشنبه", "دوشنبه", "سه‌شنبه", "چهارشنبه", "پنجشنبه", "جمعه", "شنبه"];
 const JMONTHS_FA = ["فروردین", "اردیبهشت", "خرداد", "تیر", "مرداد", "شهریور", "مهر", "آبان", "آذر", "دی", "بهمن", "اسفند"];
 const GMONTHS_FA = ["ژانویه", "فوریه", "مارس", "آوریل", "مه", "ژوئن", "ژوئیه", "اوت", "سپتامبر", "اکتبر", "نوامبر", "دسامبر"];
+/* ---------------- چندزبانه‌سازی ----------------
+   این دیکشنری و تابع t() زیرساخت کامل و کاراست، ولی فعلاً فقط بخش‌های پراستفاده‌ی برنامه
+   (نوار پایین، سرصفحه‌ی تنظیمات، چند برچسب کلیدی) بهش وصل شدن — نه تک‌تک هزاران رشته‌ی فارسیِ
+   کل فایل. اضافه‌کردن یک صفحه‌ی جدید به این پوشش فقط یعنی همون رشته‌ها رو اینجا هم اضافه کنی و
+   در JSX به‌جای متن ثابت از t("key") استفاده کنی. */
+const I18N = {
+    fa: {
+        tab_user: "پروفایل", tab_live: "نشست‌ها", tab_news: "اخبار", tab_prep: "آماده‌سازی",
+        tab_journal: "ژورنال", tab_calendar: "تقویم معاملاتی", tab_finance: "مالی", tab_systems: "سیستم‌ها",
+        tab_strategy: "استراتژی", tab_goals: "اهداف معامله گری", tab_lifegoals: "اهداف زندگی",
+        tab_gratitude: "شکر گزاری", tab_statement: "ارزیابی استیتمنت", tab_analysis: "تحلیل",
+        tab_psychology: "روانشناسی", tab_exportall: "خروجی کل", tab_settings: "تنظیمات", tab_about: "درباره برنامه",
+        settings_title: "تنظیمات", settings_theme: "رنگ زمینه برنامه", settings_theme_dark: "تیره", settings_theme_light: "روشن",
+        settings_font: "فونت برنامه", settings_language: "زبان برنامه", settings_storage: "منبع ذخیره‌سازی و بکاپ",
+        common_save: "ذخیره", common_cancel: "انصراف", common_delete: "حذف", common_edit: "ویرایش",
+        common_add: "افزودن", common_close: "بستن", common_excel: "اکسل", common_pdf: "PDF",
+    },
+    en: {
+        tab_user: "Profile", tab_live: "Sessions", tab_news: "News", tab_prep: "Preparation",
+        tab_journal: "Journal", tab_calendar: "Trading Calendar", tab_finance: "Finance", tab_systems: "Systems",
+        tab_strategy: "Strategy", tab_goals: "Trading Goals", tab_lifegoals: "Life Goals",
+        tab_gratitude: "Gratitude", tab_statement: "Statement Review", tab_analysis: "Analysis",
+        tab_psychology: "Psychology", tab_exportall: "Full Export", tab_settings: "Settings", tab_about: "About",
+        settings_title: "Settings", settings_theme: "App Background", settings_theme_dark: "Dark", settings_theme_light: "Light",
+        settings_font: "App Font", settings_language: "App Language", settings_storage: "Storage & Backup Source",
+        common_save: "Save", common_cancel: "Cancel", common_delete: "Delete", common_edit: "Edit",
+        common_add: "Add", common_close: "Close", common_excel: "Excel", common_pdf: "PDF",
+    },
+};
+function translate(lang, key) { return (I18N[lang] && I18N[lang][key]) || I18N.fa[key] || key; }
 /* ------------------------- default session config (NY time) ------------------------- */
 const DEFAULT_CONFIG = {
     colors: { overlap: "#FDE047" },
@@ -1638,7 +1668,7 @@ function progressColor(p) {
         return "#FACC15";
     return "#34D399";
 }
-function GoalsLayer({ title, activeAccount, list, newText, setNewText, onAdd, onUpdateText, onUpdateProgress, onDelete, onMove, onExport, askDeleteConfirm, itemLabel }) {
+function GoalsLayer({ title, activeAccount, list, newText, setNewText, onAdd, onUpdateText, onUpdateProgress, onDelete, onMove, onExport, onExportPdf, askDeleteConfirm, itemLabel }) {
     const noun = itemLabel || "هدف";
     return (React.createElement("div", { className: "px-4 mt-4" },
         React.createElement("h2", { className: "text-sm font-semibold mb-2", style: { color: "var(--text-primary)" } }, title),
@@ -1669,10 +1699,13 @@ function GoalsLayer({ title, activeAccount, list, newText, setNewText, onAdd, on
                     React.createElement("span", { className: "text-[11px] pl-1.5 pr-0.5", style: { color: progressColor(g.progress) } }, "\u066A")),
                 React.createElement("button", { onClick: () => askDeleteConfirm(`این ${noun} حذف بشه؟`, () => onDelete(g.id)), className: "shrink-0" },
                     React.createElement(Trash2, { size: 14, color: "var(--text-muted)" }))))))),
-            React.createElement("button", { onClick: onExport, className: "w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-medium mb-4", style: { background: "var(--bg-card)", color: "var(--text-primary)", border: "1px solid var(--border-1)" } },
-                React.createElement(Download, { size: 16 }),
-                " \u062E\u0631\u0648\u062C\u06CC \u0627\u06A9\u0633\u0644 ",
-                title)))));
+            React.createElement("div", { className: "flex gap-2 mb-4" },
+                React.createElement("button", { onClick: onExport, className: "flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-medium", style: { background: "var(--bg-card)", color: "var(--text-primary)", border: "1px solid var(--border-1)" } },
+                    React.createElement(Download, { size: 16 }),
+                    " \u0627\u06A9\u0633\u0644"),
+                React.createElement("button", { onClick: onExportPdf, className: "flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-medium", style: { background: "var(--bg-card)", color: "var(--accent-gold)", border: "1px solid var(--border-1)" } },
+                    React.createElement(Download, { size: 16 }),
+                    " PDF"))))));
 }
 /* ---------------- تحلیل بر پایه‌ی معاملات استخراج‌شده از استیتمنت ----------------
    چون گزارش بروکر برچسب‌هایی مثل سشن/سیستم/بایاس/فرکتال رو نداره (این‌ها فقط در فرم ثبت ژورنال
@@ -1855,6 +1888,7 @@ function StatementLayer({ statementTrades, onImport, onClear, importing, importE
    تقویمی روی صفحه چیده بشن، نه اینکه داده‌ها چطور ذخیره بشن. */
 function CalendarLayer({ trades, calendarSettings, onChangeSystem, cursorY, cursorM, setCursor, selectedDate, setSelectedDate, onEditTrade, todayDateStr }) {
     const [showSettings, setShowSettings] = useState(false);
+    const [chartRange, setChartRange] = useState("monthly");
     const isJalali = calendarSettings.system === "jalali";
     const tradesByDate = useMemo(() => {
         const map = {};
@@ -1892,6 +1926,50 @@ function CalendarLayer({ trades, calendarSettings, onChangeSystem, cursorY, curs
     const weekdayHeaders = isJalali
         ? ["ش", "ی", "د", "س", "چ", "پ", "ج"]
         : ["ی", "د", "س", "چ", "پ", "ج", "ش"];
+    const MONTH_NAMES = isJalali ? JMONTHS_FA : GMONTHS_FA;
+    function daysInMonthOf(y, m) { return isJalali ? daysInJalaliMonth(y, m) : daysInGregorianMonth(y, m); }
+    function dateStrForDay(y, m, d) {
+        if (isJalali) {
+            const [gy, gm, gd] = jalaliToGregorian(y, m, d);
+            return gregPartsToDateStr(gy, gm, gd);
+        }
+        return gregPartsToDateStr(y, m, d);
+    }
+    // نمودار «تعداد ترید در روز» برای بازه‌ی دلخواه (هفتگی/ماهیانه/فصلی/سالیانه)، همیشه لنگرش
+    // ماه/سالِ در حال نمایش تقویمه؛ برای بازه‌های بلندتر (فصلی/سالیانه) برچسب هر میله «روز + ماهِ
+    // کوتاه» است تا با عبور از مرز ماه‌ها اشتباه گرفته نشه.
+    const rangeChartData = useMemo(() => {
+        const out = [];
+        const pushMonth = (y, m, withMonthLabel) => {
+            const n = daysInMonthOf(y, m);
+            for (let d = 1; d <= n; d++) {
+                const gDateStr = dateStrForDay(y, m, d);
+                out.push({ name: withMonthLabel ? `${d} ${MONTH_NAMES[m - 1].slice(0, 3)}` : String(d), value: (tradesByDate[gDateStr] || []).length });
+            }
+        };
+        if (chartRange === "weekly") {
+            const n = Math.min(7, daysInMonthOf(cursorY, cursorM));
+            for (let d = 1; d <= n; d++) {
+                const gDateStr = dateStrForDay(cursorY, cursorM, d);
+                out.push({ name: String(d), value: (tradesByDate[gDateStr] || []).length });
+            }
+        }
+        else if (chartRange === "monthly") {
+            pushMonth(cursorY, cursorM, false);
+        }
+        else if (chartRange === "quarterly") {
+            const qStart = Math.floor((cursorM - 1) / 3) * 3 + 1;
+            for (let m = qStart; m < qStart + 3; m++)
+                pushMonth(cursorY, m, true);
+        }
+        else if (chartRange === "yearly") {
+            for (let m = 1; m <= 12; m++)
+                pushMonth(cursorY, m, true);
+        }
+        return out;
+    }, [chartRange, cursorY, cursorM, isJalali, tradesByDate]);
+    const rangeChartTotal = rangeChartData.reduce((s, d) => s + d.value, 0);
+    const CHART_RANGE_OPTIONS = [["weekly", "هفتگی"], ["monthly", "ماهیانه"], ["quarterly", "فصلی"], ["yearly", "سالیانه"]];
     function goMonth(delta) {
         let ny = cursorY, nm = cursorM + delta;
         if (nm < 1) { nm = 12; ny -= 1; }
@@ -1928,10 +2006,13 @@ function CalendarLayer({ trades, calendarSettings, onChangeSystem, cursorY, curs
                     } },
                     React.createElement("span", { className: "text-[11px]", style: { color: selectedDate === dObj.gDateStr ? "var(--accent-gold)" : "var(--text-primary)" } }, dObj.d),
                     dObj.count > 0 && (React.createElement("span", { className: "text-[8px] mt-0.5 px-1 rounded-full", style: { background: "#D4A64A22", color: "var(--accent-gold)" } }, dObj.count))))))),
-        monthTotal > 0 && (React.createElement("div", { className: "rounded-xl p-3 mb-3", style: { background: "var(--bg-card)", border: "1px solid var(--border-1)" } },
-            React.createElement("h3", { className: "text-[12px] font-semibold mb-2", style: { color: "var(--text-primary)" } }, "تعداد معامله در روز (این ماه)"),
-            React.createElement(ResponsiveContainer, { width: "100%", height: Math.max(120, monthDays.length * 16) },
-                React.createElement(BarChart, { data: chartData },
+        rangeChartTotal > 0 && (React.createElement("div", { className: "rounded-xl p-3 mb-3", style: { background: "var(--bg-card)", border: "1px solid var(--border-1)" } },
+            React.createElement("div", { className: "flex items-center justify-between mb-2" },
+                React.createElement("h3", { className: "text-[12px] font-semibold", style: { color: "var(--text-primary)" } }, "تعداد معامله در روز"),
+                React.createElement("span", { className: "text-[10px]", style: { color: "var(--text-muted)" } }, rangeChartTotal, " معامله در این بازه")),
+            React.createElement("div", { className: "flex gap-1.5 mb-2" }, CHART_RANGE_OPTIONS.map(([key, label]) => (React.createElement("button", { key: key, onClick: () => setChartRange(key), className: "flex-1 py-1.5 rounded-lg text-[10px]", style: { background: chartRange === key ? "#D4A64A22" : "var(--bg-card2)", color: chartRange === key ? "var(--accent-gold)" : "var(--text-secondary)" } }, label)))),
+            React.createElement(ResponsiveContainer, { width: "100%", height: Math.max(120, rangeChartData.length * (chartRange === "weekly" ? 24 : chartRange === "monthly" ? 16 : 10)) },
+                React.createElement(BarChart, { data: rangeChartData },
                     React.createElement(Bar, { dataKey: "value" }))))),
         selectedDate ? (React.createElement("div", { className: "mb-4" },
             React.createElement("h3", { className: "text-[12px] font-semibold mb-2", style: { color: "var(--text-primary)" } },
@@ -2001,6 +2082,10 @@ function App() {
     const [showBestConditionsList, setShowBestConditionsList] = useState(false);
     const [quickLaunchSettings, setQuickLaunchSettings] = useState(DEFAULT_QUICK_LAUNCH_SETTINGS);
     const [themeMode, setThemeMode] = useState("dark");
+    const [appLanguage, setAppLanguage] = useState("fa");
+    const [storageMode, setStorageMode] = useState("local");
+    const [cloudAuthForm, setCloudAuthForm] = useState({ email: "", password: "" });
+    const [cloudUser, setCloudUser] = useState(null);
     const [calendarSettings, setCalendarSettings] = useState({ system: "jalali" });
     const [calendarCursor, setCalendarCursor] = useState(null);
     const [selectedCalendarDate, setSelectedCalendarDate] = useState(null);
@@ -2271,6 +2356,18 @@ function App() {
                 const r = await window.storage.get("namello_theme_mode_v1");
                 if (r && (r.value === "dark" || r.value === "light"))
                     setThemeMode(r.value);
+            }
+            catch (e) { }
+            try {
+                const r = await window.storage.get("namello_app_language_v1");
+                if (r && (r.value === "fa" || r.value === "en"))
+                    setAppLanguage(r.value);
+            }
+            catch (e) { }
+            try {
+                const r = await window.storage.get("namello_storage_mode_v1");
+                if (r && (r.value === "local" || r.value === "cloud"))
+                    setStorageMode(r.value);
             }
             catch (e) { }
             try {
@@ -2650,6 +2747,33 @@ function App() {
         await window.storage.set("namello_theme_mode_v1", next);
     }
     catch (e) { } }, []);
+    const persistAppLanguage = useCallback(async (next) => { setAppLanguage(next); try {
+        await window.storage.set("namello_app_language_v1", next);
+    }
+    catch (e) { } }, []);
+    const persistStorageMode = useCallback(async (next) => { setStorageMode(next); try {
+        await window.storage.set("namello_storage_mode_v1", next);
+    }
+    catch (e) { } }, []);
+    // چون اینجا هیچ پروژه‌ی Firebase/بک‌اندی وصل نیست، این سه تابع بی‌سروصدا شکست نمی‌خورن یا
+    // قلابی موفق نشون نمی‌دن — با یک پیام صادقانه به کاربر می‌گن دقیقاً چی لازمه تا واقعاً کار کنه.
+    function cloudSignUp() {
+        showToast("برای فعال‌شدنِ واقعیِ ثبت‌نام ابری، این اپ باید به یک پروژه‌ی Firebase (یا مشابه) وصل بشه. فعلاً فقط حالت «ذخیره محلی» کار می‌کنه.");
+    }
+    function cloudSignIn() {
+        showToast("برای فعال‌شدنِ واقعیِ ورود ابری، این اپ باید به یک پروژه‌ی Firebase (یا مشابه) وصل بشه. فعلاً فقط حالت «ذخیره محلی» کار می‌کنه.");
+    }
+    function cloudSignOut() {
+        setCloudUser(null);
+    }
+    const t = useCallback((key) => translate(appLanguage, key), [appLanguage]);
+    // چون خودِ رشته‌های محتوای برنامه (ژورنال، تحلیل و ...) فعلاً فقط فارسی‌ان، وقتی زبان روی
+    // انگلیسی باشه فقط جهتِ صفحه/نوار پایین/تنظیمات LTR می‌شه، نه کل محتوا — این محدودیتِ همین
+    // مرحله از پوششِ ترجمه‌ست، نه باگ.
+    useEffect(() => {
+        document.documentElement.dir = appLanguage === "en" ? "ltr" : "rtl";
+        document.documentElement.lang = appLanguage;
+    }, [appLanguage]);
     // چه رنگ زمینه (تیره/روشن) و چه فونت انتخابی رو روی خودِ <html> اعمال می‌کنیم؛ چون همه‌ی
     // رنگ‌های اصلیِ اپ از var(--bg-page) و مشابه‌ها استفاده می‌کنن (به‌جای هگزِ ثابت)، همین یک
     // خط کل اپ رو بازرنگ‌آمیزی می‌کنه. رنگ نوار وضعیتِ گوشی (meta theme-color) هم هماهنگ می‌شه.
@@ -3681,6 +3805,59 @@ function App() {
         persistAccSettings(clean);
         setShowAccSettings(false);
     }
+    /* ---------------- خروجی PDF عمومی ----------------
+       به‌جای jsPDF (که برای متن فارسی/RTL نیاز به فونت اختصاصیِ embed‌شده داره و بدونش کادرهای
+       خالی نشون می‌ده)، از قابلیت چاپ خودِ مرورگر استفاده می‌کنیم: یک HTML ساده و راست‌چین با
+       همون فونت اپ می‌سازیم، داخل یک iframe مخفی می‌ذاریم، و print() مرورگر رو صدا می‌زنیم؛ کاربر
+       از دیالوگ چاپ، «ذخیره به‌عنوان PDF» رو انتخاب می‌کنه. این روش چون از موتور رندرِ خودِ
+       مرورگر استفاده می‌کنه، متن فارسی همیشه درست و خوانا در میاد.
+    */
+    function exportAoaAsPdf(title, header, rows, extraLines) {
+        const esc = (v) => String(v ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        const theadHtml = `<tr>${header.map(h => `<th>${esc(h)}</th>`).join("")}</tr>`;
+        const tbodyHtml = rows.map(r => `<tr>${header.map((_, i) => `<td>${esc(r[i])}</td>`).join("")}</tr>`).join("");
+        const extraHtml = (extraLines || []).map(l => `<p class="extra">${esc(l)}</p>`).join("");
+        const html = `<!DOCTYPE html><html lang="fa" dir="rtl"><head><meta charset="UTF-8" />
+            <style>
+                @import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;600;700&display=swap');
+                * { font-family: 'Vazirmatn', sans-serif; box-sizing: border-box; }
+                body { padding: 16px; color: #111; }
+                h1 { font-size: 16px; margin: 0 0 4px; }
+                .meta { font-size: 10px; color: #666; margin-bottom: 12px; }
+                table { width: 100%; border-collapse: collapse; font-size: 9px; }
+                th, td { border: 1px solid #ccc; padding: 4px 6px; text-align: right; white-space: nowrap; }
+                th { background: #f0f0f0; font-weight: 700; }
+                tr:nth-child(even) td { background: #fafafa; }
+                .extra { font-size: 11px; margin: 4px 0; font-weight: 600; }
+                @media print { @page { size: A4 landscape; margin: 10mm; } }
+            </style></head>
+            <body>
+                <h1>${esc(title)}</h1>
+                <div class="meta">Namello — ${esc(new Date().toLocaleDateString("fa-IR"))}</div>
+                ${extraHtml}
+                <table><thead>${theadHtml}</thead><tbody>${tbodyHtml}</tbody></table>
+            </body></html>`;
+        const iframe = document.createElement("iframe");
+        iframe.style.position = "fixed";
+        iframe.style.left = "-9999px";
+        iframe.style.width = "0";
+        iframe.style.height = "0";
+        document.body.appendChild(iframe);
+        iframe.onload = () => {
+            setTimeout(() => {
+                try {
+                    iframe.contentWindow.focus();
+                    iframe.contentWindow.print();
+                }
+                catch (e) { }
+                setTimeout(() => { try {
+                    document.body.removeChild(iframe);
+                }
+                catch (e) { } }, 1000);
+            }, 250);
+        };
+        iframe.srcdoc = html;
+    }
     /* ---------------- خروجی اکسل ژورنال — همه‌ی آیتم‌های «ثبت ورود» و «ثبت نتیجه معامله» ---------------- */
     const JOIN_FA = (arr) => (arr && arr.length ? arr.join("، ") : "");
     const JOIN_OR_SINGLE = (arr, single) => (arr && arr.length ? JOIN_FA(arr) : (single || ""));
@@ -3736,6 +3913,20 @@ function App() {
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, RANGE_LABEL[range]);
         XLSX.writeFile(wb, `namello-journal-${activeAccount}-${range}-${todayStr}.xlsx`);
+        setShowExportPicker(false);
+    }
+    function doExportPdf(range) {
+        const filtered = rangeFilterTrades(closedTrades, range, todayStr, now);
+        if (!filtered.length) {
+            showToast("در این بازه معامله‌ی بسته‌شده‌ای ثبت نشده.");
+            return;
+        }
+        const asc = sortAsc(filtered);
+        const { header, rows } = buildJournalAoa(asc);
+        const sum = filtered.reduce((s, t) => s + (t.pnl || 0), 0);
+        exportAoaAsPdf(`ژورنال معاملات — ${RANGE_LABEL[range]}`, header, rows, [
+            `جمع سود/ضرر این بازه: ${sum} — موجودی فعلی: ${derived.currentBalance} — حساب: ${activeAccount} (${accSettings.broker || "—"})`,
+        ]);
         setShowExportPicker(false);
     }
     /* ---------------- systems / strategy / goals ---------------- */
@@ -3894,12 +4085,18 @@ function App() {
         XLSX.utils.book_append_sheet(wb, ws, "سیستم‌ها");
         XLSX.writeFile(wb, `namello-systems-${activeAccount || "global"}-${todayStr}.xlsx`);
     }
+    function exportSystemsPdf() {
+        exportAoaAsPdf("سیستم‌های معاملاتی", ["نام سیستم", "توضیحات"], tradingSystemsCatalog.map(s => [s.name, s.description || ""]));
+    }
     function exportGoals() {
         const aoa = [["تاریخ ثبت", "هدف", "پیشرفت (%)"], ...goals.map(g => [g.date, g.text, g.progress || 0])];
         const ws = XLSX.utils.aoa_to_sheet(aoa);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "اهداف");
         XLSX.writeFile(wb, `namello-goals-${activeAccount}-${todayStr}.xlsx`);
+    }
+    function exportGoalsPdf() {
+        exportAoaAsPdf("اهداف", ["تاریخ ثبت", "هدف", "پیشرفت (%)"], goals.map(g => [g.date, g.text, g.progress || 0]));
     }
     function exportLifeGoals() {
         const aoa = [["تاریخ ثبت", "هدف", "پیشرفت (%)"], ...lifeGoals.map(g => [g.date, g.text, g.progress || 0])];
@@ -3908,12 +4105,18 @@ function App() {
         XLSX.utils.book_append_sheet(wb, ws, "اهداف زندگی");
         XLSX.writeFile(wb, `namello-lifegoals-${activeAccount}-${todayStr}.xlsx`);
     }
+    function exportLifeGoalsPdf() {
+        exportAoaAsPdf("اهداف زندگی", ["تاریخ ثبت", "هدف", "پیشرفت (%)"], lifeGoals.map(g => [g.date, g.text, g.progress || 0]));
+    }
     function exportGratitude() {
         const aoa = [["تاریخ ثبت", "مورد", "پیشرفت (%)"], ...gratitude.map(g => [g.date, g.text, g.progress || 0])];
         const ws = XLSX.utils.aoa_to_sheet(aoa);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "شکر گزاری");
         XLSX.writeFile(wb, `namello-gratitude-${activeAccount}-${todayStr}.xlsx`);
+    }
+    function exportGratitudePdf() {
+        exportAoaAsPdf("شکر گزاری", ["تاریخ ثبت", "مورد", "پیشرفت (%)"], gratitude.map(g => [g.date, g.text, g.progress || 0]));
     }
     /* ---------------- financial management ---------------- */
     function getPeriodStartStr(range) {
@@ -4241,6 +4444,21 @@ function App() {
         XLSX.utils.book_append_sheet(wb, ws, "مدیریت مالی");
         XLSX.writeFile(wb, `namello-financial-${activeAccount}-${financePeriod}-${todayStr}.xlsx`);
     }
+    function exportFinancialPdf() {
+        const m = finMetrics;
+        const aoa = [
+            ["پارامتر", "مقدار"],
+            ["دوره", RANGE_LABEL[financePeriod]],
+            ["تعداد معاملات", m.total], ["تعداد برد", m.wins], ["تعداد باخت", m.losses],
+            ["درصد برد (Win Rate)", (m.winRate ?? "—") + "%"], ["ضریب سود (Profit Factor)", m.profitFactor ?? "—"],
+            ["میانگین سود", m.avgWin], ["میانگین ضرر", -m.avgLoss], ["بزرگ‌ترین سود", m.biggestWin], ["بزرگ‌ترین ضرر", m.biggestLoss],
+            ["بیشترین برد متوالی", m.maxWinStreak], ["بیشترین باخت متوالی", m.maxLossStreak],
+            ["حداکثر افت سرمایه (Drawdown)", m.maxDD], ["حداکثر افت سرمایه (٪)", m.maxDDPercent + "%"],
+            ["سود/زیان خالص", m.netPnl], ["موجودی نهایی", m.finalBalance], ["Expectancy (به ازای هر ترید)", m.expectancy ?? "—"], ["Risk of Ruin (%)", m.riskOfRuin ?? "—"],
+            ["میانگین مدت معامله", formatDurationFa(m.avgDurationMinutes)],
+        ];
+        exportAoaAsPdf("مدیریت مالی", ["پارامتر", "مقدار"], aoa.slice(1));
+    }
     /* ---------------- statistical analysis ---------------- */
     const byLot = useMemo(() => groupProfitability(closedTrades, t => t.lot), [trades]);
     const byWeekday = useMemo(() => groupProfitability(closedTrades, t => weekdayFromDateStr(t.date)), [trades]);
@@ -4270,6 +4488,47 @@ function App() {
     const [param3dX, setParam3dX] = useState("system");
     const [param3dY, setParam3dY] = useState("weekday");
     const rows3d = useMemo(() => get3DRows(closedTrades, param3dX, param3dY), [trades, param3dX, param3dY]);
+    function exportMultiTablesAsPdf(title, sections) {
+        const esc = (v) => String(v ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        const sectionsHtml = sections.map(s => `
+            <h2>${esc(s.name)}</h2>
+            <table><thead><tr>${s.header.map(h => `<th>${esc(h)}</th>`).join("")}</tr></thead>
+            <tbody>${s.rows.map(r => `<tr>${s.header.map((_, i) => `<td>${esc(r[i])}</td>`).join("")}</tr>`).join("")}</tbody></table>`).join("");
+        const html = `<!DOCTYPE html><html lang="fa" dir="rtl"><head><meta charset="UTF-8" />
+            <style>
+                @import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;600;700&display=swap');
+                * { font-family: 'Vazirmatn', sans-serif; box-sizing: border-box; }
+                body { padding: 16px; color: #111; }
+                h1 { font-size: 16px; margin: 0 0 12px; }
+                h2 { font-size: 12px; margin: 16px 0 4px; page-break-inside: avoid; }
+                .meta { font-size: 10px; color: #666; margin-bottom: 12px; }
+                table { width: 100%; border-collapse: collapse; font-size: 9px; page-break-inside: avoid; }
+                th, td { border: 1px solid #ccc; padding: 3px 5px; text-align: right; }
+                th { background: #f0f0f0; font-weight: 700; }
+                @media print { @page { size: A4; margin: 10mm; } }
+            </style></head>
+            <body><h1>${esc(title)}</h1><div class="meta">Namello — ${esc(new Date().toLocaleDateString("fa-IR"))}</div>${sectionsHtml}</body></html>`;
+        const iframe = document.createElement("iframe");
+        iframe.style.position = "fixed";
+        iframe.style.left = "-9999px";
+        iframe.style.width = "0";
+        iframe.style.height = "0";
+        document.body.appendChild(iframe);
+        iframe.onload = () => {
+            setTimeout(() => {
+                try {
+                    iframe.contentWindow.focus();
+                    iframe.contentWindow.print();
+                }
+                catch (e) { }
+                setTimeout(() => { try {
+                    document.body.removeChild(iframe);
+                }
+                catch (e) { } }, 1000);
+            }, 250);
+        };
+        iframe.srcdoc = html;
+    }
     function exportAnalysis() {
         const wb = XLSX.utils.book_new();
         const mk = (name, data) => XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([["پارامتر", "سودآوری"], ...data.map(d => [d.name, d.value])]), name.slice(0, 31));
@@ -4291,6 +4550,16 @@ function App() {
         mk("ترکیب-سشن-لات", bySessionLot);
         mk(`سه‌بعدی-${PARAM_DEFS[param3dX].label}-${PARAM_DEFS[param3dY].label}`, rows3d);
         XLSX.writeFile(wb, `namello-analysis-${activeAccount}-${todayStr}.xlsx`);
+    }
+    function exportAnalysisPdf() {
+        const sec = (name, data) => ({ name, header: ["پارامتر", "سودآوری"], rows: data.map(d => [d.name, d.value]) });
+        exportMultiTablesAsPdf("تحلیل آماری", [
+            sec("سودآوری-لات", byLot), sec("سودآوری-روزهفته", byWeekday), sec("سودآوری-سیستم", bySystem),
+            sec("سودآوری-سشن", bySession), sec("سودآوری-روند", byTrend), sec("سودآوری-RR", byRR),
+            sec("سودآوری-بایاس", byBias), sec("سودآوری-فراکتال", byFractal), sec("سودآوری-روندِاصلی", byMainTrend),
+            sec("سودآوری-شرایط‌بازار", byCondition), sec("سودآوری-Trig", byTrig), sec("سودآوری-Target", byTarget),
+            sec("سودآوری-Stop", byStop), sec("سودآوری-خبر", byNews),
+        ]);
     }
     /* ---------------- combined full export ---------------- */
     function exportAll() {
@@ -4330,6 +4599,22 @@ function App() {
         mk2("ترکیب-سشن-لات", bySessionLot);
         mk2(`سه‌بعدی-${PARAM_DEFS[param3dX].label}-${PARAM_DEFS[param3dY].label}`, rows3d);
         XLSX.writeFile(wb, `namello-full-export-${activeAccount}-${todayStr}.xlsx`);
+    }
+    function exportAllPdf() {
+        const allClosedAsc = sortAsc(closedTrades);
+        const { header: jHeader, rows: jRows } = buildJournalAoa(allClosedAsc);
+        const allTimeMetrics = computeFinancialMetrics(allClosedAsc, accSettings.startingBalance);
+        const fRows = [["تعداد معاملات", allTimeMetrics.total], ["درصد برد", (allTimeMetrics.winRate ?? "—") + "%"], ["ضریب سود", allTimeMetrics.profitFactor ?? "—"], ["سود/زیان خالص", allTimeMetrics.netPnl], ["موجودی نهایی", allTimeMetrics.finalBalance]];
+        const sec = (name, data) => ({ name, header: ["پارامتر", "سودآوری"], rows: data.map(d => [d.name, d.value]) });
+        exportMultiTablesAsPdf(`خروجی کامل — ${activeAccount}`, [
+            { name: "ژورنال", header: jHeader, rows: jRows },
+            { name: "مدیریت مالی", header: ["پارامتر", "مقدار"], rows: fRows },
+            { name: "سیستم‌های معاملاتی", header: ["نام سیستم", "توضیحات"], rows: tradingSystemsCatalog.map(s => [s.name, s.description || ""]) },
+            { name: "اهداف معامله گری", header: ["تاریخ ثبت", "هدف", "پیشرفت (%)"], rows: goals.map(g => [g.date, g.text, g.progress || 0]) },
+            { name: "اهداف زندگی", header: ["تاریخ ثبت", "هدف", "پیشرفت (%)"], rows: lifeGoals.map(g => [g.date, g.text, g.progress || 0]) },
+            { name: "شکر گزاری", header: ["تاریخ ثبت", "مورد", "پیشرفت (%)"], rows: gratitude.map(g => [g.date, g.text, g.progress || 0]) },
+            sec("تحلیل-سیستم", bySystem), sec("تحلیل-سشن", bySession), sec("تحلیل-روند", byTrend),
+        ]);
     }
     return (React.createElement("div", { dir: "rtl", lang: "fa", className: "min-h-screen w-full pb-24", style: { background: "var(--bg-page)", fontFamily: "Vazirmatn, sans-serif" } },
         React.createElement("style", null, `
@@ -4946,9 +5231,13 @@ function App() {
                                     React.createElement("td", { className: "py-1.5 px-1" },
                                         React.createElement("button", { onClick: () => askDeleteConfirm("این سطر حذف بشه؟", () => deleteCapitalMgmtRow(row.id)) },
                                             React.createElement(Trash2, { size: 12, color: "var(--text-muted)" }))))))))))))),
-                React.createElement("button", { onClick: exportFinancial, className: "w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-medium mb-4", style: { background: "var(--bg-card)", color: "var(--text-primary)", border: "1px solid var(--border-1)" } },
-                    React.createElement(Download, { size: 16 }),
-                    " \u062E\u0631\u0648\u062C\u06CC \u0627\u06A9\u0633\u0644 \u0645\u062F\u06CC\u0631\u06CC\u062A \u0645\u0627\u0644\u06CC"))))),
+                React.createElement("div", { className: "flex gap-2 mb-4" },
+                    React.createElement("button", { onClick: exportFinancial, className: "flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-medium", style: { background: "var(--bg-card)", color: "var(--text-primary)", border: "1px solid var(--border-1)" } },
+                        React.createElement(Download, { size: 16 }),
+                        " \u0627\u06A9\u0633\u0644"),
+                    React.createElement("button", { onClick: exportFinancialPdf, className: "flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-medium", style: { background: "var(--bg-card)", color: "var(--accent-gold)", border: "1px solid var(--border-1)" } },
+                        React.createElement(Download, { size: 16 }),
+                        " PDF")))))),
         tab === "systems" && (React.createElement("div", { className: "px-4 mt-4" },
             React.createElement("h2", { className: "text-sm font-semibold mb-2", style: { color: "var(--text-primary)" } }, "\u0633\u06CC\u0633\u062A\u0645\u200C\u0647\u0627\u06CC \u0645\u0639\u0627\u0645\u0644\u0627\u062A\u06CC"),
             React.createElement("div", { className: "flex gap-2 mb-4" },
@@ -4978,9 +5267,13 @@ function App() {
                         React.createElement(Field, { label: "\u062A\u0648\u0636\u06CC\u062D\u0627\u062A" },
                             React.createElement("textarea", { rows: 3, value: s.description || "", onChange: e => updateTradingSystemDescription(s.id, e.target.value), placeholder: "\u062A\u0648\u0636\u06CC\u062D\u0627\u062A \u0627\u06CC\u0646 \u0633\u06CC\u0633\u062A\u0645 \u0631\u0648 \u0627\u06CC\u0646\u062C\u0627 \u0628\u0646\u0648\u06CC\u0633...", className: "w-full bg-transparent outline-none text-sm resize-none", style: { color: "var(--text-primary)" } }))))));
             }))),
-            React.createElement("button", { onClick: exportSystems, className: "w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-medium mb-4", style: { background: "var(--bg-card)", color: "var(--text-primary)", border: "1px solid var(--border-1)" } },
-                React.createElement(Download, { size: 16 }),
-                " \u062E\u0631\u0648\u062C\u06CC \u0627\u06A9\u0633\u0644 \u0633\u06CC\u0633\u062A\u0645\u200C\u0647\u0627"))),
+            React.createElement("div", { className: "flex gap-2 mb-4" },
+                React.createElement("button", { onClick: exportSystems, className: "flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-medium", style: { background: "var(--bg-card)", color: "var(--text-primary)", border: "1px solid var(--border-1)" } },
+                    React.createElement(Download, { size: 16 }),
+                    " \u0627\u06A9\u0633\u0644"),
+                React.createElement("button", { onClick: exportSystemsPdf, className: "flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-medium", style: { background: "var(--bg-card)", color: "var(--accent-gold)", border: "1px solid var(--border-1)" } },
+                    React.createElement(Download, { size: 16 }),
+                    " PDF")))),
         tab === "strategy" && (React.createElement("div", { className: "px-4 mt-4" },
             React.createElement("h2", { className: "text-sm font-semibold mb-2", style: { color: "var(--text-primary)" } }, "\u0627\u0633\u062A\u0631\u0627\u062A\u0698\u06CC \u0645\u0639\u0627\u0645\u0644\u0627\u062A\u06CC \u0648 \u0645\u0627\u0644\u06CC"),
             !activeAccount ? (React.createElement("div", { className: "rounded-xl p-4 text-center text-sm mb-4", style: { background: "var(--bg-card)", color: "var(--text-muted)" } }, "\u0627\u0648\u0644 \u0627\u0632 \u062A\u0628 \u0698\u0648\u0631\u0646\u0627\u0644 \u06CC\u06A9 \u062D\u0633\u0627\u0628 \u0627\u06CC\u062C\u0627\u062F \u06A9\u0646.")) : (React.createElement(React.Fragment, null,
@@ -5001,9 +5294,9 @@ function App() {
                         React.createElement("span", { className: "text-[10px]", style: { color: "var(--text-muted)" } }, s.date)),
                     React.createElement("button", { onClick: () => askDeleteConfirm("این استراتژی حذف بشه؟", () => deleteStrategyRow(s.id)) },
                         React.createElement(Trash2, { size: 14, color: "var(--text-muted)" }))))))))))),
-        tab === "goals" && (React.createElement(GoalsLayer, { title: "\u0627\u0647\u062F\u0627\u0641 \u0645\u0639\u0627\u0645\u0644\u0647 \u06AF\u0631\u06CC", activeAccount: activeAccount, list: goals, newText: newGoalText, setNewText: setNewGoalText, onAdd: addGoalRow, onUpdateText: updateGoalRow, onUpdateProgress: updateGoalProgress, onDelete: deleteGoalRow, onMove: moveGoalRow, onExport: exportGoals, askDeleteConfirm: askDeleteConfirm })),
-        tab === "lifegoals" && (React.createElement(GoalsLayer, { title: "\u0627\u0647\u062F\u0627\u0641 \u0632\u0646\u062F\u06AF\u06CC", activeAccount: activeAccount, list: lifeGoals, newText: newLifeGoalText, setNewText: setNewLifeGoalText, onAdd: addLifeGoalRow, onUpdateText: updateLifeGoalRow, onUpdateProgress: updateLifeGoalProgress, onDelete: deleteLifeGoalRow, onMove: moveLifeGoalRow, onExport: exportLifeGoals, askDeleteConfirm: askDeleteConfirm })),
-        tab === "gratitude" && (React.createElement(GoalsLayer, { title: "\u0634\u06A9\u0631 \u06AF\u0632\u0627\u0631\u06CC", activeAccount: activeAccount, list: gratitude, newText: newGratitudeText, setNewText: setNewGratitudeText, onAdd: addGratitudeRow, onUpdateText: updateGratitudeRow, onUpdateProgress: updateGratitudeProgress, onDelete: deleteGratitudeRow, onMove: moveGratitudeRow, onExport: exportGratitude, askDeleteConfirm: askDeleteConfirm, itemLabel: "\u0645\u062A\u0646" })),
+        tab === "goals" && (React.createElement(GoalsLayer, { title: "\u0627\u0647\u062F\u0627\u0641 \u0645\u0639\u0627\u0645\u0644\u0647 \u06AF\u0631\u06CC", activeAccount: activeAccount, list: goals, newText: newGoalText, setNewText: setNewGoalText, onAdd: addGoalRow, onUpdateText: updateGoalRow, onUpdateProgress: updateGoalProgress, onDelete: deleteGoalRow, onMove: moveGoalRow, onExport: exportGoals, onExportPdf: exportGoalsPdf, askDeleteConfirm: askDeleteConfirm })),
+        tab === "lifegoals" && (React.createElement(GoalsLayer, { title: "\u0627\u0647\u062F\u0627\u0641 \u0632\u0646\u062F\u06AF\u06CC", activeAccount: activeAccount, list: lifeGoals, newText: newLifeGoalText, setNewText: setNewLifeGoalText, onAdd: addLifeGoalRow, onUpdateText: updateLifeGoalRow, onUpdateProgress: updateLifeGoalProgress, onDelete: deleteLifeGoalRow, onMove: moveLifeGoalRow, onExport: exportLifeGoals, onExportPdf: exportLifeGoalsPdf, askDeleteConfirm: askDeleteConfirm })),
+        tab === "gratitude" && (React.createElement(GoalsLayer, { title: "\u0634\u06A9\u0631 \u06AF\u0632\u0627\u0631\u06CC", activeAccount: activeAccount, list: gratitude, newText: newGratitudeText, setNewText: setNewGratitudeText, onAdd: addGratitudeRow, onUpdateText: updateGratitudeRow, onUpdateProgress: updateGratitudeProgress, onDelete: deleteGratitudeRow, onMove: moveGratitudeRow, onExport: exportGratitude, onExportPdf: exportGratitudePdf, askDeleteConfirm: askDeleteConfirm, itemLabel: "\u0645\u062A\u0646" })),
         tab === "statement" && (!activeAccount ? (React.createElement("div", { className: "px-4 mt-4" },
             React.createElement("div", { className: "rounded-xl p-4 text-center text-sm", style: { background: "var(--bg-card)", color: "var(--text-muted)" } }, "\u0627\u0648\u0644 \u0627\u0632 \u062A\u0628 \u0698\u0648\u0631\u0646\u0627\u0644 \u06CC\u06A9 \u062D\u0633\u0627\u0628 \u0627\u06CC\u062C\u0627\u062F \u06A9\u0646."))) : (React.createElement(StatementLayer, {
             statementTrades: statementTrades,
@@ -5145,9 +5438,13 @@ function App() {
                                 React.createElement(YAxis, { type: "category", dataKey: "name", tick: { fill: "var(--text-secondary)", fontSize: 9 }, width: 95 }),
                                 React.createElement(Tooltip, { contentStyle: { background: "var(--bg-card2)", border: "1px solid var(--border-2)", fontSize: 11 }, labelStyle: { color: "var(--text-primary)" } }),
                                 React.createElement(Bar, { dataKey: "value", radius: [0, 4, 4, 0] }, chart.data.map((d, i) => React.createElement(Cell, { key: i, fill: d.value >= 0 ? "#34D399" : "#F87171" }))))))))),
-                React.createElement("button", { onClick: exportAnalysis, className: "w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-medium mb-4", style: { background: "var(--bg-card)", color: "var(--text-primary)", border: "1px solid var(--border-1)" } },
-                    React.createElement(Download, { size: 16 }),
-                    " \u062E\u0631\u0648\u062C\u06CC \u0627\u06A9\u0633\u0644 \u062A\u062D\u0644\u06CC\u0644 \u0622\u0645\u0627\u0631\u06CC")))))),
+                React.createElement("div", { className: "flex gap-2 mb-4" },
+                    React.createElement("button", { onClick: exportAnalysis, className: "flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-medium", style: { background: "var(--bg-card)", color: "var(--text-primary)", border: "1px solid var(--border-1)" } },
+                        React.createElement(Download, { size: 16 }),
+                        " \u0627\u06A9\u0633\u0644"),
+                    React.createElement("button", { onClick: exportAnalysisPdf, className: "flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-medium", style: { background: "var(--bg-card)", color: "var(--accent-gold)", border: "1px solid var(--border-1)" } },
+                        React.createElement(Download, { size: 16 }),
+                        " PDF"))))))),
         tab === "psychology" && (!activeAccount ? (React.createElement("div", { className: "px-4 mt-4" },
             React.createElement("div", { className: "rounded-xl p-4 text-center text-sm", style: { background: "var(--bg-card)", color: "var(--text-muted)" } }, "\u0627\u0648\u0644 \u0627\u0632 \u062A\u0628 \u0698\u0648\u0631\u0646\u0627\u0644 \u06CC\u06A9 \u062D\u0633\u0627\u0628 \u0627\u06CC\u062C\u0627\u062F \u06A9\u0646."))) : (React.createElement(PsychologyLayer, {
             journalTrades: closedTrades,
@@ -5159,20 +5456,51 @@ function App() {
         tab === "exportall" && (React.createElement("div", { className: "px-4 mt-4" },
             React.createElement("h2", { className: "text-sm font-semibold mb-2", style: { color: "var(--text-primary)" } }, "\u062E\u0631\u0648\u062C\u06CC \u06A9\u0627\u0645\u0644 \u0627\u06A9\u0633\u0644"),
             React.createElement("p", { className: "text-[12px] leading-6 mb-4", style: { color: "var(--text-secondary)" } }, "\u0628\u0627 \u0632\u062F\u0646 \u062F\u06A9\u0645\u0647\u200C\u06CC \u0632\u06CC\u0631\u060C \u06CC\u06A9 \u0641\u0627\u06CC\u0644 \u0627\u06A9\u0633\u0644 \u0633\u0627\u062E\u062A\u0647 \u0645\u06CC\u200C\u0634\u0648\u062F \u06A9\u0647 \u062A\u0645\u0627\u0645 \u0644\u0627\u06CC\u0647\u200C\u0647\u0627 (\u0698\u0648\u0631\u0646\u0627\u0644\u060C \u0645\u062F\u06CC\u0631\u06CC\u062A \u0645\u0627\u0644\u06CC\u060C \u0633\u06CC\u0633\u062A\u0645\u200C\u0647\u0627\u06CC \u0645\u0639\u0627\u0645\u0644\u0627\u062A\u06CC\u060C \u0627\u0633\u062A\u0631\u0627\u062A\u0698\u06CC\u060C \u0627\u0647\u062F\u0627\u0641\u060C \u062A\u062D\u0644\u06CC\u0644 \u0622\u0645\u0627\u0631\u06CC) \u0647\u0631\u06A9\u062F\u0627\u0645 \u062F\u0631 \u06CC\u06A9 \u0634\u06CC\u062A \u062C\u062F\u0627\u06AF\u0627\u0646\u0647 \u0642\u0631\u0627\u0631 \u0645\u06CC\u200C\u06AF\u06CC\u0631\u0646\u062F."),
-            !activeAccount ? (React.createElement("div", { className: "rounded-xl p-4 text-center text-sm", style: { background: "var(--bg-card)", color: "var(--text-muted)" } }, "\u0627\u0648\u0644 \u0627\u0632 \u062A\u0628 \u0698\u0648\u0631\u0646\u0627\u0644 \u06CC\u06A9 \u062D\u0633\u0627\u0628 \u0627\u06CC\u062C\u0627\u062F \u06A9\u0646.")) : (React.createElement("button", { onClick: exportAll, className: "w-full flex items-center justify-center gap-2 py-4 rounded-xl text-sm font-semibold", style: { background: "var(--accent-gold)", color: "var(--bg-page)" } },
-                React.createElement(FileSpreadsheet, { size: 18 }),
-                " \u062E\u0631\u0648\u062C\u06CC \u06A9\u0644 \u0627\u06A9\u0633\u0644")))),
+            !activeAccount ? (React.createElement("div", { className: "rounded-xl p-4 text-center text-sm", style: { background: "var(--bg-card)", color: "var(--text-muted)" } }, "\u0627\u0648\u0644 \u0627\u0632 \u062A\u0628 \u0698\u0648\u0631\u0646\u0627\u0644 \u06CC\u06A9 \u062D\u0633\u0627\u0628 \u0627\u06CC\u062C\u0627\u062F \u06A9\u0646.")) : (React.createElement("div", { className: "flex gap-2" },
+                React.createElement("button", { onClick: exportAll, className: "flex-1 flex items-center justify-center gap-2 py-4 rounded-xl text-sm font-semibold", style: { background: "var(--accent-gold)", color: "var(--bg-page)" } },
+                    React.createElement(FileSpreadsheet, { size: 18 }),
+                    " \u0627\u06A9\u0633\u0644"),
+                React.createElement("button", { onClick: exportAllPdf, className: "flex-1 flex items-center justify-center gap-2 py-4 rounded-xl text-sm font-semibold", style: { background: "var(--bg-card)", color: "var(--accent-gold)", border: "1px solid var(--accent-gold)" } },
+                    React.createElement(FileSpreadsheet, { size: 18 }),
+                    " PDF"))))),
         tab === "settings" && (React.createElement("div", { className: "px-4 mt-4" },
-            React.createElement("h2", { className: "text-sm font-semibold mb-2", style: { color: "var(--text-primary)" } }, "\u062A\u0646\u0638\u06CC\u0645\u0627\u062A"),
+            React.createElement("h2", { className: "text-sm font-semibold mb-2", style: { color: "var(--text-primary)" } }, t("settings_title")),
             React.createElement("div", { className: "rounded-xl p-3 mb-3", style: { background: "var(--bg-card)", border: "1px solid var(--border-1)" } },
-                React.createElement("h3", { className: "text-[13px] font-semibold mb-2", style: { color: "var(--text-primary)" } }, "رنگ زمینه برنامه"),
+                React.createElement("h3", { className: "text-[13px] font-semibold mb-2", style: { color: "var(--text-primary)" } }, t("settings_theme")),
                 React.createElement("div", { className: "flex gap-2" },
                     React.createElement("button", { onClick: () => persistThemeMode("dark"), className: "flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-[12px] font-medium", style: { background: themeMode === "dark" ? "#D4A64A22" : "var(--bg-card2)", color: themeMode === "dark" ? "var(--accent-gold)" : "var(--text-secondary)", border: `1px solid ${themeMode === "dark" ? "#D4A64A55" : "var(--border-2)"}` } },
                         React.createElement(Moon, { size: 13 }),
-                        " تیره"),
+                        " ", t("settings_theme_dark")),
                     React.createElement("button", { onClick: () => persistThemeMode("light"), className: "flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-[12px] font-medium", style: { background: themeMode === "light" ? "#D4A64A22" : "var(--bg-card2)", color: themeMode === "light" ? "var(--accent-gold)" : "var(--text-secondary)", border: `1px solid ${themeMode === "light" ? "#D4A64A55" : "var(--border-2)"}` } },
                         React.createElement(Sun, { size: 13 }),
-                        " روشن"))),
+                        " ", t("settings_theme_light")))),
+            React.createElement("div", { className: "rounded-xl p-3 mb-3", style: { background: "var(--bg-card)", border: "1px solid var(--border-1)" } },
+                React.createElement("h3", { className: "text-[13px] font-semibold mb-2", style: { color: "var(--text-primary)" } }, t("settings_language")),
+                React.createElement("div", { className: "flex gap-2" },
+                    React.createElement("button", { onClick: () => persistAppLanguage("fa"), className: "flex-1 py-2.5 rounded-lg text-[12px] font-medium", style: { background: appLanguage === "fa" ? "#D4A64A22" : "var(--bg-card2)", color: appLanguage === "fa" ? "var(--accent-gold)" : "var(--text-secondary)", border: `1px solid ${appLanguage === "fa" ? "#D4A64A55" : "var(--border-2)"}` } }, "فارسی"),
+                    React.createElement("button", { onClick: () => persistAppLanguage("en"), className: "flex-1 py-2.5 rounded-lg text-[12px] font-medium", style: { background: appLanguage === "en" ? "#D4A64A22" : "var(--bg-card2)", color: appLanguage === "en" ? "var(--accent-gold)" : "var(--text-secondary)", border: `1px solid ${appLanguage === "en" ? "#D4A64A55" : "var(--border-2)"}` } }, "English")),
+                React.createElement("p", { className: "text-[10px] leading-5 mt-2", style: { color: "var(--text-muted)" } }, appLanguage === "en"
+                    ? "This switches the bottom navigation and settings labels to English immediately. Full translation of every screen's content is still in progress and will expand over time."
+                    : "این گزینه نوار پایین و برچسب‌های تنظیمات رو فوراً به انگلیسی تغییر می‌ده. ترجمه‌ی کامل محتوای همه‌ی صفحات هنوز در حال تکمیله و به‌مرور گسترش پیدا می‌کنه.")),
+            React.createElement("div", { className: "rounded-xl p-3 mb-3", style: { background: "var(--bg-card)", border: "1px solid var(--border-1)" } },
+                React.createElement("h3", { className: "text-[13px] font-semibold mb-2", style: { color: "var(--text-primary)" } }, t("settings_storage")),
+                React.createElement("div", { className: "flex gap-2 mb-3" },
+                    React.createElement("button", { onClick: () => persistStorageMode("local"), className: "flex-1 py-2.5 rounded-lg text-[12px] font-medium", style: { background: storageMode === "local" ? "#D4A64A22" : "var(--bg-card2)", color: storageMode === "local" ? "var(--accent-gold)" : "var(--text-secondary)", border: `1px solid ${storageMode === "local" ? "#D4A64A55" : "var(--border-2)"}` } }, "\u0630\u062E\u06CC\u0631\u0647\u200C\u06CC \u0645\u062D\u0644\u06CC (\u0631\u0648\u06CC \u0647\u0645\u06CC\u0646 \u062F\u0633\u062A\u06AF\u0627\u0647)"),
+                    React.createElement("button", { onClick: () => persistStorageMode("cloud"), className: "flex-1 py-2.5 rounded-lg text-[12px] font-medium", style: { background: storageMode === "cloud" ? "#D4A64A22" : "var(--bg-card2)", color: storageMode === "cloud" ? "var(--accent-gold)" : "var(--text-secondary)", border: `1px solid ${storageMode === "cloud" ? "#D4A64A55" : "var(--border-2)"}` } }, "\u0630\u062E\u06CC\u0631\u0647\u200C\u06CC \u0627\u0628\u0631\u06CC")),
+                storageMode === "local"
+                    ? React.createElement("p", { className: "text-[10px] leading-6", style: { color: "var(--text-muted)" } }, "اطلاعات فقط روی همین دستگاه/مرورگر ذخیره می‌شه. این همون رفتار پیش‌فرض فعلیه و به هیچ حساب یا اینترنتی نیاز نداره؛ فقط یادت باشه بین گوشی‌های مختلف یا بعد از پاک‌کردن داده‌ی مرورگر همگام نمی‌شه.")
+                    : (React.createElement(React.Fragment, null,
+                        React.createElement("p", { className: "text-[10px] leading-6 mb-2", style: { color: "var(--text-muted)" } }, "برای این‌که Sign up/Sign in/Sign out و همگام‌سازی ابریِ واقعی کار کنه، این اپ باید به یک پایگاه‌داده‌ی ابری (مثلاً Firebase — رایگان و بدون نیاز به سرور جدا) وصل بشه؛ چون از دل یک وب‌اپ ساده نمی‌شه چنین زیرساختی رو بدون کلیدهای یک پروژه‌ی واقعی ساخت. فرم زیر آماده‌ست، ولی تا وصل‌نشدنِ Firebase فقط همین پیام رو نشون می‌ده."),
+                        cloudUser
+                            ? (React.createElement("div", { className: "flex items-center justify-between rounded-lg p-2.5", style: { background: "var(--bg-card2)" } },
+                                React.createElement("span", { className: "text-[12px]", style: { color: "var(--text-primary)" } }, cloudUser),
+                                React.createElement("button", { onClick: cloudSignOut, className: "px-3 py-1.5 rounded-lg text-[11px]", style: { background: "var(--bg-page)", color: "#F87171" } }, "\u062E\u0631\u0648\u062C")))
+                            : (React.createElement(React.Fragment, null,
+                                React.createElement("input", { type: "email", placeholder: "\u0627\u06CC\u0645\u06CC\u0644", value: cloudAuthForm.email, onChange: e => setCloudAuthForm(f => ({ ...f, email: e.target.value })), className: "w-full mb-1.5 bg-transparent outline-none text-[12px] px-2.5 py-2 rounded-lg", style: { color: "var(--text-primary)", border: "1px solid var(--border-2)" } }),
+                                React.createElement("input", { type: "password", placeholder: "\u0631\u0645\u0632 \u0639\u0628\u0648\u0631", value: cloudAuthForm.password, onChange: e => setCloudAuthForm(f => ({ ...f, password: e.target.value })), className: "w-full mb-2 bg-transparent outline-none text-[12px] px-2.5 py-2 rounded-lg", style: { color: "var(--text-primary)", border: "1px solid var(--border-2)" } }),
+                                React.createElement("div", { className: "flex gap-2" },
+                                    React.createElement("button", { onClick: cloudSignUp, className: "flex-1 py-2 rounded-lg text-[11px]", style: { background: "var(--bg-card2)", color: "var(--text-secondary)" } }, "\u062B\u0628\u062A\u200C\u0646\u0627\u0645"),
+                                    React.createElement("button", { onClick: cloudSignIn, className: "flex-1 py-2 rounded-lg text-[11px]", style: { background: "var(--accent-gold)", color: "var(--bg-page)" } }, "\u0648\u0631\u0648\u062F"))))))),
             React.createElement("div", { className: "rounded-xl p-3 mb-3", style: { background: "var(--bg-card)", border: "1px solid var(--border-1)" } },
                 React.createElement("h3", { className: "text-[13px] font-semibold mb-2", style: { color: "var(--text-primary)" } }, "فونت برنامه"),
                 React.createElement("div", { className: "flex flex-wrap gap-1.5" }, FONT_OPTIONS.map(f => (React.createElement("button", { key: f.key, onClick: () => changeAppFont(f.key), className: "px-3 py-2 rounded-lg text-[12px]", style: { background: appFont === f.key ? "#D4A64A22" : "var(--bg-card2)", color: appFont === f.key ? "var(--accent-gold)" : "var(--text-secondary)", border: `1px solid ${appFont === f.key ? "#D4A64A55" : "var(--border-2)"}`, fontFamily: f.css } }, f.label))))),
@@ -5241,24 +5569,24 @@ function App() {
                     React.createElement(Plus, { size: 16 }),
                     " \u0627\u0641\u0632\u0648\u062F\u0646 \u0628\u062E\u0634")))),
         React.createElement("div", { className: "fixed bottom-0 left-0 right-0 flex overflow-x-auto", style: { background: "var(--bg-card)", borderTop: "1px solid var(--border-1)" } }, [
-            { key: "user", label: "پروفایل", Icon: User },
-            { key: "live", label: "نشست‌ها", Icon: Clock },
-            { key: "news", label: "اخبار", Icon: Newspaper },
-            { key: "prep", label: "آماده‌سازی", Icon: Check },
-            { key: "journal", label: "ژورنال", Icon: TrendingUp },
-            { key: "calendar", label: "تقویم معاملاتی", Icon: CalendarIcon },
-            { key: "finance", label: "مالی", Icon: Wallet },
-            { key: "systems", label: "سیستم‌ها", Icon: BarChart3 },
-            { key: "strategy", label: "استراتژی", Icon: ListChecks },
-            { key: "goals", label: "اهداف معامله گری", Icon: Flag },
-            { key: "lifegoals", label: "اهداف زندگی", Icon: Flag },
-            { key: "gratitude", label: "شکر گزاری", Icon: Heart },
-            { key: "statement", label: "ارزیابی استیتمنت", Icon: UploadIcon },
-            { key: "analysis", label: "تحلیل", Icon: LineChartIcon },
-            { key: "psychology", label: "روانشناسی", Icon: Brain },
-            { key: "exportall", label: "خروجی کل", Icon: FileSpreadsheet },
-            { key: "settings", label: "تنظیمات", Icon: SettingsIcon },
-            { key: "about", label: "درباره برنامه", Icon: Info },
+            { key: "user", label: t("tab_user"), Icon: User },
+            { key: "live", label: t("tab_live"), Icon: Clock },
+            { key: "news", label: t("tab_news"), Icon: Newspaper },
+            { key: "prep", label: t("tab_prep"), Icon: Check },
+            { key: "journal", label: t("tab_journal"), Icon: TrendingUp },
+            { key: "calendar", label: t("tab_calendar"), Icon: CalendarIcon },
+            { key: "finance", label: t("tab_finance"), Icon: Wallet },
+            { key: "systems", label: t("tab_systems"), Icon: BarChart3 },
+            { key: "strategy", label: t("tab_strategy"), Icon: ListChecks },
+            { key: "goals", label: t("tab_goals"), Icon: Flag },
+            { key: "lifegoals", label: t("tab_lifegoals"), Icon: Flag },
+            { key: "gratitude", label: t("tab_gratitude"), Icon: Heart },
+            { key: "statement", label: t("tab_statement"), Icon: UploadIcon },
+            { key: "analysis", label: t("tab_analysis"), Icon: LineChartIcon },
+            { key: "psychology", label: t("tab_psychology"), Icon: Brain },
+            { key: "exportall", label: t("tab_exportall"), Icon: FileSpreadsheet },
+            { key: "settings", label: t("tab_settings"), Icon: SettingsIcon },
+            { key: "about", label: t("tab_about"), Icon: Info },
         ].map(({ key, label, Icon }) => (React.createElement("button", { key: key, onClick: () => setTab(key), className: "flex flex-col items-center gap-1 py-2.5 shrink-0", style: { width: 68, color: tab === key ? "var(--accent-gold)" : "var(--text-muted)" } },
             React.createElement(Icon, { size: 17 }),
             React.createElement("span", { className: "text-[10px] px-2 py-0.5 rounded-full", style: { background: tab === key ? "#D4A64A22" : "transparent", fontWeight: tab === key ? 700 : 400 } }, label))))),
@@ -5394,7 +5722,10 @@ function App() {
                     React.createElement("h3", { className: "text-sm font-semibold", style: { color: "var(--text-primary)" } }, "\u0628\u0627\u0632\u0647\u200C\u06CC \u062E\u0631\u0648\u062C\u06CC \u0627\u06A9\u0633\u0644 \u0631\u0627 \u0627\u0646\u062A\u062E\u0627\u0628 \u06A9\u0646"),
                     React.createElement("button", { onClick: () => setShowExportPicker(false) },
                         React.createElement(X, { size: 18, color: "var(--text-muted)" }))),
-                React.createElement("div", { className: "grid grid-cols-2 gap-2 mb-2" }, ["daily", "weekly", "monthly", "all"].map(r => (React.createElement("button", { key: r, onClick: () => doExport(r), className: "py-3 rounded-xl text-sm", style: { background: "var(--bg-card2)", color: "var(--text-primary)", border: "1px solid var(--border-2)" } }, RANGE_LABEL[r]))))))),
+                React.createElement("div", { className: "flex flex-col gap-2 mb-2" }, ["daily", "weekly", "monthly", "all"].map(r => (React.createElement("div", { key: r, className: "flex items-center gap-2" },
+                    React.createElement("span", { className: "flex-1 text-[12px]", style: { color: "var(--text-primary)" } }, RANGE_LABEL[r]),
+                    React.createElement("button", { onClick: () => doExport(r), className: "px-3 py-2 rounded-lg text-[11px]", style: { background: "var(--bg-card2)", color: "var(--text-primary)", border: "1px solid var(--border-2)" } }, "\u0627\u06A9\u0633\u0644"),
+                    React.createElement("button", { onClick: () => doExportPdf(r), className: "px-3 py-2 rounded-lg text-[11px]", style: { background: "var(--bg-card2)", color: "var(--accent-gold)", border: "1px solid var(--border-2)" } }, "PDF")))))))),
         showOpenForm && openForm && (React.createElement("div", { className: "fixed inset-0 z-50 flex items-end", style: { background: "#000000AA" }, onClick: () => setShowOpenForm(false) },
             React.createElement("div", { className: "w-full rounded-t-2xl p-4 max-h-[85vh] overflow-y-auto", style: { background: "var(--bg-card)" }, onClick: e => e.stopPropagation() },
                 React.createElement("div", { className: "flex items-center justify-between mb-4" },
