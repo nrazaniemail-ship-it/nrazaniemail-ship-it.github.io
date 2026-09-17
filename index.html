@@ -2151,6 +2151,9 @@ function App() {
     const [cloudUser, setCloudUser] = useState(null);
     const [cloudBusy, setCloudBusy] = useState(false);
     const [lastBackupAt, setLastBackupAt] = useState("");
+    const [viewImageSrc, setViewImageSrc] = useState(null);
+    const [openSettingsSection, setOpenSettingsSection] = useState({});
+    const toggleSettingsSection = (key) => setOpenSettingsSection(s => ({ ...s, [key]: !s[key] }));
     const [calendarSettings, setCalendarSettings] = useState({ system: "jalali" });
     const [calendarCursor, setCalendarCursor] = useState(null);
     const [selectedCalendarDate, setSelectedCalendarDate] = useState(null);
@@ -4722,6 +4725,10 @@ function App() {
     /* ---------------- combined full export ---------------- */
     function exportAll() {
         const wb = XLSX.utils.book_new();
+        const sessAoa = [["دسته", "نام", "شروع (DST)", "پایان (DST)", "شروع (STD)", "پایان (STD)"]];
+        ["sessions", "killzones", "silverbullets"].forEach(cat => (config[cat] || []).forEach(ev => sessAoa.push([cat, ev.name, minToHHMM(ev.dst.s), minToHHMM(ev.dst.e), minToHHMM(ev.std.s), minToHHMM(ev.std.e)])));
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(sessAoa), "نشست‌ها");
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([["ردیف", "گام آماده‌سازی"], ...prepSteps.map((s, i) => [i + 1, s.text])]), "آماده‌سازی");
         const allClosedAsc = sortAsc(closedTrades);
         const { header: jHeader, rows: jRows } = buildJournalAoa(allClosedAsc);
         XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([jHeader, ...jRows]), "ژورنال");
@@ -4738,6 +4745,7 @@ function App() {
         XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([["تاریخ ثبت", "هدف", "پیشرفت (%)"], ...goals.map(g => [g.date, g.text, g.progress || 0])]), "اهداف معامله گری");
         XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([["تاریخ ثبت", "هدف", "پیشرفت (%)"], ...lifeGoals.map(g => [g.date, g.text, g.progress || 0])]), "اهداف زندگی");
         XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([["تاریخ ثبت", "مورد", "پیشرفت (%)"], ...gratitude.map(g => [g.date, g.text, g.progress || 0])]), "شکر گزاری");
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([["تاریخ", "نماد", "جهت", "لات", "ورود", "خروج", "سود/زیان"], ...statementTrades.map(t => [t.date, t.pair, t.direction === "sell" ? "فروش" : "خرید", t.lot, t.entry, t.exit, t.pnl])]), "ارزیابی استیتمنت");
         const mk2 = (name, data) => XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([["پارامتر", "سودآوری"], ...data.map(d => [d.name, d.value])]), name.slice(0, 31));
         mk2("تحلیل-لات", byLot);
         mk2("تحلیل-روزهفته", byWeekday);
@@ -4756,6 +4764,11 @@ function App() {
         mk2("ترکیب-سیستم-روز", bySystemWeekday);
         mk2("ترکیب-سشن-لات", bySessionLot);
         mk2(`سه‌بعدی-${PARAM_DEFS[param3dX].label}-${PARAM_DEFS[param3dY].label}`, rows3d);
+        const psych = computePsychologyInsights(allClosedAsc, psychOptions);
+        const psychAoa = [["دسته", "توضیح"],
+            ...psych.strengths.map(s => ["نقطه قوت", s]), ...psych.weaknesses.map(s => ["نقطه ضعف", s]),
+            ...psych.threats.map(s => ["تهدید", s]), ...psych.opportunities.map(s => ["فرصت", s])];
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(psychAoa), "روانشناسی");
         XLSX.writeFile(wb, `namello-full-export-${activeAccount}-${todayStr}.xlsx`);
     }
     function exportAllPdf() {
@@ -4764,14 +4777,24 @@ function App() {
         const allTimeMetrics = computeFinancialMetrics(allClosedAsc, accSettings.startingBalance);
         const fRows = [["تعداد معاملات", allTimeMetrics.total], ["درصد برد", (allTimeMetrics.winRate ?? "—") + "%"], ["ضریب سود", allTimeMetrics.profitFactor ?? "—"], ["سود/زیان خالص", allTimeMetrics.netPnl], ["موجودی نهایی", allTimeMetrics.finalBalance]];
         const sec = (name, data) => ({ name, header: ["پارامتر", "سودآوری"], rows: data.map(d => [d.name, d.value]) });
+        const sessRows = [];
+        ["sessions", "killzones", "silverbullets"].forEach(cat => (config[cat] || []).forEach(ev => sessRows.push([cat, ev.name, minToHHMM(ev.dst.s), minToHHMM(ev.dst.e)])));
+        const psych = computePsychologyInsights(allClosedAsc, psychOptions);
+        const psychRows = [
+            ...psych.strengths.map(s => ["نقطه قوت", s]), ...psych.weaknesses.map(s => ["نقطه ضعف", s]),
+            ...psych.threats.map(s => ["تهدید", s]), ...psych.opportunities.map(s => ["فرصت", s])];
         exportMultiTablesAsPdf(`خروجی کامل — ${activeAccount}`, [
+            { name: "نشست‌ها", header: ["دسته", "نام", "شروع (DST)", "پایان (DST)"], rows: sessRows },
+            { name: "آماده‌سازی", header: ["ردیف", "گام"], rows: prepSteps.map((s, i) => [i + 1, s.text]) },
             { name: "ژورنال", header: jHeader, rows: jRows },
             { name: "مدیریت مالی", header: ["پارامتر", "مقدار"], rows: fRows },
             { name: "سیستم‌های معاملاتی", header: ["نام سیستم", "توضیحات"], rows: tradingSystemsCatalog.map(s => [s.name, s.description || ""]) },
             { name: "اهداف معامله گری", header: ["تاریخ ثبت", "هدف", "پیشرفت (%)"], rows: goals.map(g => [g.date, g.text, g.progress || 0]) },
             { name: "اهداف زندگی", header: ["تاریخ ثبت", "هدف", "پیشرفت (%)"], rows: lifeGoals.map(g => [g.date, g.text, g.progress || 0]) },
             { name: "شکر گزاری", header: ["تاریخ ثبت", "مورد", "پیشرفت (%)"], rows: gratitude.map(g => [g.date, g.text, g.progress || 0]) },
+            { name: "ارزیابی استیتمنت", header: ["تاریخ", "نماد", "جهت", "لات", "سود/زیان"], rows: statementTrades.map(t => [t.date, t.pair, t.direction === "sell" ? "فروش" : "خرید", t.lot, t.pnl]) },
             sec("تحلیل-سیستم", bySystem), sec("تحلیل-سشن", bySession), sec("تحلیل-روند", byTrend),
+            { name: "روانشناسی", header: ["دسته", "توضیح"], rows: psychRows },
         ]);
     }
     return (React.createElement("div", { dir: "rtl", lang: "fa", className: "min-h-screen w-full pb-24", style: { background: "var(--bg-page)", fontFamily: "Vazirmatn, sans-serif" } },
@@ -5197,7 +5220,14 @@ function App() {
                         "\u0633\u06CC\u0633\u062A\u0645: ",
                         s))),
                     (t.tags || []).map((tg, i) => (React.createElement("span", { key: i, className: "text-[10px] px-2 py-0.5 rounded-full", style: { background: `${tg.color}33`, color: tg.color } }, tg.label)))),
-                t.note && React.createElement("p", { className: "text-[12px] leading-5", style: { color: "var(--text-muted)" } }, t.note)))))),
+                t.note && React.createElement("p", { className: "text-[12px] leading-5 mb-2", style: { color: "var(--text-muted)" } }, t.note),
+                (t.chartImageMain || t.chartImageEntryStart || t.chartImageAfter) && (React.createElement("div", { className: "flex gap-1.5 mb-2" },
+                    t.chartImageMain && React.createElement("img", { src: t.chartImageMain, alt: "چارت تایم اصلی", onClick: () => setViewImageSrc(t.chartImageMain), className: "rounded-lg object-cover", style: { width: 52, height: 52, cursor: "pointer", border: "1px solid var(--border-2)" } }),
+                    t.chartImageEntryStart && React.createElement("img", { src: t.chartImageEntryStart, alt: "چارت تایم ورود - شروع", onClick: () => setViewImageSrc(t.chartImageEntryStart), className: "rounded-lg object-cover", style: { width: 52, height: 52, cursor: "pointer", border: "1px solid var(--border-2)" } }),
+                    t.chartImageAfter && React.createElement("img", { src: t.chartImageAfter, alt: "چارت تایم ورود - پایان", onClick: () => setViewImageSrc(t.chartImageAfter), className: "rounded-lg object-cover", style: { width: 52, height: 52, cursor: "pointer", border: "1px solid var(--accent-gold)" } }))),
+                (t.voiceNoteBefore || t.voiceNoteAfter) && (React.createElement("div", { className: "flex flex-col gap-1 mb-1" },
+                    t.voiceNoteBefore && React.createElement("audio", { src: t.voiceNoteBefore, controls: true, style: { height: 30, width: "100%" } }),
+                    t.voiceNoteAfter && React.createElement("audio", { src: t.voiceNoteAfter, controls: true, style: { height: 30, width: "100%" } })))))))),
             React.createElement("button", { onClick: () => doExport("all"), className: "w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-medium mb-4", style: { background: "var(--bg-card)", color: "var(--text-primary)", border: "1px solid var(--border-1)" } },
                 React.createElement(Download, { size: 16 }),
                 " \u062E\u0631\u0648\u062C\u06CC \u0627\u06A9\u0633\u0644 \u0698\u0648\u0631\u0646\u0627\u0644"))))),
@@ -5633,20 +5663,24 @@ function App() {
                         React.createElement(Sun, { size: 13 }),
                         " ", t("settings_theme_light")))),
             React.createElement("div", { className: "rounded-xl p-3 mb-3", style: { background: "var(--bg-card)", border: "1px solid var(--border-1)" } },
-                React.createElement("h3", { className: "text-[13px] font-semibold mb-2", style: { color: "var(--text-primary)" } }, t("settings_language")),
+                React.createElement("button", { onClick: () => toggleSettingsSection("language"), className: "w-full flex items-center justify-between mb-2" },
+                    React.createElement("h3", { className: "text-[13px] font-semibold", style: { color: "var(--text-primary)" } }, t("settings_language")),
+                    openSettingsSection.language ? React.createElement(ChevronUp, { size: 13, color: "var(--text-muted)" }) : React.createElement(ChevronDown, { size: 13, color: "var(--text-muted)" })),
                 React.createElement("div", { className: "flex gap-2" },
                     React.createElement("button", { onClick: () => persistAppLanguage("fa"), className: "flex-1 py-2.5 rounded-lg text-[12px] font-medium", style: { background: appLanguage === "fa" ? "#D4A64A22" : "var(--bg-card2)", color: appLanguage === "fa" ? "var(--accent-gold)" : "var(--text-secondary)", border: `1px solid ${appLanguage === "fa" ? "#D4A64A55" : "var(--border-2)"}` } }, "فارسی"),
                     React.createElement("button", { onClick: () => persistAppLanguage("en"), className: "flex-1 py-2.5 rounded-lg text-[12px] font-medium", style: { background: appLanguage === "en" ? "#D4A64A22" : "var(--bg-card2)", color: appLanguage === "en" ? "var(--accent-gold)" : "var(--text-secondary)", border: `1px solid ${appLanguage === "en" ? "#D4A64A55" : "var(--border-2)"}` } }, "English")),
-                React.createElement("p", { className: "text-[10px] leading-5 mt-2", style: { color: "var(--text-muted)" } }, appLanguage === "en"
+                openSettingsSection.language && React.createElement("p", { className: "text-[10px] leading-5 mt-2", style: { color: "var(--text-muted)" } }, appLanguage === "en"
                     ? "This switches the bottom navigation and settings labels to English immediately. Full translation of every screen's content is still in progress and will expand over time."
                     : "این گزینه نوار پایین و برچسب‌های تنظیمات رو فوراً به انگلیسی تغییر می‌ده. ترجمه‌ی کامل محتوای همه‌ی صفحات هنوز در حال تکمیله و به‌مرور گسترش پیدا می‌کنه.")),
             React.createElement("div", { className: "rounded-xl p-3 mb-3", style: { background: "var(--bg-card)", border: "1px solid var(--border-1)" } },
-                React.createElement("h3", { className: "text-[13px] font-semibold mb-2", style: { color: "var(--text-primary)" } }, t("settings_storage")),
+                React.createElement("button", { onClick: () => toggleSettingsSection("storage"), className: "w-full flex items-center justify-between mb-2" },
+                    React.createElement("h3", { className: "text-[13px] font-semibold", style: { color: "var(--text-primary)" } }, t("settings_storage")),
+                    openSettingsSection.storage ? React.createElement(ChevronUp, { size: 13, color: "var(--text-muted)" }) : React.createElement(ChevronDown, { size: 13, color: "var(--text-muted)" })),
                 React.createElement("div", { className: "flex gap-2 mb-3" },
                     React.createElement("button", { onClick: () => persistStorageMode("local"), className: "flex-1 py-2.5 rounded-lg text-[12px] font-medium", style: { background: storageMode === "local" ? "#D4A64A22" : "var(--bg-card2)", color: storageMode === "local" ? "var(--accent-gold)" : "var(--text-secondary)", border: `1px solid ${storageMode === "local" ? "#D4A64A55" : "var(--border-2)"}` } }, "\u0630\u062E\u06CC\u0631\u0647\u200C\u06CC \u0645\u062D\u0644\u06CC (\u0631\u0648\u06CC \u0647\u0645\u06CC\u0646 \u062F\u0633\u062A\u06AF\u0627\u0647)"),
                     React.createElement("button", { onClick: () => persistStorageMode("cloud"), className: "flex-1 py-2.5 rounded-lg text-[12px] font-medium", style: { background: storageMode === "cloud" ? "#D4A64A22" : "var(--bg-card2)", color: storageMode === "cloud" ? "var(--accent-gold)" : "var(--text-secondary)", border: `1px solid ${storageMode === "cloud" ? "#D4A64A55" : "var(--border-2)"}` } }, "\u0630\u062E\u06CC\u0631\u0647\u200C\u06CC \u0627\u0628\u0631\u06CC")),
                 storageMode === "local"
-                    ? React.createElement("p", { className: "text-[10px] leading-6", style: { color: "var(--text-muted)" } }, "اطلاعات فقط روی همین دستگاه/مرورگر ذخیره می‌شه. این همون رفتار پیش‌فرض فعلیه و به هیچ حساب یا اینترنتی نیاز نداره؛ فقط یادت باشه بین گوشی‌های مختلف یا بعد از پاک‌کردن داده‌ی مرورگر همگام نمی‌شه.")
+                    ? (openSettingsSection.storage && React.createElement("p", { className: "text-[10px] leading-6", style: { color: "var(--text-muted)" } }, "اطلاعات فقط روی همین دستگاه/مرورگر ذخیره می‌شه. این همون رفتار پیش‌فرض فعلیه و به هیچ حساب یا اینترنتی نیاز نداره؛ فقط یادت باشه بین گوشی‌های مختلف یا بعد از پاک‌کردن داده‌ی مرورگر همگام نمی‌شه."))
                     : (React.createElement(React.Fragment, null,
                         !cloudUser && (React.createElement("div", { className: "mb-2" },
                             React.createElement("label", { className: "text-[10px] block mb-1", style: { color: "var(--text-muted)" } }, "Google OAuth Client ID (از Google Cloud Console)"),
@@ -5661,15 +5695,34 @@ function App() {
                                     React.createElement("button", { onClick: restoreFromCloud, disabled: cloudBusy, className: "flex-1 py-2.5 rounded-lg text-[11px] font-medium", style: { background: "var(--bg-card2)", color: "var(--text-primary)", opacity: cloudBusy ? 0.6 : 1 } }, "\u0628\u0627\u0632\u06CC\u0627\u0628\u06CC \u0627\u0632 \u062F\u0631\u0627\u06CC\u0648")),
                                 lastBackupAt && React.createElement("p", { className: "text-[10px]", style: { color: "var(--text-muted)" } }, "\u0622\u062E\u0631\u06CC\u0646 \u067E\u0634\u062A\u06CC\u0628\u0627\u0646: ", lastBackupAt)))
                             : (React.createElement("button", { onClick: googleSignIn, disabled: cloudBusy, className: "w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-[12px] font-medium", style: { background: "var(--bg-card2)", color: "var(--text-primary)", border: "1px solid var(--border-2)", opacity: cloudBusy ? 0.6 : 1 } }, cloudBusy ? "..." : "\u0648\u0631\u0648\u062F \u0628\u0627 \u06AF\u0648\u06AF\u0644 (\u06AF\u0648\u06AF\u0644‌\u062F\u0631\u0627\u06CC\u0648)")),
-                        React.createElement("p", { className: "text-[10px] leading-6 mt-2", style: { color: "var(--text-muted)" } }, "داده‌ها تو یه فایل مخفی داخل پوشه‌ی «appData» حساب گوگلِ خودت ذخیره می‌شن — همون‌جایی که فقط خودِ Namello بهش دسترسی داره، نه تو لیست عادیِ درایوت.")))),
+                        openSettingsSection.storage && React.createElement("p", { className: "text-[10px] leading-6 mt-2", style: { color: "var(--text-muted)" } }, "داده‌ها تو یه فایل مخفی داخل پوشه‌ی «appData» حساب گوگلِ خودت ذخیره می‌شن — همون‌جایی که فقط خودِ Namello بهش دسترسی داره، نه تو لیست عادیِ درایوت.")))),
+            React.createElement("div", { className: "rounded-xl p-3 mb-3", style: { background: "var(--bg-card)", border: "1px solid var(--border-1)" } },
+                React.createElement("button", { onClick: () => toggleSettingsSection("cloudGuide"), className: "w-full flex items-center justify-between" },
+                    React.createElement("h3", { className: "text-[13px] font-semibold", style: { color: "var(--accent-gold)" } }, "\u0631\u0627\u0647\u0646\u0645\u0627\u06CC \u06AF\u0627\u0645\u200C\u0628\u0647\u200C\u06AF\u0627\u0645: \u0641\u0639\u0627\u0644\u200C\u06A9\u0631\u062F\u0646 \u0630\u062E\u06CC\u0631\u0647‌\u0633\u0627\u0632\u06CC \u0627\u0628\u0631\u06CC"),
+                    openSettingsSection.cloudGuide ? React.createElement(ChevronUp, { size: 13, color: "var(--text-muted)" }) : React.createElement(ChevronDown, { size: 13, color: "var(--text-muted)" })),
+                openSettingsSection.cloudGuide && (React.createElement("div", { className: "mt-2" }, [
+                    "\u0628\u0631\u0648 \u0628\u0647 console.cloud.google.com \u0648 \u06CC\u0647 \u067E\u0631\u0648\u0698\u0647‌\u06CC \u062C\u062F\u06CC\u062F \u0628\u0633\u0627\u0632 (\u0645\u062B\u0644\u0627\u064B Namello).",
+                    "\u0627\u0632 \u0645\u0646\u0648: APIs & Services \u2190 Library \u2190 \u0633\u0631\u0686 \u06A9\u0646 \u00ABGoogle Drive API\u00BB \u2190 Enable.",
+                    "APIs & Services \u2190 OAuth consent screen: User type \u0631\u0648 External \u0628\u0630\u0627\u0631 (\u0645\u06AF\u0631 Google Workspace \u062F\u0627\u0631\u06CC)\u061B \u0627\u0633\u0645 \u0627\u067E\u060C \u0627\u06CC\u0645\u06CC\u0644 \u067E\u0634\u062A\u06CC\u0628\u0627\u0646\u06CC \u0648 \u0627\u06CC\u0645\u06CC\u0644 \u062A\u0648\u0633\u0639\u0647‌\u062F\u0647\u0646\u062F\u0647 \u0631\u0648 \u067E\u0631 \u06A9\u0646.",
+                    "\u062A\u0648 \u0628\u062E\u0634 Scopes، \u0627\u0633\u06A9\u0648\u067E .../auth/drive.appdata \u0631\u0648 \u0627\u0636\u0627\u0641\u0647 \u06A9\u0646.",
+                    "\u062A\u0648 \u0628\u062E\u0634 Test users، \u0627\u06CC\u0645\u06CC\u0644 \u062E\u0648\u062F\u062A (\u0648 \u0647\u0631 \u06A9\u0633\u06CC \u06A9\u0647 \u0642\u0631\u0627\u0631\u0647 \u0627\u0632\u0634 \u0627\u0633\u062A\u0641\u0627\u062F\u0647 \u06A9\u0646\u0647) \u0631\u0648 \u0627\u0636\u0627\u0641\u0647 \u06A9\u0646.",
+                    "APIs & Services \u2190 Credentials \u2190 Create Credentials \u2190 OAuth client ID \u2190 Application type: Web application.",
+                    "\u062A\u0648 Authorized JavaScript origins، \u062F\u0642\u06CC\u0642\u0627\u064B \u0647\u0645\u0648\u0646 \u0622\u062F\u0631\u0633\u06CC \u06A9\u0647 Namello \u0631\u0648\u0634 \u0647\u0627\u0633\u062A \u0645\u06CC\u200C\u0634\u0647 \u0631\u0648 \u0627\u0636\u0627\u0641\u0647 \u06A9\u0646 (\u0628\u0631\u0627\u06CC \u062A\u0633\u062A \u0645\u062D\u0644\u06CC \u0645\u06CC‌\u062A\u0648\u0646\u06CC http://localhost:PORT \u0631\u0648 \u0627\u0636\u0627\u0641\u0647 \u06A9\u0646\u06CC).",
+                    "Client ID \u0633\u0627\u062E\u062A\u0647\u200C\u0634\u062F\u0647 (\u0634\u06A9\u0644 xxxxxxxx.apps.googleusercontent.com) \u0631\u0648 \u06A9\u067E\u06CC \u06A9\u0646 \u0648 \u0647\u0645\u06CC\u0646 \u0628\u0627\u0644\u0627 \u062A\u0648\u06CC \u0641\u06CC\u0644\u062F \u00ABGoogle OAuth Client ID\u00BB \u0628\u0686\u0633\u0628\u0648\u0646.",
+                    "\u0631\u0648\u06CC \u00AB\u0648\u0631\u0648\u062F \u0628\u0627 \u06AF\u0648\u06AF\u0644\u00BB \u0628\u0632\u0646 \u0648 \u0628\u0639\u062F \u0647\u0631 \u0648\u0642\u062A \u062E\u0648\u0627\u0633\u062A\u06CC \u00AB\u067E\u0634\u062A\u06CC\u0628\u0627\u0646\u200C\u06AF\u06CC\u0631\u06CC \u062F\u0631 \u062F\u0631\u0627\u06CC\u0648\u00BB \u0631\u0648 \u0628\u0632\u0646.",
+                ].map((step, i) => (React.createElement("div", { key: i, className: "flex gap-2 mb-2" },
+                    React.createElement("span", { className: "shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold", style: { background: "#D4A64A22", color: "var(--accent-gold)" } }, i + 1),
+                    React.createElement("p", { className: "text-[11px] leading-5", style: { color: "var(--text-secondary)" } }, step))))))),
             React.createElement("div", { className: "rounded-xl p-3 mb-3", style: { background: "var(--bg-card)", border: "1px solid var(--border-1)" } },
                 React.createElement("h3", { className: "text-[13px] font-semibold mb-2", style: { color: "var(--text-primary)" } }, "فونت برنامه"),
                 React.createElement("div", { className: "flex flex-wrap gap-1.5" }, FONT_OPTIONS.map(f => (React.createElement("button", { key: f.key, onClick: () => changeAppFont(f.key), className: "px-3 py-2 rounded-lg text-[12px]", style: { background: appFont === f.key ? "#D4A64A22" : "var(--bg-card2)", color: appFont === f.key ? "var(--accent-gold)" : "var(--text-secondary)", border: `1px solid ${appFont === f.key ? "#D4A64A55" : "var(--border-2)"}`, fontFamily: f.css } }, f.label))))),
             React.createElement("div", { className: "rounded-xl p-3 mb-3", style: { background: "var(--bg-card)", border: "1px solid var(--border-1)" } },
                 React.createElement("div", { className: "flex items-center justify-between mb-2" },
-                    React.createElement("h3", { className: "text-[13px] font-semibold", style: { color: "var(--text-primary)" } }, "\u062F\u06A9\u0645\u0647\u200C\u06CC \u0634\u0646\u0627\u0648\u0631 \u0627\u062C\u0631\u0627\u06CC \u0633\u0631\u06CC\u0639 MT5/\u062A\u0631\u06CC\u062F\u06CC\u0646\u06AF\u200C\u0648\u06CC\u0648"),
+                    React.createElement("button", { onClick: () => toggleSettingsSection("quickLaunch"), className: "flex items-center gap-1.5" },
+                        React.createElement("h3", { className: "text-[13px] font-semibold", style: { color: "var(--text-primary)" } }, "\u062F\u06A9\u0645\u0647\u200C\u06CC \u0634\u0646\u0627\u0648\u0631 \u0627\u062C\u0631\u0627\u06CC \u0633\u0631\u06CC\u0639 MT5/\u062A\u0631\u06CC\u062F\u06CC\u0646\u06AF\u200C\u0648\u06CC\u0648"),
+                        openSettingsSection.quickLaunch ? React.createElement(ChevronUp, { size: 12, color: "var(--text-muted)" }) : React.createElement(ChevronDown, { size: 12, color: "var(--text-muted)" })),
                     React.createElement("button", { onClick: () => persistQuickLaunchSettings({ ...quickLaunchSettings, enabled: !quickLaunchSettings.enabled }), className: "px-3 py-1 rounded-full text-[11px] font-medium", style: { background: quickLaunchSettings.enabled ? "#34D39922" : "var(--bg-card2)", color: quickLaunchSettings.enabled ? "#34D399" : "var(--text-muted)" } }, quickLaunchSettings.enabled ? "فعال" : "غیرفعال")),
-                React.createElement("p", { className: "text-[11px] leading-5 mb-3", style: { color: "var(--text-muted)" } }, "دو دکمه‌ی شناور جدا روی صفحه ظاهر می‌شن: یکی برای MT5 و یکی برای TradingView (بدون منوی واسط). با لمس و نگه‌داشتنِ هرکدوم می‌تونی جاش رو هر جای صفحه ببری؛ جایگاه هرکدوم جدا ذخیره می‌شه. با یک ضربه‌ی ساده (بدون کشیدن)، همون اپ باز می‌شه."),
+                openSettingsSection.quickLaunch && React.createElement("p", { className: "text-[11px] leading-5 mb-3", style: { color: "var(--text-muted)" } }, "دو دکمه‌ی شناور جدا روی صفحه ظاهر می‌شن: یکی برای MT5 و یکی برای TradingView (بدون منوی واسط). با لمس و نگه‌داشتنِ هرکدوم می‌تونی جاش رو هر جای صفحه ببری؛ جایگاه هرکدوم جدا ذخیره می‌شه. با یک ضربه‌ی ساده (بدون کشیدن)، همون اپ باز می‌شه."),
                 React.createElement("div", { className: "rounded-lg p-2.5 mb-2", style: { background: "var(--bg-card2)", border: "1px solid var(--border-2)" } },
                     React.createElement("div", { className: "flex items-center justify-between mb-1.5" },
                         React.createElement("span", { className: "text-[12px]", style: { color: "var(--text-primary)" } }, "\uD83D\uDCCA \u0645\u062A\u0627\u062A\u0631\u06CC\u062F\u0631 \u06F5 (MT5)"),
@@ -5691,16 +5744,20 @@ function App() {
                 React.createElement("p", { className: "text-[10px] leading-5", style: { color: "var(--text-muted)" } }, "چرا گاهی هنوز باز نمی‌شه: از نسخه‌های جدیدِ کروم/سامسونگ‌اینترنت به بعد، مرورگر یک اپ نصب‌شده را فقط وقتی مستقیم با intent باز می‌کند که همون اپ، اکتیویتیِ لانچرش را «قابل‌بازشدن از مرورگر» (BROWSABLE) اعلام کرده باشه؛ اکثر اپ‌های نصب‌شده (ازجمله معمولاً MT5/تریدینگ‌ویو) این را اعلام نمی‌کنن، پس این محدودیت از طرف خودِ مرورگره، نه Namello. با package name تلاش می‌کنیم و روی برخی مرورگرها (خصوصاً سامسونگ‌اینترنت) جواب می‌ده؛ اگه روی گوشی تو جواب نداد، اگه اپ مقصد یه لینک اختصاصی (اسکیم) داشته باشه، همون رو توی فیلد «اسکیم اختصاصی» بالا وارد کن تا اول آن امتحان بشه.")),
             React.createElement("div", { className: "rounded-xl p-3 mb-3", style: { background: "var(--bg-card)", border: "1px solid var(--border-1)" } },
                 React.createElement("div", { className: "flex items-center justify-between mb-2" },
-                    React.createElement("h3", { className: "text-[13px] font-semibold", style: { color: "var(--text-primary)" } }, "نوتیفیکیشن بازگشت به Namello"),
+                    React.createElement("button", { onClick: () => toggleSettingsSection("namelloReturn"), className: "flex items-center gap-1.5" },
+                        React.createElement("h3", { className: "text-[13px] font-semibold", style: { color: "var(--text-primary)" } }, "نوتیفیکیشن بازگشت به Namello"),
+                        openSettingsSection.namelloReturn ? React.createElement(ChevronUp, { size: 12, color: "var(--text-muted)" }) : React.createElement(ChevronDown, { size: 12, color: "var(--text-muted)" })),
                     React.createElement("button", { onClick: () => namelloReturnSettings.enabled ? persistNamelloReturnSettings({ ...namelloReturnSettings, enabled: false }) : enableNamelloReturn(), className: "px-3 py-1 rounded-full text-[11px] font-medium", style: { background: namelloReturnSettings.enabled ? "#34D39922" : "var(--bg-card2)", color: namelloReturnSettings.enabled ? "#34D399" : "var(--text-muted)" } }, namelloReturnSettings.enabled ? "فعال" : "غیرفعال")),
-                React.createElement("p", { className: "text-[11px] leading-6", style: { color: "var(--text-muted)" } },
+                openSettingsSection.namelloReturn && React.createElement("p", { className: "text-[11px] leading-6", style: { color: "var(--text-muted)" } },
                     "نکته‌ی مهم: چون Namello یک وب‌اپ (PWA) است، نمی‌تونه مثل یه اپلیکیشن نصب‌شده، روی صفحه‌ی اپ‌های دیگه (مثل MT5 یا تریدینگ‌ویو) یک آیکن شناور دائمی نشون بده — این کار فقط با مجوز سیستمیِ «نمایش روی سایر برنامه‌ها» ممکنه که فقط به اپ‌های نصب‌شده (APK) داده می‌شه، نه به تبِ مرورگر. نزدیک‌ترین جایگزینِ واقعی که از دل مرورگر قابل‌اجراست همین است: وقتی این گزینه فعاله و از Namello بری روی اپ دیگه، یک نوتیفیکیشن با متن «برای بازگشت سریع به Namello ضربه بزن» توی نوار اعلان‌ها ظاهر می‌شه؛ با زدنش برمی‌گردی به برنامه.",
                     React.createElement("br", null),
                     React.createElement("br", null),
                     "اگه بعد از فعال‌کردن هنوز این نوتیفیکیشن ظاهر نمی‌شه، دلیلش تقریباً همیشه مدیریت باتریِ خودِ سامسونگه: چون Namello یه تبِ مرورگرِ پس‌زمینه است (نه اپ نصب‌شده)، سامسونگ اغلب پردازشش رو همون لحظه‌ای که ازش خارج می‌شی می‌بنده، قبل از اینکه فرصت کنه نوتیفیکیشن رو نشون بده. برای رفع این مورد: تنظیمات گوشی ← نرم‌افزارها (یا مراقبت از باتری) ← مرورگری که Namello رو باهاش باز کردی (کروم/سامسونگ‌اینترنت) ← مصرف باتری ← گزینه‌ی «بدون محدودیت» رو انتخاب کن، و مطمئن شو مرورگر تو لیست «اپ‌های خواب» یا «به‌خواب‌رفته» نیست. بدون این تنظیم، این قابلیت (و کلاً نوتیفیکیشن‌های Namello) روی گوشی‌های سامسونگ به‌طور نامنظم کار می‌کنن.")),
             React.createElement("div", { className: "rounded-xl p-3 mb-3", style: { background: "var(--bg-card)", border: "1px solid var(--border-1)" } },
-                React.createElement("h3", { className: "text-[13px] font-semibold mb-2", style: { color: "var(--text-primary)" } }, "\u0648\u06CC\u062C\u062A \u0633\u0627\u0639\u062A\u200C\u0634\u0645\u0627\u0631 \u0633\u0634\u0646\u200C\u0647\u0627"),
-                React.createElement("p", { className: "text-[11px] leading-6 mb-3", style: { color: "var(--text-muted)" } }, "نکته‌ی مهم: یک ویجتِ واقعیِ صفحه‌ی اصلیِ اندروید (Home screen widget) فقط با کدنویسیِ نیتیو (Kotlin/Java + AppWidgetProvider) ساخته می‌شه — چیزیه که فقط داخل یه اپلیکیشن نصب‌شده (APK) وجود داره، نه یک صفحه‌ی وب، و از دل یک PWA قابل‌ساخت نیست؛ Namello در حال حاضر یک وب‌اپ است، نه یک اپ نیتیوِ کامپایل‌شده. نزدیک‌ترین معادلِ واقعی که از دل وب قابل‌ساخته، همین widget.html است: حالا به‌شکل یک دایره‌ی چندلایه طراحی شده که هر نشست (سیدنی/توکیو/لندن/نیویورک) به‌صورت یک قطاعِ رنگی روی حلقه‌ی خودش نشون داده می‌شه — نشست‌های فعال پررنگ و نشست‌های غیرفعال کم‌رنگ‌ترن، و یک خط شعاعی هم موقعیت لحظه‌ای زمان نیویورک رو نشون می‌ده. می‌تونی این صفحه رو مستقیم باز کنی، با «افزودن به صفحه‌ی اصلی» میان‌برش رو روی هوم‌اسکرین بذاری، یا داخل اپ‌های «ویجت وب» (مثل KWGT) به آدرسش لینک بدی تا شبیه یک ویجت واقعی روی هوم‌اسکرین بشینه."),
+                React.createElement("button", { onClick: () => toggleSettingsSection("widget"), className: "w-full flex items-center justify-between mb-2" },
+                    React.createElement("h3", { className: "text-[13px] font-semibold", style: { color: "var(--text-primary)" } }, "\u0648\u06CC\u062C\u062A \u0633\u0627\u0639\u062A\u200C\u0634\u0645\u0627\u0631 \u0633\u0634\u0646\u200C\u0647\u0627"),
+                    openSettingsSection.widget ? React.createElement(ChevronUp, { size: 12, color: "var(--text-muted)" }) : React.createElement(ChevronDown, { size: 12, color: "var(--text-muted)" })),
+                openSettingsSection.widget && React.createElement("p", { className: "text-[11px] leading-6 mb-3", style: { color: "var(--text-muted)" } }, "نکته‌ی مهم: یک ویجتِ واقعیِ صفحه‌ی اصلیِ اندروید (Home screen widget) فقط با کدنویسیِ نیتیو (Kotlin/Java + AppWidgetProvider) ساخته می‌شه — چیزیه که فقط داخل یه اپلیکیشن نصب‌شده (APK) وجود داره، نه یک صفحه‌ی وب، و از دل یک PWA قابل‌ساخت نیست؛ Namello در حال حاضر یک وب‌اپ است، نه یک اپ نیتیوِ کامپایل‌شده. نزدیک‌ترین معادلِ واقعی که از دل وب قابل‌ساخته، همین widget.html است: حالا به‌شکل یک دایره‌ی چندلایه طراحی شده که هر نشست (سیدنی/توکیو/لندن/نیویورک) به‌صورت یک قطاعِ رنگی روی حلقه‌ی خودش نشون داده می‌شه — نشست‌های فعال پررنگ و نشست‌های غیرفعال کم‌رنگ‌ترن، و یک خط شعاعی هم موقعیت لحظه‌ای زمان نیویورک رو نشون می‌ده. می‌تونی این صفحه رو مستقیم باز کنی، با «افزودن به صفحه‌ی اصلی» میان‌برش رو روی هوم‌اسکرین بذاری، یا داخل اپ‌های «ویجت وب» (مثل KWGT) به آدرسش لینک بدی تا شبیه یک ویجت واقعی روی هوم‌اسکرین بشینه."),
                 React.createElement("label", { className: "text-[11px] block mb-1.5", style: { color: "var(--text-muted)" } }, "\u0633\u0627\u06CC\u0632 \u0646\u0645\u0627\u06CC\u0634 \u062F\u0631 widget.html"),
                 React.createElement("div", { className: "flex gap-2 mb-3" }, [[1, "کوچک"], [2, "متوسط"], [3, "بزرگ"]].map(([lvl, label]) => (React.createElement("button", { key: lvl, onClick: () => persistWidgetSettings({ ...widgetSettings, sizeLevel: lvl }), className: "flex-1 py-2 rounded-lg text-[12px]", style: { background: widgetSettings.sizeLevel === lvl ? "#D4A64A22" : "var(--bg-card2)", color: widgetSettings.sizeLevel === lvl ? "var(--accent-gold)" : "var(--text-muted)" } }, label)))),
                 React.createElement("a", { href: "./widget.html", target: "_blank", rel: "noopener", className: "w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-[12px] font-medium", style: { background: "var(--bg-card2)", color: "var(--accent-gold)" } }, "\u0628\u0627\u0632 \u06A9\u0631\u062F\u0646 widget.html")))),
@@ -6520,6 +6577,10 @@ function App() {
             React.createElement("button", { className: "w-12 h-12 rounded-full overflow-hidden flex items-center justify-center", style: { background: "var(--bg-card)", border: "1px solid var(--border-2)", boxShadow: "0 4px 12px #00000066", padding: 0 }, "aria-label": quickLaunchSettings.mt5Label || "اجرای سریع متاتریدر ۵" }, React.createElement("img", { src: "icon-mt5.jpg", alt: "MT5", className: "w-full h-full object-cover" })))),
         quickLaunchSettings.enabled && quickLaunchSettings.tvEnabled && (React.createElement(DraggableFab, { posXPercent: quickLaunchSettings.tvPosXPercent, posYPercent: quickLaunchSettings.tvPosYPercent, defaultCorner: "bottom-left", defaultOffsetY: 64, onDrop: (x, y) => persistQuickLaunchSettings({ ...quickLaunchSettings, tvPosXPercent: x, tvPosYPercent: y }), onClick: () => launchInstalledApp(quickLaunchSettings.tvPackage, quickLaunchSettings.tvLabel, quickLaunchSettings.tvScheme) },
             React.createElement("button", { className: "w-12 h-12 rounded-full overflow-hidden flex items-center justify-center", style: { background: "var(--bg-card)", border: "1px solid var(--border-2)", boxShadow: "0 4px 12px #00000066", padding: 0 }, "aria-label": quickLaunchSettings.tvLabel || "اجرای سریع تریدینگ‌ویو" }, React.createElement("img", { src: "icon-tradingview.png", alt: "TradingView", className: "w-full h-full object-cover" })))),
+        viewImageSrc && (React.createElement("div", { className: "fixed inset-0 z-50 flex items-center justify-center p-4", style: { background: "#000000EE" }, onClick: () => setViewImageSrc(null) },
+            React.createElement("img", { src: viewImageSrc, alt: "\u0686\u0627\u0631\u062A", className: "max-w-full max-h-full rounded-lg", style: { objectFit: "contain" } }),
+            React.createElement("button", { onClick: () => setViewImageSrc(null), className: "fixed top-6 left-6 p-2 rounded-full", style: { background: "#12161CCC" } },
+                React.createElement(X, { size: 18, color: "#E8EAED" })))),
         toast && (React.createElement("div", { className: "fixed left-1/2 z-50 px-4 py-2.5 rounded-xl text-[12px]", style: { bottom: 76, transform: "translateX(-50%)", background: "var(--bg-card2)", color: "var(--text-primary)", border: "1px solid var(--border-2)", maxWidth: "90%", textAlign: "center" } }, toast))));
 }
 
