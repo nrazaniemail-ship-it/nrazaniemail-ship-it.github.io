@@ -3253,14 +3253,22 @@ function App() {
     useEffect(() => {
         const fired = newsAlarmRef.current;
         const nowMs = Date.now();
+        const LEAD_MS = 5 * 60 * 1000;
         newsEvents.forEach(ev => {
             if (!ev.alarmStart || fired[ev.id])
                 return;
             const evMs = new Date(ev.datetime).getTime();
             if (isNaN(evMs))
                 return;
-            if (nowMs >= evMs && nowMs - evMs < 90000) {
-                fireNotification(`خبر: ${ev.title}`, `خبر «${ev.title}» (${ev.currency}) هم‌اکنون اعلام شد.`);
+            const msUntil = evMs - nowMs;
+            // بین ۵ دقیقه‌ی مونده تا اعلام و خودِ لحظه‌ی اعلام (نه بعدش) هشدار می‌ده؛ اگه کاربر
+            // درست همون بازه رو از دست داده باشه (مثلاً برنامه یه لحظه بسته بوده)، هنوز تا ۹۰ ثانیه
+            // بعد از لحظه‌ی اعلام هم به‌عنوان جبران هشدار می‌ده.
+            if ((msUntil <= LEAD_MS && msUntil > -90000)) {
+                if (msUntil > 0)
+                    fireNotification(`\u06F5 \u062F\u0642\u06CC\u0642\u0647 \u062A\u0627 \u062E\u0628\u0631: ${ev.title}`, `\u062E\u0628\u0631 \u00AB${ev.title}\u00BB (${ev.currency}) \u062A\u0627 \u06F5 \u062F\u0642\u06CC\u0642\u0647 \u062F\u06CC\u06AF\u0631 \u0627\u0639\u0644\u0627\u0645 \u0645\u06CC\u200C\u0634\u0648\u062F.`);
+                else
+                    fireNotification(`\u062E\u0628\u0631: ${ev.title}`, `\u062E\u0628\u0631 \u00AB${ev.title}\u00BB (${ev.currency}) \u0647\u0645‌\u0627\u06A9\u0646\u0648\u0646 \u0627\u0639\u0644\u0627\u0645 \u0634\u062F.`);
                 fired[ev.id] = true;
             }
         });
@@ -3297,6 +3305,15 @@ function App() {
     }
     function deleteNewsEvent(id) { persistNewsEvents(newsEvents.filter(e => e.id !== id)); }
     function toggleNewsAlarm(id) { persistNewsEvents(newsEvents.map(e => e.id === id ? { ...e, alarmStart: !e.alarmStart } : e)); }
+    // چرا از registration.showNotification به‌جای new Notification استفاده می‌کنیم: نوتیفیکیشنی که
+    // از طریق ثبت‌کننده‌ی سرویس‌ورکر ساخته بشه، رفتار استانداردِ یه PWA واقعی رو داره (جایی که
+    // OS نشونش می‌ده، نه فقط «بالای خودِ برنامه») و با notificationclick موجود در sw.js هم درست
+    // هماهنگه. محدودیت واقعی و فنی که هیچ‌کدِ صفحه‌ای نمی‌تونه دورش بزنه: تا وقتی از سرویس Web
+    // Push (که نیاز به سرور داره) استفاده نکنیم، این تایمر همچنان باید از دل خودِ صفحه/تبِ باز
+    // اجرا بشه؛ یعنی اگه مرورگر (به‌خصوص با مدیریت باتریِ سامسونگ) تبِ Namello رو کاملاً از
+    // حافظه خارج کنه، نه فقط پس‌زمینه، هیچ نوتیفی نمی‌تونه فایر بشه — برای بهترین قابلیت‌اطمینان،
+    // مرورگری که Namello توش بازه رو از بهینه‌سازی باتری مستثنی کن (دقیقاً مثل نکته‌ی بخش
+    // «بازگشت به Namello»).
     function fireNotification(title, body) {
         if (popupAlarmEnabled)
             showAlarmPopup(title, body);
@@ -3304,9 +3321,24 @@ function App() {
             playAlarmBeep();
         if (typeof Notification === "undefined" || Notification.permission !== "granted")
             return;
+        const tag = "namello-evt-" + Date.now();
+        const show = (reg) => reg.showNotification(title, { body, tag, vibrate: [200, 100, 200, 100, 200, 100, 200, 100, 200], requireInteraction: false, silent: false });
         try {
-            const n = new Notification(title, { body, vibrate: [200, 100, 200, 100, 200, 100, 200, 100, 200], tag: title + Date.now() });
-            setTimeout(() => n.close(), 5000);
+            if (navigator.serviceWorker && navigator.serviceWorker.ready) {
+                navigator.serviceWorker.ready.then(reg => {
+                    show(reg);
+                    setTimeout(() => {
+                        reg.getNotifications({ tag }).then(ns => ns.forEach(n => n.close()));
+                    }, 5000);
+                }).catch(() => {
+                    const n = new Notification(title, { body, tag });
+                    setTimeout(() => n.close(), 5000);
+                });
+            }
+            else {
+                const n = new Notification(title, { body, tag });
+                setTimeout(() => n.close(), 5000);
+            }
         }
         catch (e) { }
     }
@@ -5828,7 +5860,7 @@ function App() {
                         React.createElement("div", { className: "flex gap-1.5" },
                             [["classic", "کلاسیک"], ["simple", "زنگ ساده"], ["double", "دو ضربه"]].map(([key, label]) => (React.createElement("button", { key: key, onClick: () => changeAlarmTone(key), className: "flex-1 py-1.5 rounded text-[11px]", style: { background: alarmTone === key ? "#D4A64A22" : "var(--bg-page)", color: alarmTone === key ? "var(--accent-gold)" : "var(--text-secondary)" } }, label))),
                             React.createElement("button", { onClick: playAlarmBeep, className: "px-3 py-1.5 rounded text-[11px]", style: { background: "var(--bg-page)", color: "var(--text-secondary)" } }, "\u062A\u0633\u062A"))),
-                    React.createElement("p", { className: "text-[10px] leading-5 mb-2", style: { color: "var(--text-muted)" } }, "\u0628\u0631\u0627\u06CC \u0647\u0631 \u0633\u0634\u0646/\u06A9\u06CC\u0644\u200C\u0632\u0648\u0646/\u0633\u06CC\u0644\u0648\u0631 \u0628\u0648\u0644\u062A\u06CC \u06A9\u0647 \u0645\u06CC\u200C\u062E\u0648\u0627\u06CC \u0647\u0634\u062F\u0627\u0631\u0634 \u0641\u0639\u0627\u0644 \u0628\u0634\u0647\u060C \u0627\u0632 \u062A\u0628 \u00AB\u0646\u0634\u0633\u062A\u200C\u0647\u0627\u00BB \u0631\u0648\u06CC \u0622\u06CC\u06A9\u0646 \u0632\u0646\u06AF \u06A9\u0646\u0627\u0631 \u0647\u0631 \u0631\u0648\u06CC\u062F\u0627\u062F \u0628\u0632\u0646. \u0627\u06CC\u0646 \u0647\u0634\u062F\u0627\u0631 \u062D\u062A\u06CC \u0648\u0642\u062A\u06CC \u0631\u0648\u06CC \u0627\u067E \u062F\u06CC\u06AF\u0647\u200C\u0627\u06CC \u0647\u0633\u062A\u06CC \u0647\u0645 \u06A9\u0627\u0631 \u0645\u06CC\u200C\u06A9\u0646\u0647 (\u0645\u0631\u0648\u0631\u06AF\u0631 \u0627\u06CC\u0646 \u062A\u0628 \u0631\u0648 \u067E\u0633\u200C\u0632\u0645\u06CC\u0646\u0647 \u0646\u06AF\u0647 \u062F\u0627\u0631\u0647)\u061B \u0645\u062B\u0644 \u0646\u0648\u062A\u06CC\u0641\u06CC\u06A9\u06CC\u0634\u0646 \u00AB\u0628\u0627\u0632\u06AF\u0634\u062A \u0628\u0647 Namello\u00BB \u0631\u0648\u06CC \u0633\u0627\u0645\u0633\u0648\u0646\u06AF \u0645\u0645\u06A9\u0646\u0647 \u062A\u0623\u062E\u06CC\u0631\u06CC \u062F\u0627\u0634\u062A\u0647 \u0628\u0627\u0634\u0647 \u06CC\u0627 \u0627\u0635\u0644\u0627\u064B \u062E\u0627\u0645\u0648\u0634 \u0628\u0634\u0647\u060C \u0645\u06AF\u0631 \u0627\u06CC\u0646\u06A9\u0647 \u0645\u0631\u0648\u0631\u06AF\u0631 \u0631\u0648 \u0627\u0632 \u0645\u062F\u06CC\u0631\u06CC\u062A \u0628\u0627\u062A\u0631\u06CC \u0645\u0633\u062A\u062B\u0646\u0627 \u06A9\u0631\u062F\u0647 \u0628\u0627\u0634\u06CC (\u0647\u0645\u0648\u0646 \u062A\u0646\u0638\u06CC\u0645 \u06A9\u0647 \u0628\u0631\u0627\u06CC \u0628\u0627\u0632\u06AF\u0634\u062A \u0628\u0647 Namello \u0644\u0627\u0632\u0645\u0647)."),
+                    React.createElement("p", { className: "text-[10px] leading-5 mb-2", style: { color: "var(--text-muted)" } }, "برای هر سشن/کیل‌زون/سیلور بولت یا خبر اقتصادی (از تب «اخبار») که می‌خوای هشدارش فعال بشه، از آیکن زنگ کنار هر ردیف بزن. این هشدار حتی وقتی روی اپ دیگه‌ای هستی هم کار می‌کنه (مرورگر این تب رو پس‌زمینه نگه داشته باشه)؛ مثل نوتیفیکیشن «بازگشت به Namello» روی سامسونگ ممکنه تأخیری داشته باشه یا اصلاً خاموش بشه، مگر اینکه مرورگر رو از مدیریت باتری مستثنا کرده باشی (همون تنظیم که برای بازگشت به Namello لازمه)."),
                     React.createElement("div", { className: "rounded-lg px-3 py-2 mb-2 flex items-center justify-between", style: { background: "var(--bg-card2)", border: "1px solid var(--border-2)" } },
                         React.createElement("div", { className: "flex items-center gap-2" },
                             React.createElement(Bell, { size: 15, color: popupAlarmEnabled ? "var(--accent-gold)" : "var(--text-muted)" }),
