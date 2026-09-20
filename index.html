@@ -364,6 +364,10 @@ function durationBucketFa(minutes) {
 const WEEKDAYS_FA = ["یکشنبه", "دوشنبه", "سه‌شنبه", "چهارشنبه", "پنجشنبه", "جمعه", "شنبه"];
 const JMONTHS_FA = ["فروردین", "اردیبهشت", "خرداد", "تیر", "مرداد", "شهریور", "مهر", "آبان", "آذر", "دی", "بهمن", "اسفند"];
 const GMONTHS_FA = ["ژانویه", "فوریه", "مارس", "آوریل", "مه", "ژوئن", "ژوئیه", "اوت", "سپتامبر", "اکتبر", "نوامبر", "دسامبر"];
+const JMONTHS_EN = ["Farvardin", "Ordibehesht", "Khordad", "Tir", "Mordad", "Shahrivar", "Mehr", "Aban", "Azar", "Dey", "Bahman", "Esfand"];
+const GMONTHS_EN = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+const WEEKDAY_LETTERS_JALALI_EN = ["Sa", "Su", "Mo", "Tu", "We", "Th", "Fr"];
+const WEEKDAY_LETTERS_GREG_EN = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
 /* ---------------- چندزبانه‌سازی ----------------
    این دیکشنری و تابع t() زیرساخت کامل و کاراست، ولی فعلاً فقط بخش‌های پراستفاده‌ی برنامه
    (نوار پایین، سرصفحه‌ی تنظیمات، چند برچسب کلیدی) بهش وصل شدن — نه تک‌تک هزاران رشته‌ی فارسیِ
@@ -963,6 +967,8 @@ function rangeFilterTrades(trades, range, todayStr, now) {
     return trades;
 }
 const RANGE_LABEL = { daily: "روزانه", weekly: "هفتگی", monthly: "ماهانه", quarterly: "فصلی", yearly: "سالانه", all: "کل مدت" };
+const RANGE_LABEL_EN = { daily: "Daily", weekly: "Weekly", monthly: "Monthly", quarterly: "Quarterly", yearly: "Yearly", all: "All Time" };
+function rl(key, lang) { return lang === "en" ? RANGE_LABEL_EN[key] : RANGE_LABEL[key]; }
 function computeFinancialMetrics(trades, startingBalance) {
     const asc = sortAsc(trades);
     let balance = startingBalance, peakBalance = startingBalance, maxDD = 0, maxDDPercent = 0;
@@ -1976,7 +1982,7 @@ function StatementLayer({ statementTrades, onImport, onClear, importing, importE
    منطق تقویم (چه شمسی چه میلادی) کاملاً بر پایه‌ی رشته‌ی تاریخِ میلادیِ خودِ معامله‌ها
    (t.date به فرمت YYYY-MM-DD) کار می‌کنه؛ سیستم نمایش فقط تعیین می‌کنه که ماه/روزها با چه
    تقویمی روی صفحه چیده بشن، نه اینکه داده‌ها چطور ذخیره بشن. */
-function CalendarLayer({ trades, calendarSettings, onChangeSystem, cursorY, cursorM, setCursor, selectedDate, setSelectedDate, onEditTrade, todayDateStr }) {
+function CalendarLayer({ trades, calendarSettings, onChangeSystem, cursorY, cursorM, setCursor, selectedDate, setSelectedDate, onEditTrade, todayDateStr, lang = "fa" }) {
     const [showSettings, setShowSettings] = useState(false);
     const [chartRange, setChartRange] = useState("monthly");
     const isJalali = calendarSettings.system === "jalali";
@@ -1989,8 +1995,9 @@ function CalendarLayer({ trades, calendarSettings, onChangeSystem, cursorY, curs
         });
         return map;
     }, [trades]);
-    // برچسب ماه/سال جاری برای هدر، به تفکیک سیستم انتخابی
-    const headerLabel = isJalali ? `${JMONTHS_FA[cursorM - 1]} ${cursorY}` : `${GMONTHS_FA[cursorM - 1]} ${cursorY}`;
+    // برچسب ماه/سال جاری برای هدر، به تفکیک سیستم انتخابی و زبان
+    const MONTH_NAMES = isJalali ? (lang === "en" ? JMONTHS_EN : JMONTHS_FA) : (lang === "en" ? GMONTHS_EN : GMONTHS_FA);
+    const headerLabel = `${MONTH_NAMES[cursorM - 1]} ${cursorY}`;
     // آرایه‌ی همه‌ی روزهای همین ماه (هرکدوم با رشته‌ی تاریخ میلادیِ معادل، برای پیوند به معامله‌ها)
     const monthDays = useMemo(() => {
         const days = [];
@@ -2013,10 +2020,9 @@ function CalendarLayer({ trades, calendarSettings, onChangeSystem, cursorY, curs
     // چیدمان هفتگی: برای شمسی از شنبه شروع می‌کنیم (weekday=6)، برای میلادی از یکشنبه (weekday=0)
     const weekStart = isJalali ? 6 : 0;
     const leadBlanks = (monthDays.length ? (monthDays[0].weekday - weekStart + 7) % 7 : 0);
-    const weekdayHeaders = isJalali
-        ? ["ش", "ی", "د", "س", "چ", "پ", "ج"]
-        : ["ی", "د", "س", "چ", "پ", "ج", "ش"];
-    const MONTH_NAMES = isJalali ? JMONTHS_FA : GMONTHS_FA;
+    const weekdayHeaders = lang === "en"
+        ? (isJalali ? WEEKDAY_LETTERS_JALALI_EN : WEEKDAY_LETTERS_GREG_EN)
+        : (isJalali ? ["ش", "ی", "د", "س", "چ", "پ", "ج"] : ["ی", "د", "س", "چ", "پ", "ج", "ش"]);
     function daysInMonthOf(y, m) { return isJalali ? daysInJalaliMonth(y, m) : daysInGregorianMonth(y, m); }
     function dateStrForDay(y, m, d) {
         if (isJalali) {
@@ -2059,7 +2065,7 @@ function CalendarLayer({ trades, calendarSettings, onChangeSystem, cursorY, curs
         return out;
     }, [chartRange, cursorY, cursorM, isJalali, tradesByDate]);
     const rangeChartTotal = rangeChartData.reduce((s, d) => s + d.value, 0);
-    const CHART_RANGE_OPTIONS = [["weekly", "هفتگی"], ["monthly", "ماهیانه"], ["quarterly", "فصلی"], ["yearly", "سالیانه"]];
+    const CHART_RANGE_OPTIONS = [["weekly", rl("weekly", lang)], ["monthly", rl("monthly", lang)], ["quarterly", rl("quarterly", lang)], ["yearly", rl("yearly", lang)]];
     function goMonth(delta) {
         let ny = cursorY, nm = cursorM + delta;
         if (nm < 1) { nm = 12; ny -= 1; }
@@ -2071,8 +2077,8 @@ function CalendarLayer({ trades, calendarSettings, onChangeSystem, cursorY, curs
     const selectedTrades = selectedDate ? (tradesByDate[selectedDate] || []) : [];
     return (React.createElement("div", { className: "px-4 mt-4" },
         React.createElement("div", { className: "flex items-center justify-between mb-2" },
-            React.createElement("h2", { className: "text-sm font-semibold", style: { color: "var(--text-primary)" } }, "تقویم معاملاتی"),
-            React.createElement("button", { onClick: () => setShowSettings(true), className: "p-2 rounded-lg", style: { background: "var(--bg-card2)", border: "1px solid var(--border-2)" }, "aria-label": "تنظیمات تقویم" },
+            React.createElement("h2", { className: "text-sm font-semibold", style: { color: "var(--text-primary)" } }, lang === "en" ? "Trading Calendar" : "تقویم معاملاتی"),
+            React.createElement("button", { onClick: () => setShowSettings(true), className: "p-2 rounded-lg", style: { background: "var(--bg-card2)", border: "1px solid var(--border-2)" }, "aria-label": lang === "en" ? "Calendar Settings" : "تنظیمات تقویم" },
                 React.createElement(SettingsIcon, { size: 14, color: "var(--text-secondary)" }))),
         React.createElement("div", { className: "rounded-xl p-3 mb-3", style: { background: "var(--bg-card)", border: "1px solid var(--border-1)" } },
             React.createElement("div", { className: "flex items-center justify-between mb-3" },
@@ -2084,7 +2090,7 @@ function CalendarLayer({ trades, calendarSettings, onChangeSystem, cursorY, curs
                     React.createElement("span", { style: { color: "var(--text-muted)", fontWeight: 400 } },
                         "(",
                         monthTotal,
-                        " معامله)")),
+                        lang === "en" ? " trades)" : " معامله)")),
                 React.createElement("button", { onClick: () => goMonth(1), className: "p-1.5 rounded-lg", style: { background: "var(--bg-card2)" } },
                     React.createElement(ChevronUp, { size: 16, color: "var(--text-secondary)", style: { transform: "rotate(90deg)" } }))),
             React.createElement("div", { className: "grid grid-cols-7 gap-1 mb-1" }, weekdayHeaders.map((w, i) => (React.createElement("div", { key: i, className: "text-center text-[10px]", style: { color: "var(--text-muted)" } }, w)))),
@@ -2098,21 +2104,21 @@ function CalendarLayer({ trades, calendarSettings, onChangeSystem, cursorY, curs
                     dObj.count > 0 && (React.createElement("span", { className: "text-[8px] mt-0.5 px-1 rounded-full", style: { background: "#D4A64A22", color: "var(--accent-gold)" } }, dObj.count))))))),
         rangeChartTotal > 0 && (React.createElement("div", { className: "rounded-xl p-3 mb-3", style: { background: "var(--bg-card)", border: "1px solid var(--border-1)" } },
             React.createElement("div", { className: "flex items-center justify-between mb-2" },
-                React.createElement("h3", { className: "text-[12px] font-semibold", style: { color: "var(--text-primary)" } }, "تعداد معامله در روز"),
-                React.createElement("span", { className: "text-[10px]", style: { color: "var(--text-muted)" } }, rangeChartTotal, " معامله در این بازه")),
+                React.createElement("h3", { className: "text-[12px] font-semibold", style: { color: "var(--text-primary)" } }, lang === "en" ? "Trades Per Day" : "تعداد معامله در روز"),
+                React.createElement("span", { className: "text-[10px]", style: { color: "var(--text-muted)" } }, rangeChartTotal, lang === "en" ? " trades in this range" : " معامله در این بازه")),
             React.createElement("div", { className: "flex gap-1.5 mb-2" }, CHART_RANGE_OPTIONS.map(([key, label]) => (React.createElement("button", { key: key, onClick: () => setChartRange(key), className: "flex-1 py-1.5 rounded-lg text-[10px]", style: { background: chartRange === key ? "#D4A64A22" : "var(--bg-card2)", color: chartRange === key ? "var(--accent-gold)" : "var(--text-secondary)" } }, label)))),
             React.createElement(ResponsiveContainer, { width: "100%", height: Math.max(120, rangeChartData.length * (chartRange === "weekly" ? 24 : chartRange === "monthly" ? 16 : 10)) },
                 React.createElement(BarChart, { data: rangeChartData },
                     React.createElement(Bar, { dataKey: "value" }))))),
         selectedDate ? (React.createElement("div", { className: "mb-4" },
             React.createElement("h3", { className: "text-[12px] font-semibold mb-2", style: { color: "var(--text-primary)" } },
-                "معاملات ",
+                lang === "en" ? "Trades " : "معاملات ",
                 selectedDate,
                 " (",
                 selectedTrades.length,
                 ")"),
             selectedTrades.length === 0
-                ? React.createElement("div", { className: "rounded-xl p-4 text-center text-[12px]", style: { background: "var(--bg-card)", color: "var(--text-muted)" } }, "معامله‌ای در این روز ثبت نشده.")
+                ? React.createElement("div", { className: "rounded-xl p-4 text-center text-[12px]", style: { background: "var(--bg-card)", color: "var(--text-muted)" } }, lang === "en" ? "No trade logged for this day." : "معامله‌ای در این روز ثبت نشده.")
                 : selectedTrades.map(t => (React.createElement("div", { key: t.id, onClick: () => onEditTrade(t), className: "rounded-xl p-3 mb-2", style: { background: "var(--bg-card)", border: "1px solid var(--border-1)", cursor: "pointer" } },
                     React.createElement("div", { className: "flex items-center justify-between mb-1" },
                         React.createElement("span", { className: "text-[13px] font-semibold flex items-center gap-1.5", style: { color: "var(--text-primary)" } },
@@ -2121,21 +2127,21 @@ function CalendarLayer({ trades, calendarSettings, onChangeSystem, cursorY, curs
                         t.pnl !== undefined && t.pnl !== "" && (React.createElement("span", { className: "text-[12px] font-bold mono", style: { color: Number(t.pnlSign === "loss" ? -Math.abs(t.pnl) : t.pnl) >= 0 ? "#34D399" : "#F87171", fontFamily: "JetBrains Mono, monospace" } }, t.pnl))),
                     React.createElement("div", { className: "flex flex-wrap gap-1.5 text-[10px]", style: { color: "var(--text-secondary)" } },
                         t.time && React.createElement("span", null, "⏱ ", t.time),
-                        t.lot && React.createElement("span", null, "لات ", t.lot),
+                        t.lot && React.createElement("span", null, lang === "en" ? "Lot " : "لات ", t.lot),
                         t.session && React.createElement("span", null, t.session),
                         (t.systems && t.systems[0] || t.system) && React.createElement("span", null, t.systems ? t.systems[0] : t.system)),
                     t.note && React.createElement("p", { className: "text-[11px] mt-1.5 leading-5", style: { color: "var(--text-muted)" } }, t.note.length > 90 ? t.note.slice(0, 90) + "…" : t.note))))))
-            : (React.createElement("div", { className: "rounded-xl p-4 text-center text-[12px] mb-4", style: { background: "var(--bg-card)", color: "var(--text-muted)" } }, "روی یک روز از تقویم بزن تا معاملات همون روز رو ببینی.")),
+            : (React.createElement("div", { className: "rounded-xl p-4 text-center text-[12px] mb-4", style: { background: "var(--bg-card)", color: "var(--text-muted)" } }, lang === "en" ? "Tap a day on the calendar to see that day's trades." : "روی یک روز از تقویم بزن تا معاملات همون روز رو ببینی.")),
         showSettings && (React.createElement("div", { className: "fixed inset-0 z-50 flex items-end", style: { background: "#000000AA" }, onClick: () => setShowSettings(false) },
             React.createElement("div", { className: "w-full rounded-t-2xl p-4", style: { background: "var(--bg-card)" }, onClick: e => e.stopPropagation() },
                 React.createElement("div", { className: "flex items-center justify-between mb-4" },
-                    React.createElement("h3", { className: "text-sm font-semibold", style: { color: "var(--text-primary)" } }, "تنظیمات تقویم معاملاتی"),
+                    React.createElement("h3", { className: "text-sm font-semibold", style: { color: "var(--text-primary)" } }, lang === "en" ? "Trading Calendar Settings" : "تنظیمات تقویم معاملاتی"),
                     React.createElement("button", { onClick: () => setShowSettings(false) },
                         React.createElement(X, { size: 18, color: "var(--text-muted)" }))),
-                React.createElement(Field, { label: "نوع تقویم" },
+                React.createElement(Field, { label: lang === "en" ? "Calendar Type" : "نوع تقویم" },
                     React.createElement("div", { className: "flex gap-2" },
-                        React.createElement("button", { onClick: () => onChangeSystem("jalali"), className: "flex-1 py-2.5 rounded-lg text-[12px] font-medium", style: { background: isJalali ? "#D4A64A22" : "var(--bg-card2)", color: isJalali ? "var(--accent-gold)" : "var(--text-secondary)" } }, "شمسی"),
-                        React.createElement("button", { onClick: () => onChangeSystem("gregorian"), className: "flex-1 py-2.5 rounded-lg text-[12px] font-medium", style: { background: !isJalali ? "#D4A64A22" : "var(--bg-card2)", color: !isJalali ? "var(--accent-gold)" : "var(--text-secondary)" } }, "میلادی"))))))));
+                        React.createElement("button", { onClick: () => onChangeSystem("jalali"), className: "flex-1 py-2.5 rounded-lg text-[12px] font-medium", style: { background: isJalali ? "#D4A64A22" : "var(--bg-card2)", color: isJalali ? "var(--accent-gold)" : "var(--text-secondary)" } }, lang === "en" ? "Jalali (Shamsi)" : "شمسی"),
+                        React.createElement("button", { onClick: () => onChangeSystem("gregorian"), className: "flex-1 py-2.5 rounded-lg text-[12px] font-medium", style: { background: !isJalali ? "#D4A64A22" : "var(--bg-card2)", color: !isJalali ? "var(--accent-gold)" : "var(--text-secondary)" } }, lang === "en" ? "Gregorian" : "میلادی"))))))));
 }
 /* ============================== APP ============================== */
 function App() {
@@ -5293,7 +5299,7 @@ function App() {
                 React.createElement(Download, { size: 16 }),
                 " \u062E\u0631\u0648\u062C\u06CC \u0627\u06A9\u0633\u0644 \u0698\u0648\u0631\u0646\u0627\u0644"))))),
         tab === "calendar" && (!activeAccount ? (React.createElement("div", { className: "px-4 mt-4" },
-            React.createElement("div", { className: "rounded-xl p-4 text-center text-sm", style: { background: "var(--bg-card)", color: "var(--text-muted)" } }, "\u0627\u0648\u0644 \u0627\u0632 \u062A\u0628 \u0698\u0648\u0631\u0646\u0627\u0644 \u06CC\u06A9 \u062D\u0633\u0627\u0628 \u0627\u06CC\u062C\u0627\u062F \u06A9\u0646."))) : (React.createElement(CalendarLayer, {
+            React.createElement("div", { className: "rounded-xl p-4 text-center text-sm", style: { background: "var(--bg-card)", color: "var(--text-muted)" } }, appLanguage === "en" ? "First create an account from the Profile tab." : "\u0627\u0648\u0644 \u0627\u0632 \u062A\u0628 \u0698\u0648\u0631\u0646\u0627\u0644 \u06CC\u06A9 \u062D\u0633\u0627\u0628 \u0627\u06CC\u062C\u0627\u062F \u06A9\u0646."))) : (React.createElement(CalendarLayer, {
             trades: trades,
             calendarSettings: calendarSettings,
             onChangeSystem: changeCalendarSystem,
@@ -5304,11 +5310,12 @@ function App() {
             setSelectedDate: setSelectedCalendarDate,
             onEditTrade: openEditTrade,
             todayDateStr: todayStr,
+            lang: appLanguage,
         }))),
         tab === "finance" && (React.createElement("div", { className: "px-4 mt-4" },
-            React.createElement("h2", { className: "text-sm font-semibold mb-2", style: { color: "var(--text-primary)" } }, "\u0645\u062F\u06CC\u0631\u06CC\u062A \u0645\u0627\u0644\u06CC"),
-            !activeAccount ? (React.createElement("div", { className: "rounded-xl p-4 text-center text-sm", style: { background: "var(--bg-card)", color: "var(--text-muted)" } }, "\u0627\u0648\u0644 \u0627\u0632 \u062A\u0628 \u0698\u0648\u0631\u0646\u0627\u0644 \u06CC\u06A9 \u062D\u0633\u0627\u0628 \u0627\u06CC\u062C\u0627\u062F \u06A9\u0646.")) : (React.createElement(React.Fragment, null,
-                React.createElement("div", { className: "flex gap-1.5 overflow-x-auto mb-4 pb-1" }, ["daily", "weekly", "monthly", "quarterly", "yearly", "all"].map(r => (React.createElement("button", { key: r, onClick: () => setFinancePeriod(r), className: "px-3 py-1.5 rounded-full text-[12px] shrink-0", style: { background: financePeriod === r ? "var(--accent-gold)" : "var(--bg-card)", color: financePeriod === r ? "var(--bg-page)" : "var(--text-secondary)", border: "1px solid var(--border-1)" } }, RANGE_LABEL[r])))),
+            React.createElement("h2", { className: "text-sm font-semibold mb-2", style: { color: "var(--text-primary)" } }, (appLanguage === "en" ? "Financial Management" : "مدیریت مالی")),
+            !activeAccount ? (React.createElement("div", { className: "rounded-xl p-4 text-center text-sm", style: { background: "var(--bg-card)", color: "var(--text-muted)" } }, appLanguage === "en" ? "First create an account from the Profile tab." : "\u0627\u0648\u0644 \u0627\u0632 \u062A\u0628 \u0698\u0648\u0631\u0646\u0627\u0644 \u06CC\u06A9 \u062D\u0633\u0627\u0628 \u0627\u06CC\u062C\u0627\u062F \u06A9\u0646.")) : (React.createElement(React.Fragment, null,
+                React.createElement("div", { className: "flex gap-1.5 overflow-x-auto mb-4 pb-1" }, ["daily", "weekly", "monthly", "quarterly", "yearly", "all"].map(r => (React.createElement("button", { key: r, onClick: () => setFinancePeriod(r), className: "px-3 py-1.5 rounded-full text-[12px] shrink-0", style: { background: financePeriod === r ? "var(--accent-gold)" : "var(--bg-card)", color: financePeriod === r ? "var(--bg-page)" : "var(--text-secondary)", border: "1px solid var(--border-1)" } }, rl(r, appLanguage))))),
                 React.createElement("div", { className: "grid grid-cols-2 gap-2 mb-2" },
                     React.createElement("div", { className: "rounded-xl p-3 text-center", style: { background: "var(--bg-card)" } },
                         React.createElement("div", { className: "text-lg font-bold", style: { color: finMetrics.winRate === null ? "var(--text-muted)" : finMetrics.winRate >= 50 ? "#34D399" : "#F87171" } }, finMetrics.winRate === null ? "—" : `${finMetrics.winRate}%`),
@@ -5324,26 +5331,26 @@ function App() {
                             "%)")),
                     React.createElement("div", { className: "rounded-xl p-3 text-center", style: { background: "var(--bg-card)" } },
                         React.createElement("div", { className: "text-lg font-bold tabular-nums", style: { color: finMetrics.netPnl >= 0 ? "#34D399" : "#F87171", fontFamily: "JetBrains Mono, monospace" } }, finMetrics.netPnl),
-                        React.createElement("div", { className: "text-[11px]", style: { color: "var(--text-muted)" } }, "\u0633\u0648\u062F/\u0632\u06CC\u0627\u0646 \u062E\u0627\u0644\u0635")),
+                        React.createElement("div", { className: "text-[11px]", style: { color: "var(--text-muted)" } }, (appLanguage === "en" ? "Net P/L" : "سود/زیان خالص"))),
                     React.createElement("div", { className: "rounded-xl p-3 text-center", style: { background: "var(--bg-card)" } },
                         React.createElement("div", { className: "text-lg font-bold", style: { color: "var(--text-primary)" } }, finMetrics.maxWinStreak),
-                        React.createElement("div", { className: "text-[11px]", style: { color: "var(--text-muted)" } }, "\u0628\u06CC\u0634\u062A\u0631\u06CC\u0646 \u0628\u0631\u062F \u0645\u062A\u0648\u0627\u0644\u06CC")),
+                        React.createElement("div", { className: "text-[11px]", style: { color: "var(--text-muted)" } }, (appLanguage === "en" ? "Max Win Streak" : "بیشترین برد متوالی"))),
                     React.createElement("div", { className: "rounded-xl p-3 text-center", style: { background: "var(--bg-card)" } },
                         React.createElement("div", { className: "text-lg font-bold", style: { color: "var(--text-primary)" } }, finMetrics.maxLossStreak),
-                        React.createElement("div", { className: "text-[11px]", style: { color: "var(--text-muted)" } }, "\u0628\u06CC\u0634\u062A\u0631\u06CC\u0646 \u0628\u0627\u062E\u062A \u0645\u062A\u0648\u0627\u0644\u06CC")),
+                        React.createElement("div", { className: "text-[11px]", style: { color: "var(--text-muted)" } }, (appLanguage === "en" ? "Max Loss Streak" : "بیشترین باخت متوالی"))),
                     React.createElement("div", { className: "rounded-xl p-3 text-center", style: { background: "var(--bg-card)" } },
                         React.createElement("div", { className: "text-lg font-bold tabular-nums", style: { color: finMetrics.expectancy === null ? "var(--text-muted)" : finMetrics.expectancy >= 0 ? "#34D399" : "#F87171", fontFamily: "JetBrains Mono, monospace" } }, finMetrics.expectancy === null ? "—" : finMetrics.expectancy),
-                        React.createElement("div", { className: "text-[11px]", style: { color: "var(--text-muted)" } }, "Expectancy (\u0628\u0647\u200C\u0627\u0632\u0627\u06CC \u0647\u0631 \u062A\u0631\u06CC\u062F)")),
+                        React.createElement("div", { className: "text-[11px]", style: { color: "var(--text-muted)" } }, appLanguage === "en" ? "Expectancy (per trade)" : "Expectancy (\u0628\u0647\u200C\u0627\u0632\u0627\u06CC \u0647\u0631 \u062A\u0631\u06CC\u062F)")),
                     React.createElement("div", { className: "rounded-xl p-3 text-center", style: { background: "var(--bg-card)" } },
                         React.createElement("div", { className: "text-lg font-bold tabular-nums", style: { color: finMetrics.riskOfRuin === null ? "var(--text-muted)" : finMetrics.riskOfRuin >= 20 ? "#F87171" : finMetrics.riskOfRuin >= 5 ? "#FBBF24" : "#34D399", fontFamily: "JetBrains Mono, monospace" } }, finMetrics.riskOfRuin === null ? "—" : `${finMetrics.riskOfRuin}%`),
                         React.createElement("div", { className: "text-[11px]", style: { color: "var(--text-muted)" } },
                             "Risk of Ruin",
-                            finMetrics.avgRiskPercent !== null ? ` (میانگین ریسک ${finMetrics.avgRiskPercent}٪)` : "")),
+                            finMetrics.avgRiskPercent !== null ? (appLanguage === "en" ? ` (avg risk ${finMetrics.avgRiskPercent}%)` : ` (میانگین ریسک ${finMetrics.avgRiskPercent}٪)`) : "")),
                     React.createElement("div", { className: "rounded-xl p-3 text-center", style: { background: "var(--bg-card)" } },
                         React.createElement("div", { className: "text-lg font-bold", style: { color: "var(--text-primary)" } }, formatDurationFa(finMetrics.avgDurationMinutes)),
-                        React.createElement("div", { className: "text-[11px]", style: { color: "var(--text-muted)" } }, "\u0645\u06CC\u0627\u0646\u06AF\u06CC\u0646 \u0645\u062F\u062A \u0645\u0639\u0627\u0645\u0644\u0647"))),
-                finMetrics.riskOfRuin === null && (React.createElement("p", { className: "text-[11px] mb-3", style: { color: "var(--text-muted)" } }, "\u0628\u0631\u0627\u06CC \u0645\u062D\u0627\u0633\u0628\u0647\u200C\u06CC Risk of Ruin\u060C \u062D\u062F\u0627\u0642\u0644 \u062A\u0648 \u0686\u0646\u062F \u0645\u0639\u0627\u0645\u0644\u0647 \u0628\u0627\u06A9\u0633 \u00AB\u0631\u06CC\u0633\u06A9 \u0645\u0639\u0627\u0645\u0644\u0647\u00BB \u0631\u0648 \u062A\u0648 \u062B\u0628\u062A \u0648\u0631\u0648\u062F \u067E\u0631 \u06A9\u0646.")),
-                React.createElement("h3", { className: "text-[13px] font-semibold mt-4 mb-2", style: { color: "var(--text-primary)" } }, "\u0646\u0645\u0648\u062F\u0627\u0631 \u0631\u0634\u062F \u062D\u0633\u0627\u0628"),
+                        React.createElement("div", { className: "text-[11px]", style: { color: "var(--text-muted)" } }, (appLanguage === "en" ? "Avg Trade Duration" : "میانگین مدت معامله")))),
+                finMetrics.riskOfRuin === null && (React.createElement("p", { className: "text-[11px] mb-3", style: { color: "var(--text-muted)" } }, appLanguage === "en" ? "To calculate Risk of Ruin, fill in \"Trade Risk\" the next time you log a trade entry." : "\u0628\u0631\u0627\u06CC \u0645\u062D\u0627\u0633\u0628\u0647\u200C\u06CC Risk of Ruin\u060C \u062D\u062F\u0627\u0642\u0644 \u062A\u0648 \u0686\u0646\u062F \u0645\u0639\u0627\u0645\u0644\u0647 \u0628\u0627\u06A9\u0633 \u00AB\u0631\u06CC\u0633\u06A9 \u0645\u0639\u0627\u0645\u0644\u0647\u00BB \u0631\u0648 \u062A\u0648 \u062B\u0628\u062A \u0648\u0631\u0648\u062F \u067E\u0631 \u06A9\u0646.")),
+                React.createElement("h3", { className: "text-[13px] font-semibold mt-4 mb-2", style: { color: "var(--text-primary)" } }, (appLanguage === "en" ? "Account Growth Chart" : "نمودار رشد حساب")),
                 React.createElement("div", { className: "rounded-xl p-2 mb-4", style: { background: "var(--bg-card)" } },
                     React.createElement(ResponsiveContainer, { width: "100%", height: 180 },
                         React.createElement(LineChart, { data: finMetrics.curve },
@@ -5354,10 +5361,31 @@ function App() {
                             React.createElement(Line, { type: "monotone", dataKey: "balance", stroke: "var(--accent-gold)", strokeWidth: 2, dot: false })))),
                 React.createElement("div", { className: "rounded-xl p-3 mb-4", style: { background: "var(--bg-card)" } },
                     React.createElement("h4", { className: "text-[12px] font-semibold mb-2", style: { color: "var(--accent-gold)" } },
-                        "\u062E\u0644\u0627\u0635\u0647 \u062F\u0648\u0631\u0647 (",
-                        RANGE_LABEL[financePeriod],
+                        (appLanguage === "en" ? "Period Summary (" : "\u062E\u0644\u0627\u0635\u0647 \u062F\u0648\u0631\u0647 ("),
+                        rl(financePeriod, appLanguage),
                         ")"),
-                    React.createElement("p", { className: "text-[12px] leading-6", style: { color: "var(--text-secondary)" } },
+                    appLanguage === "en" ? (React.createElement("p", { className: "text-[12px] leading-6", style: { color: "var(--text-secondary)" } },
+                        "In this period, ",
+                        finMetrics.total,
+                        " trades were logged (",
+                        finMetrics.wins,
+                        " wins / ",
+                        finMetrics.losses,
+                        " losses), with a win rate of ",
+                        finMetrics.winRate ?? "—",
+                        "% and a profit factor of ",
+                        finMetrics.profitFactor ?? "—",
+                        ". Net P/L this period was ",
+                        React.createElement("b", { style: { color: finMetrics.netPnl >= 0 ? "#34D399" : "#F87171" } }, finMetrics.netPnl),
+                        ", with a max drawdown of ",
+                        React.createElement("b", { style: { color: "#F87171" } },
+                            finMetrics.maxDDPercent,
+                            "%"),
+                        ". Final balance: ",
+                        React.createElement("b", { style: { color: "var(--text-primary)" } }, finMetrics.finalBalance.toFixed(2)),
+                        ". Average trade duration this period: ",
+                        React.createElement("b", { style: { color: "var(--text-primary)" } }, formatDurationFa(finMetrics.avgDurationMinutes)),
+                        ".")) : (React.createElement("p", { className: "text-[12px] leading-6", style: { color: "var(--text-secondary)" } },
                         "\u062F\u0631 \u0627\u06CC\u0646 \u062F\u0648\u0631\u0647 ",
                         finMetrics.total,
                         " \u0645\u0639\u0627\u0645\u0644\u0647 \u062B\u0628\u062A \u0634\u062F\u0647 (",
@@ -5378,9 +5406,9 @@ function App() {
                         React.createElement("b", { style: { color: "var(--text-primary)" } }, finMetrics.finalBalance.toFixed(2)),
                         ". \u0645\u06CC\u0627\u0646\u06AF\u06CC\u0646 \u0645\u062F\u062A \u0645\u0639\u0627\u0645\u0644\u0647 \u062F\u0631 \u0627\u06CC\u0646 \u062F\u0648\u0631\u0647: ",
                         React.createElement("b", { style: { color: "var(--text-primary)" } }, formatDurationFa(finMetrics.avgDurationMinutes)),
-                        ".")),
+                        "."))),
                 React.createElement("div", { className: "rounded-xl p-3 mb-4", style: { background: "var(--bg-card)", border: "1px solid var(--border-1)" } },
-                    React.createElement("h4", { className: "text-[12px] font-semibold mb-2", style: { color: "var(--accent-gold)" } }, "\u067E\u0627\u0631\u0627\u0645\u062A\u0631\u0647\u0627\u06CC \u0645\u0627\u0644\u06CC \u0633\u0641\u0627\u0631\u0634\u06CC"),
+                    React.createElement("h4", { className: "text-[12px] font-semibold mb-2", style: { color: "var(--accent-gold)" } }, (appLanguage === "en" ? "Custom Financial Parameters" : "پارامترهای مالی سفارشی")),
                     customParams.length > 0 && (React.createElement("div", { className: "grid grid-cols-1 gap-2 mb-3" }, customParams.map(p => {
                         let val = "خطا";
                         try {
@@ -5394,12 +5422,12 @@ function App() {
                             React.createElement("div", { className: "flex gap-1.5" },
                                 React.createElement("button", { onClick: saveEditParam, className: "flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-[12px]", style: { background: "var(--accent-gold)", color: "var(--bg-page)" } },
                                     React.createElement(Check, { size: 12 }),
-                                    " \u0630\u062E\u06CC\u0631\u0647"),
-                                React.createElement("button", { onClick: cancelEditParam, className: "flex-1 py-1.5 rounded-lg text-[12px]", style: { background: "var(--border-2)", color: "var(--text-secondary)" } }, "\u0627\u0646\u0635\u0631\u0627\u0641")))) : (React.createElement("div", { key: p.id, className: "rounded-lg p-2 flex items-center justify-between", style: { background: "var(--bg-card2)" } },
+                                    " ", (appLanguage === "en" ? "Save" : "\u0630\u062E\u06CC\u0631\u0647")),
+                                React.createElement("button", { onClick: cancelEditParam, className: "flex-1 py-1.5 rounded-lg text-[12px]", style: { background: "var(--border-2)", color: "var(--text-secondary)" } }, (appLanguage === "en" ? "Cancel" : "انصراف"))))) : (React.createElement("div", { key: p.id, className: "rounded-lg p-2 flex items-center justify-between", style: { background: "var(--bg-card2)" } },
                             React.createElement("div", { className: "flex items-center gap-1 shrink-0" },
                                 React.createElement("button", { onClick: () => startEditParam(p) },
                                     React.createElement(Edit3, { size: 13, color: "var(--text-muted)" })),
-                                React.createElement("button", { onClick: () => askDeleteConfirm("این پارامتر حذف بشه؟", () => deleteCustomParam(p.id)) },
+                                React.createElement("button", { onClick: () => askDeleteConfirm(appLanguage === "en" ? "Delete this parameter?" : "این پارامتر حذف بشه؟", () => deleteCustomParam(p.id)) },
                                     React.createElement(Trash2, { size: 14, color: "var(--text-muted)" }))),
                             React.createElement("div", { dir: "ltr", style: { textAlign: "left" } },
                                 React.createElement("div", { className: "text-[12px]", style: { color: "var(--text-primary)" } }, p.name),
@@ -5408,65 +5436,65 @@ function App() {
                                     " = ",
                                     React.createElement("b", { style: { color: "var(--accent-gold)" } }, val)))));
                     }))),
-                    React.createElement(Field, { label: "\u0646\u0627\u0645 \u067E\u0627\u0631\u0627\u0645\u062A\u0631 \u062C\u062F\u06CC\u062F" },
-                        React.createElement("input", { type: "text", value: newParamName, onChange: e => setNewParamName(e.target.value), className: "w-full bg-transparent outline-none text-sm", style: { color: "var(--text-primary)" }, placeholder: "\u0645\u062B\u0644\u0627\u064B \u0631\u06CC\u0633\u06A9 \u062A\u0639\u062F\u06CC\u0644\u200C\u0634\u062F\u0647" })),
-                    React.createElement(Field, { label: "\u0641\u0631\u0645\u0648\u0644 (\u0627\u0632 \u0646\u0627\u0645 \u067E\u0627\u0631\u0627\u0645\u062A\u0631\u0647\u0627\u06CC \u0645\u0648\u062C\u0648\u062F \u0627\u0633\u062A\u0641\u0627\u062F\u0647 \u06A9\u0646)" },
+                    React.createElement(Field, { label: appLanguage === "en" ? "New Parameter Name" : "\u0646\u0627\u0645 \u067E\u0627\u0631\u0627\u0645\u062A\u0631 \u062C\u062F\u06CC\u062F" },
+                        React.createElement("input", { type: "text", value: newParamName, onChange: e => setNewParamName(e.target.value), className: "w-full bg-transparent outline-none text-sm", style: { color: "var(--text-primary)" }, placeholder: appLanguage === "en" ? "e.g. Adjusted Risk" : "\u0645\u062B\u0644\u0627\u064B \u0631\u06CC\u0633\u06A9 \u062A\u0639\u062F\u06CC\u0644\u200C\u0634\u062F\u0647" })),
+                    React.createElement(Field, { label: appLanguage === "en" ? "Formula (use existing parameter names)" : "\u0641\u0631\u0645\u0648\u0644 (\u0627\u0632 \u0646\u0627\u0645 \u067E\u0627\u0631\u0627\u0645\u062A\u0631\u0647\u0627\u06CC \u0645\u0648\u062C\u0648\u062F \u0627\u0633\u062A\u0641\u0627\u062F\u0647 \u06A9\u0646)" },
                         React.createElement("input", { ref: formulaInputRef, type: "text", dir: "ltr", value: newParamFormula, onChange: e => setNewParamFormula(e.target.value), className: "w-full bg-transparent outline-none text-sm mono", style: { color: "var(--text-primary)", fontFamily: "JetBrains Mono, monospace", textAlign: "left" }, placeholder: "netPnl / maxDDPercent" })),
-                    React.createElement("p", { className: "text-[10px] mb-1.5", style: { color: "var(--text-muted)" } }, "\u067E\u0627\u0631\u0627\u0645\u062A\u0631\u0647\u0627\u06CC \u0642\u0627\u0628\u0644 \u0627\u0633\u062A\u0641\u0627\u062F\u0647 (\u0628\u0627 \u0644\u0645\u0633\u060C \u0628\u0647 \u0641\u0631\u0645\u0648\u0644 \u0627\u0636\u0627\u0641\u0647 \u0645\u06CC\u200C\u0634\u0646):"),
+                    React.createElement("p", { className: "text-[10px] mb-1.5", style: { color: "var(--text-muted)" } }, (appLanguage === "en" ? "Available parameters (tap to add to formula):" : "پارامترهای قابل استفاده (با لمس، به فرمول اضافه می‌شن):")),
                     React.createElement("div", { className: "flex flex-wrap gap-1.5 mb-2" }, CUSTOM_PARAM_TOKENS.map(tok => (React.createElement("button", { key: tok, type: "button", onClick: () => insertFormulaToken(tok), className: "px-2.5 py-1.5 rounded-lg text-[11px] mono", style: { background: "var(--bg-card2)", color: "#60A5FA", fontFamily: "JetBrains Mono, monospace" } }, tok)))),
-                    React.createElement("p", { className: "text-[10px] mb-1.5", style: { color: "var(--text-muted)" } }, "\u0639\u0645\u0644\u06AF\u0631\u0647\u0627:"),
+                    React.createElement("p", { className: "text-[10px] mb-1.5", style: { color: "var(--text-muted)" } }, (appLanguage === "en" ? "Operators:" : "عملگرها:")),
                     React.createElement("div", { className: "flex flex-wrap gap-1.5 mb-2" }, CUSTOM_PARAM_OPERATORS.map(op => (React.createElement("button", { key: op, type: "button", onClick: () => insertFormulaToken(op), className: "w-9 py-1.5 rounded-lg text-[13px] mono", style: { background: "var(--bg-card2)", color: "var(--accent-gold)", fontFamily: "JetBrains Mono, monospace" } }, op)))),
                     paramError && React.createElement("p", { className: "text-[11px] mb-2", style: { color: "#F87171" } }, paramError),
                     React.createElement("button", { onClick: addCustomParam, className: "w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-[13px]", style: { background: "var(--accent-gold)", color: "var(--bg-page)" } },
                         React.createElement(Plus, { size: 14 }),
-                        " \u0627\u0641\u0632\u0648\u062F\u0646 \u067E\u0627\u0631\u0627\u0645\u062A\u0631")),
+                        " ", appLanguage === "en" ? "Add Parameter" : "\u0627\u0641\u0632\u0648\u062F\u0646 \u067E\u0627\u0631\u0627\u0645\u062A\u0631")),
                 React.createElement("button", { onClick: runAIAnalysis, disabled: aiLoading, className: "w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-medium mb-3", style: { background: aiLoading ? "#2A2F38" : "#7C3AED", color: aiLoading ? "var(--text-muted)" : "#fff" } },
                     "\uD83E\uDD16 ",
-                    aiLoading ? "در حال تحلیل..." : "تحلیل هوش مصنوعی پارامترهای مالی"),
+                    aiLoading ? "در حال تحلیل..." : (appLanguage === "en" ? "AI Analysis of Financial Parameters" : "تحلیل هوش مصنوعی پارامترهای مالی")),
                 aiError && React.createElement("p", { className: "text-[12px] mb-3", style: { color: "#F87171" } }, aiError),
                 aiAnalysis && (React.createElement("div", { className: "rounded-xl p-3 mb-4", style: { background: "#1A1120", border: "1px solid #7C3AED44" } },
-                    React.createElement("h4", { className: "text-[12px] font-semibold mb-2 flex items-center gap-1.5", style: { color: "#C4B5FD" } }, "\uD83E\uDD16 \u062A\u062D\u0644\u06CC\u0644 \u0647\u0648\u0634 \u0645\u0635\u0646\u0648\u0639\u06CC"),
+                    React.createElement("h4", { className: "text-[12px] font-semibold mb-2 flex items-center gap-1.5", style: { color: "#C4B5FD" } }, "\uD83E\uDD16 ", appLanguage === "en" ? "AI Analysis" : "تحلیل هوش مصنوعی"),
                     React.createElement("p", { className: "text-[12px] leading-6 whitespace-pre-wrap", style: { color: "var(--text-primary)" } }, aiAnalysis))),
                 React.createElement("button", { onClick: () => setShowApiKeyBox(s => !s), className: "w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-[12px] mb-4", style: { background: "var(--bg-card)", color: apiKey ? "#34D399" : "var(--text-secondary)", border: "1px solid var(--border-1)" } },
-                    React.createElement("span", null, apiKey ? "✓ کلید API آنتروپیک ذخیره شده (برای اپ نصب‌شده)" : "⚙️ تنظیم کلید API آنتروپیک (برای اپ نصب‌شده)"),
+                    React.createElement("span", null, apiKey ? (appLanguage === "en" ? "\u2713 Anthropic API key saved (for installed app)" : "✓ کلید API آنتروپیک ذخیره شده (برای اپ نصب‌شده)") : (appLanguage === "en" ? "\u2699\ufe0f Set Anthropic API Key (for installed app)" : "⚙️ تنظیم کلید API آنتروپیک (برای اپ نصب‌شده)")),
                     showApiKeyBox ? React.createElement(ChevronUp, { size: 14 }) : React.createElement(ChevronDown, { size: 14 })),
                 showApiKeyBox && (React.createElement("div", { className: "rounded-xl p-3 mb-4", style: { background: "var(--bg-card)", border: "1px solid var(--border-1)" } },
                     React.createElement("p", { className: "text-[11px] leading-5 mb-2", style: { color: "var(--text-secondary)" } },
-                        "\u062F\u0627\u062E\u0644 \u067E\u06CC\u0634\u200C\u0646\u0645\u0627\u06CC\u0634 \u0686\u062A \u0646\u06CC\u0627\u0632\u06CC \u0628\u0647 \u06A9\u0644\u06CC\u062F \u0646\u06CC\u0633\u062A. \u0627\u0645\u0627 \u062A\u0648 \u0627\u067E \u0646\u0635\u0628\u200C\u0634\u062F\u0647 \u0631\u0648\u06CC \u06AF\u0648\u0634\u06CC\u060C \u0628\u0631\u0627\u06CC \u0641\u0639\u0627\u0644\u200C\u0634\u062F\u0646 \u0627\u06CC\u0646 \u062F\u06A9\u0645\u0647 \u0628\u0627\u06CC\u062F \u06CC\u06A9 \u06A9\u0644\u06CC\u062F API \u0627\u0632",
+                        appLanguage === "en" ? "There's no need to enter a key inside the chat. But on the installed app, you'll need an API key from" : "\u062F\u0627\u062E\u0644 \u067E\u06CC\u0634\u200C\u0646\u0645\u0627\u06CC\u0634 \u0686\u062A \u0646\u06CC\u0627\u0632\u06CC \u0628\u0647 \u06A9\u0644\u06CC\u062F \u0646\u06CC\u0633\u062A. \u0627\u0645\u0627 \u062A\u0648 \u0627\u067E \u0646\u0635\u0628\u200C\u0634\u062F\u0647 \u0631\u0648\u06CC \u06AF\u0648\u0634\u06CC\u060C \u0628\u0631\u0627\u06CC \u0641\u0639\u0627\u0644\u200C\u0634\u062F\u0646 \u0627\u06CC\u0646 \u062F\u06A9\u0645\u0647 \u0628\u0627\u06CC\u062F \u06CC\u06A9 \u06A9\u0644\u06CC\u062F API \u0627\u0632",
                         " ",
                         React.createElement("span", { style: { color: "var(--accent-gold)" } }, "console.anthropic.com"),
-                        " \u0628\u0633\u0627\u0632\u06CC \u0648 \u0627\u06CC\u0646\u062C\u0627 \u0648\u0627\u0631\u062F \u06A9\u0646\u06CC. \u0627\u06CC\u0646 \u06A9\u0644\u06CC\u062F \u0641\u0642\u0637 \u0631\u0648\u06CC \u062E\u0648\u062F \u06AF\u0648\u0634\u06CC \u0630\u062E\u06CC\u0631\u0647 \u0645\u06CC\u200C\u0634\u0647."),
-                    React.createElement(Field, { label: "\u06A9\u0644\u06CC\u062F API (sk-ant-...)" },
+                        " ", appLanguage === "en" ? "to enter it here. This key is stored only on your own device." : "\u0628\u0633\u0627\u0632\u06CC \u0648 \u0627\u06CC\u0646\u062C\u0627 \u0648\u0627\u0631\u062F \u06A9\u0646\u06CC. \u0627\u06CC\u0646 \u06A9\u0644\u06CC\u062F \u0641\u0642\u0637 \u0631\u0648\u06CC \u062E\u0648\u062F \u06AF\u0648\u0634\u06CC \u0630\u062E\u06CC\u0631\u0647 \u0645\u06CC\u200C\u0634\u0647."),
+                    React.createElement(Field, { label: "API Key (sk-ant-...)" },
                         React.createElement("input", { type: "password", value: apiKeyDraft, onChange: e => setApiKeyDraft(e.target.value), className: "w-full bg-transparent outline-none text-sm mono", style: { color: "var(--text-primary)", fontFamily: "JetBrains Mono, monospace" }, placeholder: "sk-ant-api03-..." })),
-                    React.createElement("button", { onClick: saveApiKey, className: "w-full py-2.5 rounded-lg text-[13px] font-medium", style: { background: "var(--accent-gold)", color: "var(--bg-page)" } }, "\u0630\u062E\u06CC\u0631\u0647 \u06A9\u0644\u06CC\u062F"))),
+                    React.createElement("button", { onClick: saveApiKey, className: "w-full py-2.5 rounded-lg text-[13px] font-medium", style: { background: "var(--accent-gold)", color: "var(--bg-page)" } }, (appLanguage === "en" ? "Save Key" : "ذخیره کلید")))),
                 React.createElement("div", { className: "rounded-xl p-3 mb-4", style: { background: "var(--bg-card)", border: "1px solid var(--border-1)" } },
                     React.createElement("button", { type: "button", onClick: () => setShowCapitalMgmt(v => !v), className: "w-full flex items-center justify-between" },
-                        React.createElement("h3", { className: "text-[13px] font-semibold", style: { color: "var(--accent-gold)" } }, "\u0645\u062F\u06CC\u0631\u06CC\u062A \u0633\u0631\u0645\u0627\u06CC\u0647"),
+                        React.createElement("h3", { className: "text-[13px] font-semibold", style: { color: "var(--accent-gold)" } }, (appLanguage === "en" ? "Capital Management" : "مدیریت سرمایه")),
                         showCapitalMgmt ? React.createElement(ChevronUp, { size: 16, color: "var(--accent-gold)" }) : React.createElement(ChevronDown, { size: 16, color: "var(--accent-gold)" })),
                     showCapitalMgmt && (React.createElement("div", { className: "mt-3 pt-3", style: { borderTop: "1px solid var(--border-1)" } },
-                        React.createElement("p", { className: "text-[11px] mb-3 leading-5", style: { color: "var(--text-muted)" } }, "\u0628\u0627 \u0641\u0631\u0636\u06CC\u0627\u062A \u0645\u062E\u062A\u0644\u0641\u060C \u0645\u0648\u062C\u0648\u062F\u06CC \u0646\u0647\u0627\u06CC\u06CC \u0631\u0648 \u0645\u062D\u0627\u0633\u0628\u0647 \u06A9\u0646. \u0647\u0631 \u0628\u0627\u0631 \u06A9\u0647 \u0645\u062D\u0627\u0633\u0628\u0647 \u06A9\u0646\u06CC\u060C \u06CC\u06A9 \u0633\u0637\u0631 \u062C\u062F\u06CC\u062F \u0632\u06CC\u0631 \u0633\u0637\u0631\u0647\u0627\u06CC \u0642\u0628\u0644\u06CC \u0627\u0636\u0627\u0641\u0647 \u0645\u06CC\u200C\u0634\u0647 \u2014 \u0633\u0627\u0628\u0642\u0647\u200C\u06CC \u0641\u0631\u0636\u06CC\u0627\u062A \u0642\u0628\u0644\u06CC \u067E\u0627\u06A9 \u0646\u0645\u06CC\u200C\u0634\u0647."),
+                        React.createElement("p", { className: "text-[11px] mb-3 leading-5", style: { color: "var(--text-muted)" } }, (appLanguage === "en" ? "Calculate the final balance under different assumptions. Each time you calculate, a new row is added below the previous ones — earlier assumptions stay in the history." : "با فرضیات مختلف، موجودی نهایی رو محاسبه کن. هر بار که محاسبه کنی، یک سطر جدید زیر سطرهای قبلی اضافه می‌شه — سابقه‌ی فرضیات قبلی پاک نمی‌شه.")),
                         React.createElement("div", { className: "grid grid-cols-2 gap-2 mb-2" },
-                            React.createElement(Field, { label: "\u0633\u0631\u0645\u0627\u06CC\u0647 \u0627\u0648\u0644\u06CC\u0647 \u0641\u0631\u0636\u06CC" },
+                            React.createElement(Field, { label: appLanguage === "en" ? "Assumed Initial Capital" : "\u0633\u0631\u0645\u0627\u06CC\u0647 \u0627\u0648\u0644\u06CC\u0647 \u0641\u0631\u0636\u06CC" },
                                 React.createElement("input", { type: "number", inputMode: "decimal", value: capMgmtInitial, onChange: e => setCapMgmtInitial(e.target.value), className: "w-full bg-transparent outline-none text-sm mono", style: { color: "var(--text-primary)", fontFamily: "JetBrains Mono, monospace" } })),
-                            React.createElement(Field, { label: "\u0633\u0648\u062F \u0631\u0648\u0632\u0627\u0646\u0647 \u0641\u0631\u0636\u06CC (%)" },
+                            React.createElement(Field, { label: appLanguage === "en" ? "Assumed Daily Profit (%)" : "\u0633\u0648\u062F \u0631\u0648\u0632\u0627\u0646\u0647 \u0641\u0631\u0636\u06CC (%)" },
                                 React.createElement("input", { type: "number", inputMode: "decimal", value: capMgmtDailyPct, onChange: e => setCapMgmtDailyPct(e.target.value), className: "w-full bg-transparent outline-none text-sm mono", style: { color: "var(--text-primary)", fontFamily: "JetBrains Mono, monospace" } })),
-                            React.createElement(Field, { label: "\u062A\u0639\u062F\u0627\u062F \u0631\u0648\u0632 \u0645\u0639\u0627\u0645\u0644\u0647 \u0641\u0631\u0636\u06CC" },
+                            React.createElement(Field, { label: appLanguage === "en" ? "Assumed Trading Days" : "\u062A\u0639\u062F\u0627\u062F \u0631\u0648\u0632 \u0645\u0639\u0627\u0645\u0644\u0647 \u0641\u0631\u0636\u06CC" },
                                 React.createElement("input", { type: "number", inputMode: "numeric", value: capMgmtDays, onChange: e => setCapMgmtDays(e.target.value), className: "w-full bg-transparent outline-none text-sm mono", style: { color: "var(--text-primary)", fontFamily: "JetBrains Mono, monospace" } })),
-                            React.createElement(Field, { label: "\u0628\u0631\u062F\u0627\u0634\u062A \u062F\u0631 \u0627\u06CC\u0646 \u062F\u0648\u0631\u0647 (\u0627\u062E\u062A\u06CC\u0627\u0631\u06CC)" },
+                            React.createElement(Field, { label: appLanguage === "en" ? "Withdrawal This Period (optional)" : "\u0628\u0631\u062F\u0627\u0634\u062A \u062F\u0631 \u0627\u06CC\u0646 \u062F\u0648\u0631\u0647 (\u0627\u062E\u062A\u06CC\u0627\u0631\u06CC)" },
                                 React.createElement("input", { type: "number", inputMode: "decimal", value: capMgmtWithdraw, onChange: e => setCapMgmtWithdraw(e.target.value), className: "w-full bg-transparent outline-none text-sm mono", style: { color: "var(--text-primary)", fontFamily: "JetBrains Mono, monospace" } }))),
                         React.createElement("button", { onClick: addCapitalMgmtRow, className: "w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium mb-3", style: { background: "var(--accent-gold)", color: "var(--bg-page)" } },
                             React.createElement(Plus, { size: 16 }),
-                            " \u0645\u062D\u0627\u0633\u0628\u0647 \u0648 \u0627\u0641\u0632\u0648\u062F\u0646 \u0633\u0637\u0631"),
+                            " ", appLanguage === "en" ? "Calculate & Add Row" : "\u0645\u062D\u0627\u0633\u0628\u0647 \u0648 \u0627\u0641\u0632\u0648\u062F\u0646 \u0633\u0637\u0631"),
                         capitalMgmtRows.length > 0 && (React.createElement("div", { style: { overflowX: "auto" } },
                             React.createElement("table", { className: "w-full text-[11px]", style: { borderCollapse: "collapse" } },
                                 React.createElement("thead", null,
                                     React.createElement("tr", { style: { color: "var(--text-muted)", borderBottom: "1px solid var(--border-1)" } },
-                                        React.createElement("th", { className: "text-right py-1.5 px-1" }, "\u062A\u0627\u0631\u06CC\u062E"),
-                                        React.createElement("th", { className: "text-right py-1.5 px-1" }, "\u0633\u0631\u0645\u0627\u06CC\u0647 \u0627\u0648\u0644\u06CC\u0647"),
-                                        React.createElement("th", { className: "text-right py-1.5 px-1" }, "\u0633\u0648\u062F \u0631\u0648\u0632\u0627\u0646\u0647"),
-                                        React.createElement("th", { className: "text-right py-1.5 px-1" }, "\u0631\u0648\u0632"),
-                                        React.createElement("th", { className: "text-right py-1.5 px-1" }, "\u0628\u0631\u062F\u0627\u0634\u062A"),
-                                        React.createElement("th", { className: "text-right py-1.5 px-1" }, "\u0645\u0648\u062C\u0648\u062F\u06CC \u0646\u0647\u0627\u06CC\u06CC"),
+                                        React.createElement("th", { className: "text-right py-1.5 px-1" }, (appLanguage === "en" ? "Date" : "تاریخ")),
+                                        React.createElement("th", { className: "text-right py-1.5 px-1" }, (appLanguage === "en" ? "Initial Capital" : "سرمایه اولیه")),
+                                        React.createElement("th", { className: "text-right py-1.5 px-1" }, (appLanguage === "en" ? "Daily Profit" : "سود روزانه")),
+                                        React.createElement("th", { className: "text-right py-1.5 px-1" }, (appLanguage === "en" ? "Days" : "روز")),
+                                        React.createElement("th", { className: "text-right py-1.5 px-1" }, (appLanguage === "en" ? "Withdrawal" : "برداشت")),
+                                        React.createElement("th", { className: "text-right py-1.5 px-1" }, (appLanguage === "en" ? "Final Balance" : "موجودی نهایی")),
                                         React.createElement("th", null))),
                                 React.createElement("tbody", null, capitalMgmtRows.map(row => (React.createElement("tr", { key: row.id, className: "mono", style: { color: "var(--text-primary)", borderBottom: "1px solid var(--bg-card2)", fontFamily: "JetBrains Mono, monospace" } },
                                     React.createElement("td", { className: "py-1.5 px-1" }, row.date),
@@ -5478,12 +5506,12 @@ function App() {
                                     React.createElement("td", { className: "py-1.5 px-1" }, row.withdraw),
                                     React.createElement("td", { className: "py-1.5 px-1", style: { color: "#34D399", fontWeight: 700 } }, row.result),
                                     React.createElement("td", { className: "py-1.5 px-1" },
-                                        React.createElement("button", { onClick: () => askDeleteConfirm("این سطر حذف بشه؟", () => deleteCapitalMgmtRow(row.id)) },
+                                        React.createElement("button", { onClick: () => askDeleteConfirm(appLanguage === "en" ? "Delete this row?" : "این سطر حذف بشه؟", () => deleteCapitalMgmtRow(row.id)) },
                                             React.createElement(Trash2, { size: 12, color: "var(--text-muted)" }))))))))))))),
                 React.createElement("div", { className: "flex gap-2 mb-4" },
                     React.createElement("button", { onClick: exportFinancial, className: "flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-medium", style: { background: "var(--bg-card)", color: "var(--text-primary)", border: "1px solid var(--border-1)" } },
                         React.createElement(Download, { size: 16 }),
-                        " \u0627\u06A9\u0633\u0644"),
+                        " ", t("common_excel")),
                     React.createElement("button", { onClick: exportFinancialPdf, className: "flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-medium", style: { background: "var(--bg-card)", color: "var(--accent-gold)", border: "1px solid var(--border-1)" } },
                         React.createElement(Download, { size: 16 }),
                         " PDF")))))),
