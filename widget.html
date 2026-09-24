@@ -101,6 +101,7 @@ const DEFAULT_CONFIG = {
     { key: "asiakz", name: "کیل‌زون آسیا", color: "#39FF6E", dst: { s: [21, 0], e: [1, 0] }, std: { s: [20, 0], e: [0, 0] } },
     { key: "londonkz", name: "کیل‌زون لندن", color: "#39FF6E", dst: { s: [3, 0], e: [6, 0] }, std: { s: [2, 0], e: [5, 0] } },
     { key: "nykz", name: "کیل‌زون نیویورک", color: "#39FF6E", dst: { s: [9, 30], e: [12, 0] }, std: { s: [8, 30], e: [11, 0] } },
+    { key: "otemorning", name: "الگوی نقطه بهینه ورود (OTE) صبح نیویورک", color: "#22D3EE", dst: { s: [8, 30], e: [12, 0] }, std: { s: [7, 30], e: [11, 0] } },
     { key: "londonclosekz", name: "کیل‌زون بسته‌شدن لندن", color: "#39FF6E", dst: { s: [14, 30], e: [17, 0] }, std: { s: [13, 30], e: [16, 0] } },
   ],
   silverbullets: [
@@ -115,10 +116,13 @@ function loadConfig() {
     const raw = localStorage.getItem("ns_namello_session_config_v3");
     if (!raw) return DEFAULT_CONFIG;
     const saved = JSON.parse(raw);
-    const mergeCat = (cat) => (DEFAULT_CONFIG[cat] || []).map(def => {
-      const found = Array.isArray(saved[cat]) ? saved[cat].find(x => x && x.key === def.key) : null;
-      return found ? { ...def, ...found } : def;
-    });
+    const mergeCat = (cat) => [
+      ...(DEFAULT_CONFIG[cat] || []).map(def => {
+        const found = Array.isArray(saved[cat]) ? saved[cat].find(x => x && x.key === def.key) : null;
+        return found ? { ...def, ...found } : def;
+      }),
+      ...(Array.isArray(saved[cat]) ? saved[cat].filter(x => x && x.custom && x.key && x.dst && x.std) : []),
+    ];
     return { sessions: mergeCat("sessions"), killzones: mergeCat("killzones"), silverbullets: mergeCat("silverbullets") };
   } catch (e) { return DEFAULT_CONFIG; }
 }

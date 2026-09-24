@@ -7,11 +7,15 @@
 // دفعات آفلاینِ بعدی کش می‌شه). فقط وقتی واقعاً آفلاینیم، از کش قدیمی استفاده می‌شه.
 // برای فایل‌های CDN (React, XLSX, Plotly, Tailwind, فونت‌ها) که نسخه‌شون پین‌شده و عوض نمی‌شه،
 // همچنان استراتژی "اول کش" (سریع‌تر و برای آفلاین قابل‌اعتمادتر) باقی مونده.
-const CACHE_NAME = "namello-v12";
+// نام کش به نسخه‌ی برنامه گره خورده (Namello 1.2.0 / Version Code 12)؛ با هر آپدیت این را عوض کن.
+const CACHE_NAME = "namello-1.2.0-c12";
 
 const HTML_URLS = ["./", "./index.html"];
 const WIDGET_URL = "./widget.html";
 const APP_SHELL = ["./manifest.json", "./icon-192.png", "./icon-512.png", "./icon-mt5.jpg", "./icon-tradingview.png", WIDGET_URL];
+
+// آیکون‌های تم‌های آیکون (اختیاری؛ اگر یکی نبود نصب شکست نمی‌خورد)
+const OPTIONAL_LOCAL = ["./version.json", "./icon-midnight-192.png", "./icon-emerald-192.png", "./icon-royal-192.png", "./icon-graphite-192.png", "./icon-sunset-192.png", "./icon-ruby-192.png"];
 
 const RUNTIME_DEPS = [
   "https://cdn.jsdelivr.net/npm/react@18/umd/react.production.min.js",
@@ -29,6 +33,7 @@ self.addEventListener("install", (event) => {
       await cache.addAll([...HTML_URLS, ...APP_SHELL]);
       // وابستگی‌های CDN: هرکدوم جدا کش می‌شن تا اگه یکی‌شون (مثلاً به‌خاطر فیلترینگ یه دامنه)
       // شکست خورد، بقیه همچنان کش بشن و برنامه تا حد امکان آفلاین کار کنه.
+      await Promise.allSettled(OPTIONAL_LOCAL.map((u) => cache.add(u)));
       await Promise.allSettled(
         RUNTIME_DEPS.map((url) =>
           fetch(url, { mode: "cors" })
@@ -68,7 +73,7 @@ self.addEventListener("notificationclick", (event) => {
 function isAppShellHtml(request) {
   if (request.mode === "navigate") return true;
   const url = new URL(request.url);
-  return url.origin === self.location.origin && (url.pathname.endsWith("/index.html") || url.pathname.endsWith("/") || url.pathname.endsWith("/widget.html"));
+  return url.origin === self.location.origin && (url.pathname.endsWith("/index.html") || url.pathname.endsWith("/") || url.pathname.endsWith("/widget.html") || url.pathname.endsWith("/version.json"));
 }
 
 self.addEventListener("fetch", (event) => {

@@ -7,31 +7,31 @@
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#0B0E11",
-  "theme_color": "#0B0E11",
+  "background_color": "#1B0E3C",
+  "theme_color": "#1B0E3C",
   "lang": "fa",
   "dir": "rtl",
   "icons": [
     {
-      "src": "icon-192.png",
+      "src": "icon-royal-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "icon-192.png",
+      "src": "icon-royal-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "maskable"
     },
     {
-      "src": "icon-512.png",
+      "src": "icon-royal-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "icon-512.png",
+      "src": "icon-royal-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
@@ -45,7 +45,7 @@
       "url": "./widget.html",
       "icons": [
         {
-          "src": "icon-192.png",
+          "src": "icon-royal-192.png",
           "sizes": "192x192",
           "type": "image/png"
         }
