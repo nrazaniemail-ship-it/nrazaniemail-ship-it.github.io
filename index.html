@@ -2375,11 +2375,13 @@ const RE = React.createElement;
    Version Code = عدد صحیحِ افزایشی؛ با «هر» آپدیت یکی زیاد می‌شود (حتی PATCH).
    هنگام انتشار نسخه‌ی جدید فقط همین سه ثابت + فایل version.json را به‌روز کن. */
 const NM_APP_NAME = "Namello";
-const NM_VERSION_NAME = "1.3.0";
-const NM_VERSION_CODE = 13;
+const NM_VERSION_NAME = "1.4.0";
+const NM_VERSION_CODE = 14;
 const NM_VERSION_LABEL = NM_APP_NAME + " " + NM_VERSION_NAME;
 const NM_VERSION_DATE = "۳ مهر ۱۴۰۵";
 const NM_CHANGELOG = [
+    "ارزیابی بازار: جای باکس «زمان» و «سشن/رویداد» در سقف/کف روزانه جابه‌جا شد؛ با تعیین زمان، سشن‌ها و رویدادهایی که در همان لحظه فعال‌اند به‌صورت خودکار (و چندتایی) انتخاب می‌شوند و باز هم قابل ویرایش دستی‌اند.",
+    "تنظیمات ← تم آیکون برنامه: بعد از انتخاب هر تم، توضیح روشنی درباره‌ی زمان و نحوه‌ی به‌روزرسانی آیکون صفحه‌ی اصلی گوشی (نسخه‌ی PWA در برابر نسخه‌ی APK) نمایش داده می‌شود.",
     "ذخیره‌سازی داده‌ها از localStorage (سقف ۵ مگابایت) به IndexedDB منتقل شد؛ مهاجرت خودکار و بازبینی‌شده، بدون از دست رفتن داده. در تنظیمات، بخش «فضای ذخیره‌سازی» وضعیت و حجم مصرفی را نشان می‌دهد.",
     "لایه‌ی تحلیل: نمودار افت سرمایه (Underwater)، توزیع R-multiple واقعی (بر اساس ریسک هر معامله)، و «هم‌خوانی ورود با سقف/کف روزانه» (با داده‌ی لایه‌ی ارزیابی بازار) اضافه شد.",
     "فیلدهای سفارشی معامله: در تنظیمات فیلد دلخواه (متنی/عددی/انتخابی/بله‌خیر) بسازید؛ خودش در فرم ثبت ورود، ویرایش و کارت معامله ظاهر می‌شود — بدون نیاز به تغییر کد.",
@@ -2389,12 +2391,6 @@ const NM_CHANGELOG = [
     "تنظیمات: بخش «تم لایه‌های برنامه» (۸ تم رنگی) و «تم آیکون برنامه» (۷ آیکون) اضافه شد.",
     "تنظیمات: بخش «پشتیبان‌گیری و بازیابی داده‌ها» — ذخیره در پوشه‌ی دلخواه، بازیابی به دو حالت «ادغام» و «جایگزینی کامل»، و پشتیبان‌گیری خودکار در بازه‌های زمانی انتخابی.",
     "دکمه‌ی برگشت (Back) گوشی حالا به‌جای بستن یکباره‌ی برنامه، از پنجره/صفحه/لایه‌ی فعلی خارج می‌شود؛ در صفحه‌ی اصلی با دو بار زدن از برنامه خارج می‌شوید.",
-    "تنظیمات: بخش «بروزرسانی برنامه» و نمایش آخرین تغییرات هر نسخه.",
-    "لایه‌ی جدید «ارزیابی بازار» (سقف/کف روزانه و هفتگی) بعد از لایه‌ی ژورنال.",
-    "لایه‌ی تحلیل: بخش «ارزیابی سقف/کف قیمت» برای پاسخ به اینکه سقف/کف در چه بازه‌ی زمانی، چه رویدادی و چه روزی از هفته بیشتر رخ می‌دهد.",
-    "ژورنال (ثبت ورود): آیتم‌های «سطوح راهنمای تایم اصلی» و «سطوح راهنمای تایم ورود» با انتخاب چندتایی و قابلیت افزودن/حذف اضافه شد.",
-    "سیستم نسخه‌گذاری استاندارد (Version Name و Version Code) اضافه شد.",
-    "رفع باگ: رویدادهای سفارشی که کاربر در تنظیمات نشست‌ها می‌ساخت بعد از بستن و باز کردن برنامه حذف می‌شدند.",
 ];
 const nmTint = (pct) => `color-mix(in srgb, var(--accent-gold) ${pct}%, transparent)`;
 const nmFmtKB = (bytes) => Math.max(1, Math.round((bytes || 0) / 1024)) + " KB";
@@ -2456,6 +2452,8 @@ function nmApplyIconTheme(key) {
     set('link[rel="manifest"]', it.manifest);
     set('link[rel="icon"]', it.icon192);
     set('link[rel="apple-touch-icon"]', it.icon192);
+    // به کروم اطلاع می‌دهد که مانیفست عوض شده تا زودتر (نه لزوماً فوری) بررسی و آیکون صفحه‌ی اصلی را به‌روز کند.
+    try { if (navigator.serviceWorker && navigator.serviceWorker.getRegistration) navigator.serviceWorker.getRegistration().then(r => r && r.update()); } catch (e) { }
 }
 
 /* ---------------- اجزای مشترکِ رابط ---------------- */
@@ -2504,11 +2502,15 @@ function NmAppThemeCard({ value, onChange }) {
                     RE("span", { className: "rounded-full", style: { width: 16, height: 16, background: th.accent } }))),
         })));
 }
-function NmIconThemeCard({ value, onChange }) {
+function NmIconThemeCard({ value, onChange, showToast }) {
+    const pick = (key) => {
+        onChange(key);
+        showToast("لوگوی داخل برنامه عوض شد. اگر برنامه را با «Add to Home screen» نصب کرده‌اید، آیکونِ صفحه‌ی اصلی گوشی را کروم خودش (معمولاً طی چند ساعت) به‌روز می‌کند؛ برای تغییر فوری، میان‌بر را حذف و دوباره اضافه کنید. اگر این برنامه را به‌صورت APK نصب کرده‌اید، آیکون لانچر در خودِ APK ثابت است و فقط با ساخت و نصب دوباره‌ی APK (طبق راهنمای ویجت) عوض می‌شود.");
+    };
     return RE(NmCollapsible, { title: "تم آیکون برنامه", subtitle: "برای بستن/باز کردن لیست کلیک کنید", badge: "مستقل", icon: "🖼️" },
-        RE("p", { className: "text-[11px] leading-5 mb-3", style: { color: "var(--text-muted)" } }, "آیکون و لوگوی برنامه را مستقل از تم رنگی انتخاب کنید. لوگوی داخل برنامه فوراً عوض می‌شود؛ آیکونِ میان‌بر روی صفحه‌ی اصلی گوشی را کروم معمولاً طی چند ساعت تا یک روز خودش به‌روز می‌کند (یا با حذف و نصب دوباره‌ی میان‌بر، همان لحظه)."),
+        RE("p", { className: "text-[11px] leading-5 mb-3", style: { color: "var(--text-muted)" } }, "آیکون و لوگوی برنامه را مستقل از تم رنگی انتخاب کنید. لوگوی داخل برنامه فوراً عوض می‌شود. آیکونِ صفحه‌ی اصلی گوشی وابسته به نوع نصب است — توضیح کامل بعد از انتخاب نشان داده می‌شود."),
         NM_ICON_THEMES.map(it => RE(NmRadioRow, {
-            key: it.key, selected: value === it.key, onClick: () => onChange(it.key), title: it.name, desc: it.desc,
+            key: it.key, selected: value === it.key, onClick: () => pick(it.key), title: it.name, desc: it.desc,
             preview: RE("img", { src: it.key === "default" ? it.icon192 : it.icon192, alt: it.name, width: 54, height: 54, className: "shrink-0 rounded-xl", style: { width: 54, height: 54, objectFit: "cover", border: "1px solid var(--border-2)", background: "var(--bg-page)" } }),
         })));
 }
@@ -3102,6 +3104,19 @@ function nmJalaliText(dateStr) {
     catch (e) { return dateStr; }
 }
 function nmTimeToMin(s) { if (!s || !/^\d{1,2}:\d{2}$/.test(String(s))) return null; const [h, m] = String(s).split(":").map(Number); return h * 60 + m; }
+function nmDstAtUTC(utcDate) {
+    const p = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", timeZoneName: "short" }).formatToParts(utcDate).find(x => x.type === "timeZoneName");
+    return !!p && p.value === "EDT";
+}
+/* رویدادها/سشن‌هایی که دقیقاً در تاریخ+ساعت داده‌شده (به وقت نیویورک) فعال‌اند — برای پرکردن خودکار باکس سشن/رویداد از روی زمان رخ‌دادن سقف/کف. */
+function nmActiveEventNamesAt(config, dateStr, timeStr) {
+    if (!dateStr || !timeStr || !/^\d{1,2}:\d{2}$/.test(timeStr)) return [];
+    const [hh, mi] = timeStr.split(":").map(Number);
+    const minutesOfDay = hh * 60 + mi;
+    const dst = nmDstAtUTC(nyWallTimeToUTC(dateStr, timeStr));
+    const all = [...(config.sessions || []), ...(config.killzones || []), ...(config.silverbullets || [])];
+    return all.filter(ev => evalEvent(ev, minutesOfDay, dst).active).map(ev => ev.name);
+}
 function NmItemCard({ num, title, hint, color, children }) {
     return RE("div", { className: "rounded-xl p-3 mb-3", style: { background: "var(--bg-card)", border: "1px solid var(--border-1)" } },
         RE("div", { className: "flex items-center gap-2 mb-2" },
@@ -3118,12 +3133,27 @@ function NmEventSelect({ config, value, onChange }) {
         value && !known && RE("option", { value, style: { background: "var(--bg-card2)" } }, value),
         groups.map(g => RE("optgroup", { key: g[0], label: g[0] }, (g[1] || []).map(ev => RE("option", { key: ev.key, value: ev.name, style: { background: "var(--bg-card2)" } }, ev.name)))));
 }
+/* باکس چندانتخابی سشن/رویداد: با تعیین زمان به‌صورت خودکار پر می‌شود (نگاه کنید به setTimeAuto در NmMarketEvalLayer)،
+   ولی تک‌تک گزینه‌ها هم قابل افزودن/برداشتن دستی هستند — چون ممکن است چند رویداد هم‌زمان فعال باشند. */
+function NmEventMultiSelect({ config, value, onChange, hint }) {
+    const groups = [["سشن‌ها", config.sessions], ["کیل‌زون‌ها و رویدادها", config.killzones], ["سیلور بولت", config.silverbullets]];
+    const known = new Set(groups.flatMap(g => (g[1] || []).map(ev => ev.name)));
+    const sel = value || [];
+    const toggle = (name) => onChange(sel.includes(name) ? sel.filter(x => x !== name) : [...sel, name]);
+    const extra = sel.filter(x => !known.has(x));
+    const chip = (name) => RE("button", { key: name, type: "button", onClick: () => toggle(name), className: "px-2.5 py-1.5 rounded-lg text-[11px]", style: { background: sel.includes(name) ? nmTint(15) : "var(--bg-card2)", color: sel.includes(name) ? "var(--accent-gold)" : "var(--text-muted)", border: "1px solid " + (sel.includes(name) ? nmTint(35) : "var(--border-2)") } }, name);
+    return RE("div", null,
+        RE("div", { className: "flex flex-wrap gap-1.5" },
+            groups.flatMap(g => (g[1] || []).map(ev => chip(ev.name))),
+            extra.map(chip)),
+        sel.length === 0 && RE("div", { className: "text-[10px] mt-1.5", style: { color: "var(--text-muted)" } }, hint || "با تعیین زمان رخ‌دادن، رویدادهای فعال در همان لحظه خودکار انتخاب می‌شوند — یا دستی انتخاب کنید."));
+}
 function NmMarketEvalLayer({ config, pairs, askDeleteConfirm }) {
     const [data, setData] = useState({ daily: {}, weekly: {} });
     const [ready, setReady] = useState(false);
     const [date, setDate] = useState(nmTodayNY());
     const [pair, setPair] = useState((pairs && pairs[0]) || "XAUUSD");
-    const blank = { highEvent: "", highTime: "", lowEvent: "", lowTime: "", weekHigh: "", weekLow: "" };
+    const blank = { highEvents: [], highTime: "", lowEvents: [], lowTime: "", weekHigh: "", weekLow: "" };
     const [form, setForm] = useState(blank);
     const [savedMsg, setSavedMsg] = useState("");
     useEffect(() => { (async () => { setData(await nmMeLoad()); setReady(true); })(); }, []);
@@ -3131,14 +3161,23 @@ function NmMarketEvalLayer({ config, pairs, askDeleteConfirm }) {
         if (!ready) return;
         const d = data.daily[date + "|" + pair] || {};
         const w = data.weekly[nmWeekStart(date) + "|" + pair] || {};
-        setForm({ highEvent: d.highEvent || "", highTime: d.highTime || "", lowEvent: d.lowEvent || "", lowTime: d.lowTime || "", weekHigh: w.highDay || "", weekLow: w.lowDay || "" });
+        setForm({
+            highEvents: d.highEvents || (d.highEvent ? [d.highEvent] : []), highTime: d.highTime || "",
+            lowEvents: d.lowEvents || (d.lowEvent ? [d.lowEvent] : []), lowTime: d.lowTime || "",
+            weekHigh: w.highDay || "", weekLow: w.lowDay || "",
+        });
         setSavedMsg("");
     }, [date, pair, ready]);
     const set = (k, v) => { setForm(f => ({ ...f, [k]: v })); setSavedMsg(""); };
+    // با تعیین زمان رخ‌دادن سقف/کف، باکس سشن/رویداد را با آنچه در همان لحظه فعال است خودکار پر می‌کند.
+    const setTimeAuto = (timeKey, eventsKey, v) => {
+        setForm(f => ({ ...f, [timeKey]: v, [eventsKey]: v ? nmActiveEventNamesAt(config, date, v) : f[eventsKey] }));
+        setSavedMsg("");
+    };
     const save = async () => {
         const next = { daily: { ...data.daily }, weekly: { ...data.weekly } };
         const dk = date + "|" + pair, wk = nmWeekStart(date), wkKey = wk + "|" + pair;
-        if (form.highEvent || form.highTime || form.lowEvent || form.lowTime) next.daily[dk] = { date, pair, highEvent: form.highEvent, highTime: form.highTime, lowEvent: form.lowEvent, lowTime: form.lowTime, updatedAt: Date.now() };
+        if ((form.highEvents && form.highEvents.length) || form.highTime || (form.lowEvents && form.lowEvents.length) || form.lowTime) next.daily[dk] = { date, pair, highEvents: form.highEvents, highTime: form.highTime, lowEvents: form.lowEvents, lowTime: form.lowTime, updatedAt: Date.now() };
         else delete next.daily[dk];
         if (form.weekHigh || form.weekLow) next.weekly[wkKey] = { weekStart: wk, pair, highDay: form.weekHigh, lowDay: form.weekLow, updatedAt: Date.now() };
         else delete next.weekly[wkKey];
@@ -3151,7 +3190,7 @@ function NmMarketEvalLayer({ config, pairs, askDeleteConfirm }) {
     const dailyRows = Object.entries(data.daily).sort((a, b) => (a[1].date < b[1].date ? 1 : -1)).slice(0, 15);
     const weeklyRows = Object.entries(data.weekly).sort((a, b) => (a[1].weekStart < b[1].weekStart ? 1 : -1)).slice(0, 10);
     const HI = "#34D399", LO = "#F87171";
-    const timeBox = (k) => RE("input", { type: "time", value: form[k], onChange: e => set(k, e.target.value), className: "w-full bg-transparent outline-none text-sm", style: { color: "var(--text-primary)", direction: "ltr", textAlign: "right" } });
+    const timeBox = (k, eventsKey) => RE("input", { type: "time", value: form[k], onChange: e => (eventsKey ? setTimeAuto(k, eventsKey, e.target.value) : set(k, e.target.value)), className: "w-full bg-transparent outline-none text-sm", style: { color: "var(--text-primary)", direction: "ltr", textAlign: "right" } });
     const daySelect = (k) => RE("select", { value: form[k], onChange: e => set(k, e.target.value), className: "w-full bg-transparent outline-none text-sm", style: { color: "var(--text-primary)" } },
         RE("option", { value: "", style: { background: "var(--bg-card2)" } }, "— انتخاب کنید —"),
         NM_TRADING_WEEKDAYS.map(d => RE("option", { key: d, value: d, style: { background: "var(--bg-card2)" } }, d)));
@@ -3163,11 +3202,11 @@ function NmMarketEvalLayer({ config, pairs, askDeleteConfirm }) {
             RE(Field, { label: "جفت‌ارز" }, RE("select", { value: pair, onChange: e => setPair(e.target.value), className: "w-full bg-transparent outline-none text-sm", style: { color: "var(--text-primary)" } }, (pairs || []).map(p => RE("option", { key: p, value: p, style: { background: "var(--bg-card2)" } }, p))))),
         RE("div", { className: "text-[10px] mb-3", style: { color: "var(--text-muted)" } }, "روز انتخاب‌شده: " + nmJalaliText(date) + " — هفته‌ی شروع‌شده از دوشنبه‌ی " + nmJalaliText(nmWeekStart(date))),
         RE(NmItemCard, { num: 1, title: "سقف روزانه", color: HI },
-            RE(Field, { label: "سشن یا رویداد معاملاتی که سقف قیمتی روزانه در آن رخ داده" }, RE(NmEventSelect, { config, value: form.highEvent, onChange: v => set("highEvent", v) })),
-            RE(Field, { label: "زمان رخ‌دادن سقف قیمتی روزانه (NY) — دستی" }, timeBox("highTime"))),
+            RE(Field, { label: "زمان رخ‌دادن سقف قیمتی روزانه (NY) — دستی" }, timeBox("highTime", "highEvents")),
+            RE(Field, { label: "سشن یا رویداد معاملاتی که سقف قیمتی روزانه در آن رخ داده" }, RE(NmEventMultiSelect, { config, value: form.highEvents, onChange: v => set("highEvents", v) }))),
         RE(NmItemCard, { num: 2, title: "کف روزانه", color: LO },
-            RE(Field, { label: "سشن یا رویداد معاملاتی که کف قیمتی روزانه در آن رخ داده" }, RE(NmEventSelect, { config, value: form.lowEvent, onChange: v => set("lowEvent", v) })),
-            RE(Field, { label: "زمان رخ‌دادن کف قیمتی روزانه (NY) — دستی" }, timeBox("lowTime"))),
+            RE(Field, { label: "زمان رخ‌دادن کف قیمتی روزانه (NY) — دستی" }, timeBox("lowTime", "lowEvents")),
+            RE(Field, { label: "سشن یا رویداد معاملاتی که کف قیمتی روزانه در آن رخ داده" }, RE(NmEventMultiSelect, { config, value: form.lowEvents, onChange: v => set("lowEvents", v) }))),
         RE(NmItemCard, { num: 3, title: "سقف هفتگی", color: HI },
             RE(Field, { label: "روز هفته‌ای که سقف قیمتی هفتگی رخ داده" }, daySelect("weekHigh"))),
         RE(NmItemCard, { num: 4, title: "کف هفتگی", color: LO },
@@ -3180,8 +3219,8 @@ function NmMarketEvalLayer({ config, pairs, askDeleteConfirm }) {
                 RE("button", { type: "button", className: "min-w-0 flex-1", style: { textAlign: "start" }, onClick: () => { setDate(r.date); setPair(r.pair); } },
                     RE("div", { className: "text-[12px] font-medium", style: { color: "var(--text-primary)" } }, nmJalaliText(r.date) + " · " + r.pair),
                     RE("div", { className: "text-[11px] leading-5", style: { color: "var(--text-secondary)" } },
-                        r.highEvent || r.highTime ? RE("div", null, RE("span", { style: { color: HI } }, "سقف: "), (r.highEvent || "—") + (r.highTime ? " — " + r.highTime : "")) : null,
-                        r.lowEvent || r.lowTime ? RE("div", null, RE("span", { style: { color: LO } }, "کف: "), (r.lowEvent || "—") + (r.lowTime ? " — " + r.lowTime : "")) : null)),
+                        ((r.highEvents && r.highEvents.length) || r.highEvent || r.highTime) ? RE("div", null, RE("span", { style: { color: HI } }, "سقف: "), ((r.highEvents && r.highEvents.length) ? r.highEvents.join("، ") : (r.highEvent || "—")) + (r.highTime ? " — " + r.highTime : "")) : null,
+                        ((r.lowEvents && r.lowEvents.length) || r.lowEvent || r.lowTime) ? RE("div", null, RE("span", { style: { color: LO } }, "کف: "), ((r.lowEvents && r.lowEvents.length) ? r.lowEvents.join("، ") : (r.lowEvent || "—")) + (r.lowTime ? " — " + r.lowTime : "")) : null)),
                 RE("button", { type: "button", onClick: () => askDeleteConfirm("ارزیابی روزانه‌ی " + nmJalaliText(r.date) + " حذف شود؟", () => removeDaily(k)) }, RE(Trash2, { size: 13, color: "var(--text-muted)" })))),
             weeklyRows.map(([k, r]) => RE("div", { key: k, className: "rounded-xl p-2.5 mb-2 flex items-start justify-between gap-2", style: { background: "var(--bg-card)", border: "1px solid var(--border-1)" } },
                 RE("button", { type: "button", className: "min-w-0 flex-1", style: { textAlign: "start" }, onClick: () => { setDate(r.weekStart); setPair(r.pair); } },
@@ -3237,8 +3276,8 @@ function NmPriceExtremesAnalysis() {
         const wantHigh = kind !== "low", wantLow = kind !== "high";
         const evList = [], timeList = [], dayList = [];
         daily.forEach(r => {
-            if (wantHigh) { if (r.highEvent) evList.push(r.highEvent); const m = nmTimeToMin(r.highTime); if (m !== null) timeList.push(m); }
-            if (wantLow) { if (r.lowEvent) evList.push(r.lowEvent); const m = nmTimeToMin(r.lowTime); if (m !== null) timeList.push(m); }
+            if (wantHigh) { ((r.highEvents && r.highEvents.length) ? r.highEvents : (r.highEvent ? [r.highEvent] : [])).forEach(e => evList.push(e)); const m = nmTimeToMin(r.highTime); if (m !== null) timeList.push(m); }
+            if (wantLow) { ((r.lowEvents && r.lowEvents.length) ? r.lowEvents : (r.lowEvent ? [r.lowEvent] : [])).forEach(e => evList.push(e)); const m = nmTimeToMin(r.lowTime); if (m !== null) timeList.push(m); }
         });
         weekly.forEach(r => { if (wantHigh && r.highDay) dayList.push(r.highDay); if (wantLow && r.lowDay) dayList.push(r.lowDay); });
         const bucketLabel = (m) => { const s = Math.floor(m / bucket) * bucket; return fmtHM(s) + " – " + fmtHM(s + bucket); };
@@ -7318,7 +7357,7 @@ function App() {
                         React.createElement(Sun, { size: 13 }),
                         " ", t("settings_theme_light")))),
             RE(NmAppThemeCard, { value: appTheme, onChange: persistAppTheme }),
-            RE(NmIconThemeCard, { value: iconTheme, onChange: persistIconTheme }),
+            RE(NmIconThemeCard, { value: iconTheme, onChange: persistIconTheme, showToast }),
             React.createElement("div", { className: "rounded-xl p-3 mb-3", style: { background: "var(--bg-card)", border: "1px solid var(--border-1)" } },
                 React.createElement("button", { onClick: () => toggleSettingsSection("language"), className: "w-full flex items-center justify-between mb-2" },
                     React.createElement("h3", { className: "text-[13px] font-semibold", style: { color: "var(--text-primary)" } }, t("settings_language")),
