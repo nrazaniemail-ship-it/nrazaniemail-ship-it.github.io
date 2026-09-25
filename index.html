@@ -126,29 +126,169 @@
     showBootError('Unhandled promise rejection', (e.reason && (e.reason.stack || e.reason.message)) || String(e.reason));
   });
 
-  window.storage = {
-    async get(key) {
-      const raw = localStorage.getItem('ns_' + key);
-      if (raw === null) throw new Error('not found');
-      return { key, value: raw, shared: false };
-    },
-    async set(key, value) {
-      localStorage.setItem('ns_' + key, value);
-      return { key, value, shared: false };
-    },
-    async delete(key) {
-      localStorage.removeItem('ns_' + key);
-      return { key, deleted: true, shared: false };
-    },
-    async list(prefix) {
-      const keys = [];
-      for (let i = 0; i < localStorage.length; i++) {
-        const k = localStorage.key(i);
-        if (k && k.startsWith('ns_' + (prefix || ''))) keys.push(k.slice(3));
+  /* ================= Namello Storage v2 =================
+     پیش‌تر همه‌ی داده (معاملات، عکس/صدای یادداشت‌ها، تنظیمات) در localStorage بود که سقفش حدود ۵ مگابایت است
+     و پر شدنش بی‌صدا باعث ذخیره‌نشدن می‌شد. حالا داده‌ها در IndexedDB نگه‌داری می‌شوند (ظرفیت صدها مگابایت)،
+     با مهاجرت خودکار و بازبینی‌شده از localStorage قدیمی. اگر IndexedDB در دسترس نبود، به همان رفتار قبلی برمی‌گردد.
+     چند کلیدِ کوچک (تم و پیکربندی رویدادها) عمداً در localStorage هم آینه می‌شوند، چون قبل از بالا آمدن React
+     (جلوگیری از پرش رنگ) و توسط widget.html به‌صورت همگام خوانده می‌شوند. */
+  (function () {
+    var PREFIX = 'ns_';
+    var MIRROR = { namello_theme_mode_v1: 1, namello_app_theme_v1: 1, namello_icon_theme_v1: 1, namello_session_config_v3: 1 };
+    var LS_ONLY = { namello_seen_version_code_v1: 1, namello_update_from_v1: 1 };   // مخصوص همین دستگاه؛ مهاجرت نمی‌شوند
+    var DB_NAME = 'namello_store', STORE = 'kv', META = '__meta__';
+    var backend = 'localStorage';
+    var lastWarn = 0;
+
+    function warn(msg) {
+      var now = Date.now();
+      if (now - lastWarn < 10000) return;
+      lastWarn = now;
+      try { window.dispatchEvent(new CustomEvent('namello-toast', { detail: msg })); } catch (e) {}
+    }
+    var FULL_MSG = 'ذخیره‌سازی ناموفق بود؛ فضای حافظه‌ی برنامه پر است. همین حالا از تنظیمات ← پشتیبان‌گیری فایل پشتیبان بگیرید.';
+
+    /* ---------- پیاده‌سازی قدیمی (localStorage) ---------- */
+    var ls = {
+      async get(key) { var raw = localStorage.getItem(PREFIX + key); if (raw === null) throw new Error('not found'); return { key: key, value: raw, shared: false }; },
+      async set(key, value) {
+        try { localStorage.setItem(PREFIX + key, value); } catch (e) { warn(FULL_MSG); throw e; }
+        return { key: key, value: value, shared: false };
+      },
+      async delete(key) { localStorage.removeItem(PREFIX + key); return { key: key, deleted: true, shared: false }; },
+      async list(prefix) {
+        var keys = [];
+        for (var i = 0; i < localStorage.length; i++) {
+          var k = localStorage.key(i);
+          if (k && k.indexOf(PREFIX + (prefix || '')) === 0 && !LS_ONLY[k.slice(3)]) keys.push(k.slice(3));
+        }
+        return { keys: keys, shared: false };
+      },
+    };
+
+    /* ---------- IndexedDB ---------- */
+    var db = null;
+    function openDb() {
+      return new Promise(function (resolve, reject) {
+        if (!window.indexedDB) { reject(new Error('no-idb')); return; }
+        var rq;
+        try { rq = indexedDB.open(DB_NAME, 1); } catch (e) { reject(e); return; }
+        rq.onupgradeneeded = function () { if (!rq.result.objectStoreNames.contains(STORE)) rq.result.createObjectStore(STORE); };
+        rq.onsuccess = function () { resolve(rq.result); };
+        rq.onerror = function () { reject(rq.error); };
+        rq.onblocked = function () { reject(new Error('idb-blocked')); };
+      });
+    }
+    function run(mode, fn) {
+      return new Promise(function (resolve, reject) {
+        var tx = db.transaction(STORE, mode), st = tx.objectStore(STORE), out;
+        try { out = fn(st); } catch (e) { reject(e); return; }
+        tx.oncomplete = function () { resolve(out && out.result !== undefined ? out.result : undefined); };
+        tx.onerror = function () { reject(tx.error); };
+        tx.onabort = function () { reject(tx.error || new Error('tx-aborted')); };
+      });
+    }
+    function setMirror(key, value) { if (MIRROR[key]) { try { localStorage.setItem(PREFIX + key, value); } catch (e) {} } }
+    var idb = {
+      async get(key) {
+        var v = await run('readonly', function (s) { return s.get(key); });
+        if (v === undefined) throw new Error('not found');
+        return { key: key, value: v, shared: false };
+      },
+      async set(key, value) {
+        try { await run('readwrite', function (s) { return s.put(String(value), key); }); }
+        catch (e) { warn(FULL_MSG); throw e; }
+        setMirror(key, String(value));
+        return { key: key, value: value, shared: false };
+      },
+      async delete(key) {
+        await run('readwrite', function (s) { return s.delete(key); });
+        if (MIRROR[key]) { try { localStorage.removeItem(PREFIX + key); } catch (e) {} }
+        return { key: key, deleted: true, shared: false };
+      },
+      async list(prefix) {
+        var all = await run('readonly', function (s) { return s.getAllKeys(); });
+        var p = prefix || '';
+        return { keys: (all || []).filter(function (k) { return k !== META && String(k).indexOf(p) === 0; }), shared: false };
+      },
+    };
+
+    /* ---------- مهاجرت localStorage → IndexedDB (با بازبینی مقدار به مقدار) ---------- */
+    async function migrate() {
+      var meta = await run('readonly', function (s) { return s.get(META); });
+      if (meta && meta.migrated) return meta;
+      var legacy = {}, n = 0;
+      for (var i = 0; i < localStorage.length; i++) {
+        var k = localStorage.key(i);
+        if (k && k.indexOf(PREFIX) === 0 && !LS_ONLY[k.slice(3)]) { legacy[k.slice(3)] = localStorage.getItem(k); n++; }
       }
-      return { keys, shared: false };
-    },
-  };
+      if (n) {
+        await run('readwrite', function (s) { Object.keys(legacy).forEach(function (key) { s.put(legacy[key], key); }); });
+        // بازبینی: همه‌ی مقدارها باید عیناً برگردند، وگرنه هیچ‌چیز از localStorage پاک نمی‌شود
+        for (var key in legacy) {
+          var back = await run('readonly', function (s) { return s.get(key); });
+          if (back !== legacy[key]) throw new Error('verify-failed:' + key);
+        }
+        Object.keys(legacy).forEach(function (key) { if (!MIRROR[key]) { try { localStorage.removeItem(PREFIX + key); } catch (e) {} } });
+      }
+      meta = { migrated: true, at: new Date().toISOString(), count: n, schema: 1 };
+      await run('readwrite', function (s) { return s.put(meta, META); });
+      return meta;
+    }
+
+    var info = { backend: 'localStorage', migratedAt: null, migratedCount: 0, error: null };
+    var api = {
+      get: function (k) { return ready.then(function () { return (backend === 'idb' ? idb : ls).get(k); }); },
+      set: function (k, v) { return ready.then(function () { return (backend === 'idb' ? idb : ls).set(k, v); }); },
+      delete: function (k) { return ready.then(function () { return (backend === 'idb' ? idb : ls).delete(k); }); },
+      list: function (p) { return ready.then(function () { return (backend === 'idb' ? idb : ls).list(p); }); },
+      info: function () { return ready.then(function () { return info; }); },
+      /* حجم هر آیتم (بایتِ تقریبی)، مرتب از بزرگ به کوچک — برای صفحه‌ی «فضای ذخیره‌سازی» */
+      sizes: function () {
+        return ready.then(async function () {
+          var out = [];
+          if (backend === 'idb') {
+            await run('readonly', function (s) {
+              var rq = s.openCursor();
+              rq.onsuccess = function () { var c = rq.result; if (c) { if (c.key !== META) out.push({ key: c.key, size: String(c.value).length * 2 }); c.continue(); } };
+              return rq;
+            });
+          } else {
+            for (var i = 0; i < localStorage.length; i++) { var k = localStorage.key(i); if (k && k.indexOf(PREFIX) === 0 && !LS_ONLY[k.slice(3)]) out.push({ key: k.slice(3), size: (localStorage.getItem(k) || '').length * 2 }); }
+          }
+          out.sort(function (a, b) { return b.size - a.size; });
+          return out;
+        });
+      },
+      estimate: async function () {
+        var res = { usage: 0, quota: 0, persisted: null };
+        try { if (navigator.storage && navigator.storage.estimate) { var e = await navigator.storage.estimate(); res.usage = e.usage || 0; res.quota = e.quota || 0; } } catch (e) {}
+        try { if (navigator.storage && navigator.storage.persisted) res.persisted = await navigator.storage.persisted(); } catch (e) {}
+        if (backend !== 'idb') { var used = 0; (await api.sizes()).forEach(function (x) { used += x.size; }); res.usage = used; res.quota = 5 * 1024 * 1024; }
+        return res;
+      },
+      requestPersist: async function () { try { return !!(navigator.storage && navigator.storage.persist && await navigator.storage.persist()); } catch (e) { return false; } },
+    };
+
+    var ready = (async function () {
+      try {
+        db = await openDb();
+        await run('readwrite', function (s) { s.put('1', '__probe__'); });          // تست واقعی قابل‌نوشتن بودن
+        await run('readwrite', function (s) { s.delete('__probe__'); });
+        var meta = await migrate();
+        backend = 'idb'; info.backend = 'idb'; info.migratedAt = meta.at; info.migratedCount = meta.count;
+        // کلیدهای آینه‌شده باید در localStorage هم باشند (اگر پاک شده باشند دوباره ساخته می‌شوند)
+        var keys = (await idb.list('')).keys;
+        for (var i = 0; i < keys.length; i++) { if (MIRROR[keys[i]]) { var v = await run('readonly', function (s) { return s.get(keys[i]); }); if (v !== undefined) setMirror(keys[i], v); } }
+        try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) {}
+      } catch (e) {
+        backend = 'localStorage'; info.backend = 'localStorage'; info.error = String((e && e.message) || e);
+        try { console.warn('Namello: IndexedDB unavailable, using localStorage', e); } catch (e2) {}
+      }
+    })();
+    window.storageReady = ready;
+    window.storage = api;
+  })();
 </script>
 
 <script>
@@ -2018,7 +2158,7 @@ function StatementAnalysisView({ statementTrades }) {
                     React.createElement(BarChart, { data: bySymbol, layout: "vertical", margin: { left: 10, right: 10 } },
                         React.createElement(Bar, { dataKey: "value" }))))))));
 }
-function StatementLayer({ statementTrades, onImport, onClear, importing, importError }) {
+function StatementLayer({ statementTrades, onImport, onClear, importing, importError, journalTrades, persistTrades, activeAccount, showToast }) {
     const inputRef = useRef(null);
     async function handleFiles(e) {
         const files = Array.from(e.target.files || []);
@@ -2036,6 +2176,7 @@ function StatementLayer({ statementTrades, onImport, onClear, importing, importE
             React.createElement(UploadIcon, { size: 16 }),
             importing ? " در حال پردازش..." : " بارگذاری فایل استیتمنت / CSV"),
         importError && (React.createElement("div", { className: "rounded-xl p-3 mb-3 text-[12px]", style: { background: "#F8717122", color: "#F87171", border: "1px solid #F8717155" } }, importError)),
+        RE(NmStatementSyncCard, { statementTrades, journalTrades, persistTrades, activeAccount, showToast }),
         statementTrades.length > 0 && (React.createElement("div", { className: "rounded-xl p-3 mb-3", style: { background: "var(--bg-card)", border: "1px solid var(--border-1)" } },
             React.createElement("div", { className: "flex items-center justify-between mb-1" },
                 React.createElement("span", { className: "text-[12px]", style: { color: "var(--text-secondary)" } },
@@ -2234,11 +2375,16 @@ const RE = React.createElement;
    Version Code = عدد صحیحِ افزایشی؛ با «هر» آپدیت یکی زیاد می‌شود (حتی PATCH).
    هنگام انتشار نسخه‌ی جدید فقط همین سه ثابت + فایل version.json را به‌روز کن. */
 const NM_APP_NAME = "Namello";
-const NM_VERSION_NAME = "1.2.0";
-const NM_VERSION_CODE = 12;
+const NM_VERSION_NAME = "1.3.0";
+const NM_VERSION_CODE = 13;
 const NM_VERSION_LABEL = NM_APP_NAME + " " + NM_VERSION_NAME;
-const NM_VERSION_DATE = "۲ مهر ۱۴۰۵";
+const NM_VERSION_DATE = "۳ مهر ۱۴۰۵";
 const NM_CHANGELOG = [
+    "ذخیره‌سازی داده‌ها از localStorage (سقف ۵ مگابایت) به IndexedDB منتقل شد؛ مهاجرت خودکار و بازبینی‌شده، بدون از دست رفتن داده. در تنظیمات، بخش «فضای ذخیره‌سازی» وضعیت و حجم مصرفی را نشان می‌دهد.",
+    "لایه‌ی تحلیل: نمودار افت سرمایه (Underwater)، توزیع R-multiple واقعی (بر اساس ریسک هر معامله)، و «هم‌خوانی ورود با سقف/کف روزانه» (با داده‌ی لایه‌ی ارزیابی بازار) اضافه شد.",
+    "فیلدهای سفارشی معامله: در تنظیمات فیلد دلخواه (متنی/عددی/انتخابی/بله‌خیر) بسازید؛ خودش در فرم ثبت ورود، ویرایش و کارت معامله ظاهر می‌شود — بدون نیاز به تغییر کد.",
+    "خروجی خام JSON/CSV کامل معاملات (شامل فیلدهای سفارشی) برای اتصال به اکسل/Python/ابزارهای دیگر، در لایه‌ی «خروجی کل».",
+    "همگام‌سازی استیتمنت MT5 با ژورنال: معاملات باز که با یک ردیف استیتمنت هم‌خوانی دارند با یک لمس با نتیجه‌ی واقعی بسته می‌شوند؛ معاملات MT5 بدون ثبت در ژورنال هم قابل افزودن خودکارند.",
     "رویداد پیش‌فرض «الگوی نقطه بهینه ورود (OTE) صبح نیویورک» (۷:۳۰ تا ۱۱:۰۰ به وقت EST) به لایه‌ی رویدادها اضافه شد.",
     "تنظیمات: بخش «تم لایه‌های برنامه» (۸ تم رنگی) و «تم آیکون برنامه» (۷ آیکون) اضافه شد.",
     "تنظیمات: بخش «پشتیبان‌گیری و بازیابی داده‌ها» — ذخیره در پوشه‌ی دلخواه، بازیابی به دو حالت «ادغام» و «جایگزینی کامل»، و پشتیبان‌گیری خودکار در بازه‌های زمانی انتخابی.",
@@ -2388,6 +2534,61 @@ async function nmApplyUpdate(remote) {
     } catch (e) { }
     window.location.reload();
 }
+/* ---------------- تنظیمات: «فضای ذخیره‌سازی» ----------------
+   وضعیت مهاجرت به IndexedDB، حجم مصرفی/سقف مرورگر، ۵ کلید بزرگ‌تر، و دکمه‌ی «درخواست ذخیره‌سازی پایدار»
+   (که در اکثر مرورگرهای اندروید از پاک‌شدن خودکار داده هنگام کمبود فضا جلوگیری می‌کند). */
+function nmFmtBytes(n) {
+    if (!n) return "0 KB";
+    if (n < 1024 * 1024) return Math.max(1, Math.round(n / 1024)) + " KB";
+    return (n / (1024 * 1024)).toFixed(1) + " MB";
+}
+function nmKeyLabel(k) {
+    var map = { namello_trades_: "معاملات حساب ", namello_statement_trades_: "استیتمنت حساب ", namello_market_eval_v1: "ارزیابی بازار", namello_backup_meta_v1: "تنظیمات پشتیبان‌گیری", namello_session_config_v3: "پیکربندی رویدادها/نشست‌ها" };
+    for (var p in map) if (k.indexOf(p) === 0) return map[p] + (p.slice(-1) === "_" ? k.slice(p.length) : "");
+    return k.replace(/^namello_/, "").replace(/_v\d+$/, "");
+}
+function NmStorageCard({ showToast }) {
+    const [info, setInfo] = useState(null);
+    const [est, setEst] = useState(null);
+    const [sizes, setSizes] = useState([]);
+    const [persisted, setPersisted] = useState(null);
+    const load = useCallback(async () => {
+        try {
+            await window.storageReady;
+            const [i, e, s] = await Promise.all([window.storage.info(), window.storage.estimate(), window.storage.sizes()]);
+            setInfo(i); setEst(e); setSizes(s.slice(0, 6)); setPersisted(e.persisted);
+        } catch (err) { }
+    }, []);
+    useEffect(() => { load(); }, [load]);
+    const requestPersist = async () => { const ok = await window.storage.requestPersist(); setPersisted(ok); showToast(ok ? "ذخیره‌سازی پایدار فعال شد." : "مرورگر این درخواست را تایید نکرد؛ معمولاً وقتی برنامه به‌عنوان PWA نصب شده باشد تایید می‌شود."); };
+    const pct = est && est.quota ? Math.min(100, Math.round((est.usage / est.quota) * 100)) : null;
+    return RE(NmCollapsible, { title: "فضای ذخیره‌سازی", subtitle: "حجم مصرفی، وضعیت مهاجرت داده و ذخیره‌سازی پایدار", icon: "🗄️" },
+        !info ? RE("div", { className: "text-[12px]", style: { color: "var(--text-muted)" } }, "در حال بررسی...")
+            : RE(React.Fragment, null,
+                RE("div", { className: "rounded-xl p-3 mb-3", style: { background: info.backend === "idb" ? "#34D39915" : "#F59E0B15", border: "1px solid " + (info.backend === "idb" ? "#34D39940" : "#F59E0B40") } },
+                    RE("div", { className: "text-[12px] font-semibold", style: { color: info.backend === "idb" ? "#34D399" : "#F59E0B" } },
+                        info.backend === "idb" ? "✓ داده‌ها در حافظه‌ی داخلی مرورگر (IndexedDB) هستند" : "⚠ در حال استفاده از حالت قدیمی (localStorage) — سقف حدود ۵ مگابایت"),
+                    info.backend !== "idb" && info.error && RE("div", { className: "text-[10px] mt-1", style: { color: "var(--text-muted)" } }, "دلیل: " + info.error),
+                    info.backend === "idb" && info.migratedCount > 0 && RE("div", { className: "text-[10px] mt-1", style: { color: "var(--text-muted)" } }, info.migratedCount + " بخش داده در " + nmFaDateTime(info.migratedAt) + " منتقل شد.")),
+                est && RE("div", { className: "mb-3" },
+                    RE("div", { className: "flex justify-between text-[11px] mb-1" },
+                        RE("span", { style: { color: "var(--text-secondary)" } }, "فضای مصرفی"),
+                        RE("span", { className: "mono", style: { color: "var(--text-muted)", fontFamily: "JetBrains Mono, monospace" } }, nmFmtBytes(est.usage) + (est.quota ? " از " + nmFmtBytes(est.quota) : ""))),
+                    pct !== null && RE("div", { className: "rounded-full overflow-hidden", style: { height: 7, background: "var(--bg-card2)" } },
+                        RE("div", { style: { width: pct + "%", height: "100%", background: pct > 80 ? "#F87171" : "var(--accent-gold)", borderRadius: 999 } })),
+                    pct !== null && pct > 80 && RE("div", { className: "text-[10px] mt-1", style: { color: "#F87171" } }, "فضا رو به اتمام است؛ از پشتیبان‌گیری خودکار یا حذف داده‌های قدیمی استفاده کنید.")),
+                sizes.length > 0 && RE("div", { className: "rounded-xl p-2.5 mb-3", style: { background: "var(--bg-card2)" } },
+                    RE("div", { className: "text-[11px] mb-1.5", style: { color: "var(--text-muted)" } }, "بزرگ‌ترین بخش‌های ذخیره‌شده"),
+                    sizes.map(s => RE("div", { key: s.key, className: "flex justify-between text-[11px] py-1", style: { borderBottom: "1px solid var(--border-1)" } },
+                        RE("span", { style: { color: "var(--text-secondary)" } }, nmKeyLabel(s.key)),
+                        RE("span", { className: "mono", style: { color: "var(--text-muted)", fontFamily: "JetBrains Mono, monospace" } }, nmFmtBytes(s.size))))),
+                RE("div", { className: "flex items-center justify-between gap-2 rounded-xl p-3", style: { background: "var(--bg-card2)", border: "1px solid var(--border-2)" } },
+                    RE("div", { className: "min-w-0" },
+                        RE("div", { className: "text-[12px] font-semibold", style: { color: "var(--text-primary)" } }, "ذخیره‌سازی پایدار"),
+                        RE("div", { className: "text-[10px] leading-5 mt-0.5", style: { color: "var(--text-muted)" } }, persisted ? "فعال — مرورگر داده‌ی برنامه را هنگام کمبود فضا حذف نمی‌کند." : "از پاک‌شدن خودکار داده هنگام کمبود فضا جلوگیری می‌کند.")),
+                    !persisted && RE("button", { type: "button", onClick: requestPersist, className: "shrink-0 px-3 py-2 rounded-xl text-[12px] font-medium", style: { background: nmTint(15), color: "var(--accent-gold)" } }, "فعال‌سازی"))));
+}
+
 function NmUpdateCard() {
     const [phase, setPhase] = useState("idle"); // idle | checking | uptodate | updating | error
     const [remote, setRemote] = useState(null);
@@ -3120,6 +3321,313 @@ function NmGuideLevelsField({ kind, value, onChange }) {
         RE("div", { className: "flex gap-1.5 mt-1.5" },
             RE("input", { type: "text", value: newText, onChange: e => setNewText(e.target.value), onKeyDown: e => e.key === "Enter" && add(), placeholder: "سطح راهنمای جدید...", className: "flex-1 rounded-lg px-2.5 py-1.5 text-[12px] bg-transparent outline-none", style: { color: "var(--text-primary)", border: "1px solid var(--border-2)" } }),
             RE("button", { type: "button", onClick: add, className: "flex items-center gap-1 px-3 py-1.5 rounded-lg text-[12px]", style: { background: "var(--bg-card2)", color: "var(--accent-gold)" } }, RE(Plus, { size: 12 }))));
+}
+
+/* ---------------- تحلیل حرفه‌ای: افت سرمایه، توزیع R-multiple، هم‌خوانی زمان ورود با سقف/کف ---------------- */
+function nmUnderwaterSeries(trades, startingBalance) {
+    const asc = sortAsc(trades);
+    let bal = startingBalance || 0, peak = bal;
+    const pts = [{ i: 0, date: "شروع", ddPct: 0 }];
+    asc.forEach((t, idx) => {
+        bal += (t.pnl || 0);
+        if (bal > peak) peak = bal;
+        const ddPct = peak > 0 ? ((peak - bal) / peak) * 100 : 0;
+        pts.push({ i: idx + 1, date: t.date, ddPct: Math.round(ddPct * 100) / 100 });
+    });
+    return pts;
+}
+function NmDrawdownChart({ trades, startingBalance }) {
+    if (!trades.length) return null;
+    const pts = useMemo(() => nmUnderwaterSeries(trades, startingBalance), [trades, startingBalance]);
+    const maxDD = Math.max(0.01, ...pts.map(p => p.ddPct));
+    return RE("div", { className: "rounded-xl p-3 mb-5", style: { background: "var(--bg-card)", border: "1px solid var(--border-1)" } },
+        RE("div", { className: "flex items-center gap-2 mb-1" }, RE("span", { style: { fontSize: 15 } }, "📉"), RE("h3", { className: "text-[13px] font-semibold", style: { color: "var(--accent-gold)" } }, "نمودار افت سرمایه (Underwater)")),
+        RE("p", { className: "text-[10px] leading-5 mb-2", style: { color: "var(--text-muted)" } }, "فاصله‌ی موجودی از آخرین قله‌ی حساب، بعد از هر معامله. بیشترین افت: " + maxDD.toFixed(1) + "٪"),
+        RE(ResponsiveContainer, { width: "100%", height: 150 },
+            RE(LineChart, { data: pts },
+                RE(CartesianGrid, { strokeDasharray: "3 3", stroke: "var(--border-1)" }),
+                RE(XAxis, { dataKey: "i", tick: { fill: "var(--text-muted)", fontSize: 10 } }),
+                RE(YAxis, { tick: { fill: "var(--text-muted)", fontSize: 10 }, width: 36, reversed: true, unit: "%" }),
+                RE(Tooltip, { contentStyle: { background: "var(--bg-card2)", border: "1px solid var(--border-2)", fontSize: 11 }, labelStyle: { color: "var(--text-primary)" }, formatter: v => [v + "٪", "افت از قله"] }),
+                RE(Line, { type: "monotone", dataKey: "ddPct", stroke: "#F87171", strokeWidth: 2, dot: false, fill: "#F8717122" }))));
+}
+function nmRealizedR(t) {
+    if (t.riskDollar && Number(t.riskDollar) > 0 && t.pnl !== null && t.pnl !== undefined) return t.pnl / Number(t.riskDollar);
+    return null;
+}
+const NM_R_BUCKETS = [
+    { max: -2, label: "< -2R" }, { max: -1, label: "-2R تا -1R" }, { max: 0, label: "-1R تا 0" },
+    { max: 1, label: "0 تا 1R" }, { max: 2, label: "1R تا 2R" }, { max: 3, label: "2R تا 3R" }, { max: Infinity, label: "> 3R" },
+];
+function nmBucketR(r) { for (const b of NM_R_BUCKETS) if (r < b.max) return b.label; return NM_R_BUCKETS[NM_R_BUCKETS.length - 1].label; }
+function NmRMultipleCard({ trades }) {
+    const stats = useMemo(() => {
+        const withR = trades.map(t => ({ t, r: nmRealizedR(t) })).filter(x => x.r !== null && isFinite(x.r));
+        const byBucket = {};
+        NM_R_BUCKETS.forEach(b => { byBucket[b.label] = { count: 0, sumR: 0 }; });
+        withR.forEach(({ r }) => { const k = nmBucketR(r); byBucket[k].count++; byBucket[k].sumR += r; });
+        const avgR = withR.length ? withR.reduce((s, x) => s + x.r, 0) / withR.length : null;
+        const expR = avgR; // امید ریاضی بر حسب R به‌ازای هر معامله
+        return { withR, byBucket, avgR, expR, coverage: trades.length ? Math.round((withR.length / trades.length) * 100) : 0 };
+    }, [trades]);
+    if (!trades.length) return null;
+    if (stats.withR.length === 0) return RE("div", { className: "rounded-xl p-3 mb-5", style: { background: "var(--bg-card)", border: "1px solid var(--border-1)" } },
+        RE("div", { className: "flex items-center gap-2 mb-1" }, RE("span", { style: { fontSize: 15 } }, "🎲"), RE("h3", { className: "text-[13px] font-semibold", style: { color: "var(--accent-gold)" } }, "توزیع R-multiple")),
+        RE("p", { className: "text-[11px] leading-6", style: { color: "var(--text-muted)" } }, "برای این نمودار باید هنگام ثبت ورود، «ریسک معامله ($)» را وارد کنید تا R واقعی (سود یا زیان تقسیم بر ریسک) محاسبه شود."));
+    const maxCount = Math.max(1, ...NM_R_BUCKETS.map(b => stats.byBucket[b.label].count));
+    return RE("div", { className: "rounded-xl p-3 mb-5", style: { background: "var(--bg-card)", border: "1px solid var(--border-1)" } },
+        RE("div", { className: "flex items-center gap-2 mb-1" }, RE("span", { style: { fontSize: 15 } }, "🎲"), RE("h3", { className: "text-[13px] font-semibold", style: { color: "var(--accent-gold)" } }, "توزیع R-multiple (واقعی)")),
+        RE("p", { className: "text-[10px] leading-5 mb-3", style: { color: "var(--text-muted)" } },
+            "بر اساس " + stats.withR.length + " معامله از " + trades.length + " (" + stats.coverage + "٪ دارای «ریسک معامله»). امید ریاضی: ",
+            RE("b", { style: { color: stats.expR >= 0 ? "#34D399" : "#F87171" } }, (stats.expR >= 0 ? "+" : "") + stats.expR.toFixed(2) + "R"), " به‌ازای هر معامله."),
+        NM_R_BUCKETS.map(b => {
+            const d = stats.byBucket[b.label]; if (!d.count) return null;
+            const neg = b.max <= 0;
+            return RE("div", { key: b.label, className: "mb-1.5" },
+                RE("div", { className: "flex items-center justify-between text-[11px] mb-0.5" },
+                    RE("span", { style: { color: "var(--text-secondary)" }, dir: "ltr" }, b.label),
+                    RE("span", { className: "mono", style: { color: "var(--text-muted)", fontFamily: "JetBrains Mono, monospace" } }, d.count + " معامله")),
+                RE("div", { className: "rounded-full overflow-hidden", style: { height: 8, background: "var(--bg-page)" } },
+                    RE("div", { style: { width: Math.max(4, (d.count / maxCount) * 100) + "%", height: "100%", background: neg ? "#F87171" : "#34D399", borderRadius: 999 } })));
+        }));
+}
+/* هم‌خوانی زمان ورود معاملات شما با سقف/کف واقعی‌ای که در لایه‌ی «ارزیابی بازار» ثبت کرده‌اید */
+function NmEntryVsExtremesCard({ trades }) {
+    const [me, setMe] = useState(null);
+    useEffect(() => { let alive = true; nmMeLoad().then(d => { if (alive) setMe(d); }); return () => { alive = false; }; }, []);
+    const stats = useMemo(() => {
+        if (!me) return null;
+        let matched = 0, nearHigh = 0, nearLow = 0, checked = 0;
+        const within = (a, b, win) => a !== null && b !== null && Math.abs(a - b) <= win;
+        trades.forEach(t => {
+            const rec = me.daily[t.date + "|" + t.pair];
+            if (!rec) return;
+            checked++;
+            const entryMin = nmTimeToMin(t.time);
+            const hMin = nmTimeToMin(rec.highTime), lMin = nmTimeToMin(rec.lowTime);
+            const isBuy = /buy|خرید/i.test(t.direction || "");
+            const isSell = /sell|فروش/i.test(t.direction || "");
+            const nearL = within(entryMin, lMin, 30), nearH = within(entryMin, hMin, 30);
+            if (nearL) nearLow++;
+            if (nearH) nearHigh++;
+            if ((isBuy && nearL) || (isSell && nearH)) matched++;
+        });
+        return { checked, matched, nearHigh, nearLow, pctMatched: checked ? Math.round((matched / checked) * 100) : null };
+    }, [me, trades]);
+    if (!trades.length) return null;
+    if (!stats) return null;
+    if (stats.checked === 0) return RE("div", { className: "rounded-xl p-3 mb-5", style: { background: "var(--bg-card)", border: "1px solid var(--border-1)" } },
+        RE("div", { className: "flex items-center gap-2 mb-1" }, RE("span", { style: { fontSize: 15 } }, "🧭"), RE("h3", { className: "text-[13px] font-semibold", style: { color: "var(--accent-gold)" } }, "هم‌خوانی ورود با سقف/کف روزانه")),
+        RE("p", { className: "text-[11px] leading-6", style: { color: "var(--text-muted)" } }, "برای این بخش، ابتدا در لایه‌ی «ارزیابی بازار» زمان سقف/کف روزهایی که معامله ثبت کرده‌اید را وارد کنید."));
+    return RE("div", { className: "rounded-xl p-3 mb-5", style: { background: "var(--bg-card)", border: "1px solid var(--border-1)" } },
+        RE("div", { className: "flex items-center gap-2 mb-1" }, RE("span", { style: { fontSize: 15 } }, "🧭"), RE("h3", { className: "text-[13px] font-semibold", style: { color: "var(--accent-gold)" } }, "هم‌خوانی ورود با سقف/کف روزانه")),
+        RE("p", { className: "text-[10px] leading-5 mb-2", style: { color: "var(--text-muted)" } }, "از بین " + stats.checked + " معامله در روزهایی که سقف/کف ثبت شده، ورود شما تا ۳۰ دقیقه با نقطه‌ی درست هم‌خوان بود:"),
+        RE("div", { className: "rounded-lg p-2.5", style: { background: nmTint(8), border: "1px solid " + nmTint(28) } },
+            RE("div", { className: "flex items-baseline justify-between" },
+                RE("span", { className: "text-[12px]", style: { color: "var(--text-secondary)" } }, "خرید نزدیک کف یا فروش نزدیک سقف"),
+                RE("span", { className: "text-[16px] font-bold mono", style: { color: stats.pctMatched >= 50 ? "#34D399" : "#F87171", fontFamily: "JetBrains Mono, monospace" } }, stats.pctMatched + "٪"))),
+        RE("p", { className: "text-[10px] mt-2", style: { color: "var(--text-muted)" } }, stats.nearHigh + " ورود نزدیک سقف روزانه، " + stats.nearLow + " ورود نزدیک کف روزانه بوده."));
+}
+
+/* ---------------- فیلدهای سفارشی معامله (بدون نیاز به تغییر کد) ----------------
+   کاربر در تنظیمات فیلد دلخواه (متنی/عددی/انتخابی) می‌سازد؛ این فیلدها خودشان را در فرم ثبت ورود
+   و فرم ویرایش نشان می‌دهند و روی هر معامله در t.customFields[fieldId] ذخیره می‌شوند. */
+const NM_CF_KEY = "namello_custom_trade_fields_v1";
+const NM_CF_TYPES = [{ v: "text", l: "متنی" }, { v: "number", l: "عددی" }, { v: "select", l: "انتخابی (چند گزینه)" }, { v: "checkbox", l: "بله/خیر" }];
+async function nmCfLoad() { try { const r = await window.storage.get(NM_CF_KEY); const a = JSON.parse(r.value); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
+async function nmCfSave(defs) { await window.storage.set(NM_CF_KEY, JSON.stringify(defs)); try { window.dispatchEvent(new Event("namello-customfields-changed")); } catch (e) { } }
+function useCustomFieldDefs() {
+    const [defs, setDefs] = useState([]);
+    useEffect(() => {
+        let alive = true;
+        const load = () => nmCfLoad().then(d => { if (alive) setDefs(d); });
+        load();
+        window.addEventListener("namello-customfields-changed", load);
+        return () => { alive = false; window.removeEventListener("namello-customfields-changed", load); };
+    }, []);
+    return defs;
+}
+function NmCustomFieldsManager() {
+    const defs = useCustomFieldDefs();
+    const [form, setForm] = useState({ label: "", type: "text", optionsText: "" });
+    const [editId, setEditId] = useState(null);
+    const add = async () => {
+        const label = form.label.trim(); if (!label) return;
+        const opts = form.type === "select" ? form.optionsText.split(",").map(s => s.trim()).filter(Boolean) : undefined;
+        if (form.type === "select" && (!opts || opts.length < 2)) { nmToast("برای فیلد انتخابی حداقل دو گزینه با کاما جدا بنویسید."); return; }
+        const next = editId ? defs.map(d => d.id === editId ? { ...d, label, type: form.type, options: opts } : d)
+            : [...defs, { id: "cf" + Date.now().toString(36), label, type: form.type, options: opts }];
+        await nmCfSave(next);
+        setForm({ label: "", type: "text", optionsText: "" }); setEditId(null);
+    };
+    const startEdit = (d) => { setEditId(d.id); setForm({ label: d.label, type: d.type, optionsText: (d.options || []).join(", ") }); };
+    const remove = (id) => { nmCfSave(defs.filter(d => d.id !== id)); if (editId === id) { setEditId(null); setForm({ label: "", type: "text", optionsText: "" }); } };
+    return RE(NmCollapsible, { title: "فیلدهای سفارشی معامله", subtitle: "فیلد دلخواه بساز و بدون نیاز به کدنویسی به فرم ژورنال اضافه کن", icon: "🧩" },
+        RE("p", { className: "text-[11px] leading-6 mb-3", style: { color: "var(--text-secondary)" } }, "هر فیلدی که اینجا بسازید، در فرم «ثبت ورود» و «ویرایش معامله» زیر بخش «فیلدهای سفارشی» ظاهر می‌شود و مقدارش روی همان معامله ذخیره می‌شود."),
+        defs.length > 0 && RE("div", { className: "mb-3" }, defs.map(d => RE("div", { key: d.id, className: "flex items-center justify-between gap-2 rounded-lg px-3 py-2 mb-1.5", style: { background: "var(--bg-card2)" } },
+            RE("div", { className: "min-w-0" },
+                RE("span", { className: "text-[12px] font-medium", style: { color: "var(--text-primary)" } }, d.label),
+                RE("span", { className: "text-[10px] ms-2", style: { color: "var(--text-muted)" } }, "(" + (NM_CF_TYPES.find(t => t.v === d.type) || {}).l + (d.options ? ": " + d.options.join("، ") : "") + ")")),
+            RE("div", { className: "flex gap-1 shrink-0" },
+                RE("button", { type: "button", onClick: () => startEdit(d) }, RE(Edit3, { size: 13, color: "var(--text-muted)" })),
+                RE("button", { type: "button", onClick: () => remove(d.id) }, RE(Trash2, { size: 13, color: "#F87171" })))))),
+        RE("div", { className: "rounded-xl p-3", style: { background: "var(--bg-card2)", border: "1px solid var(--border-2)" } },
+            RE("div", { className: "text-[11px] font-semibold mb-2", style: { color: "var(--text-primary)" } }, editId ? "ویرایش فیلد" : "افزودن فیلد جدید"),
+            RE("input", { type: "text", value: form.label, onChange: e => setForm(f => ({ ...f, label: e.target.value })), placeholder: "نام فیلد (مثلاً: کیفیت ستاپ)", className: "w-full rounded-lg px-3 py-2 text-[12px] bg-transparent outline-none mb-2", style: { color: "var(--text-primary)", border: "1px solid var(--border-2)" } }),
+            RE("div", { className: "flex gap-1.5 mb-2" }, NM_CF_TYPES.map(t => RE("button", { key: t.v, type: "button", onClick: () => setForm(f => ({ ...f, type: t.v })), className: "flex-1 py-2 rounded-lg text-[11px]", style: { background: form.type === t.v ? nmTint(15) : "var(--bg-card)", color: form.type === t.v ? "var(--accent-gold)" : "var(--text-secondary)", border: "1px solid " + (form.type === t.v ? nmTint(40) : "var(--border-2)") } }, t.l))),
+            form.type === "select" && RE("input", { type: "text", value: form.optionsText, onChange: e => setForm(f => ({ ...f, optionsText: e.target.value })), placeholder: "گزینه‌ها را با کاما جدا کنید: عالی, متوسط, ضعیف", className: "w-full rounded-lg px-3 py-2 text-[12px] bg-transparent outline-none mb-2", style: { color: "var(--text-primary)", border: "1px solid var(--border-2)" } }),
+            RE("div", { className: "flex gap-2" },
+                editId && RE("button", { type: "button", onClick: () => { setEditId(null); setForm({ label: "", type: "text", optionsText: "" }); }, className: "flex-1 py-2 rounded-lg text-[12px]", style: { background: "var(--bg-card)", color: "var(--text-secondary)" } }, "انصراف"),
+                RE("button", { type: "button", onClick: add, className: "flex-1 py-2 rounded-lg text-[12px] font-semibold", style: { background: "var(--accent-gold)", color: "var(--bg-page)" } }, editId ? "ذخیره تغییرات" : "➕ افزودن فیلد"))));
+}
+function NmCustomFieldsFormSection({ values, onChange }) {
+    const defs = useCustomFieldDefs();
+    if (!defs.length) return null;
+    const v = values || {};
+    const set = (id, val) => onChange({ ...v, [id]: val });
+    return RE("div", { className: "rounded-xl p-3 mb-3", style: { background: "var(--bg-card2)", border: "1px solid var(--border-2)" } },
+        RE("div", { className: "text-[12px] font-semibold mb-2", style: { color: "var(--accent-gold)" } }, "فیلدهای سفارشی"),
+        defs.map(d => RE("div", { key: d.id, className: "mb-2" },
+            RE("label", { className: "text-[11px] block mb-1", style: { color: "var(--text-muted)" } }, d.label),
+            d.type === "text" && RE("input", { type: "text", value: v[d.id] || "", onChange: e => set(d.id, e.target.value), className: "w-full rounded-lg px-3 py-2 text-[13px] bg-transparent outline-none", style: { color: "var(--text-primary)", border: "1px solid var(--border-2)" } }),
+            d.type === "number" && RE("input", { type: "number", inputMode: "decimal", value: v[d.id] || "", onChange: e => set(d.id, e.target.value), className: "w-full rounded-lg px-3 py-2 text-[13px] bg-transparent outline-none", style: { color: "var(--text-primary)", border: "1px solid var(--border-2)" } }),
+            d.type === "checkbox" && RE("button", { type: "button", onClick: () => set(d.id, !v[d.id]), className: "px-4 py-2 rounded-lg text-[12px]", style: { background: v[d.id] ? nmTint(15) : "var(--bg-card)", color: v[d.id] ? "var(--accent-gold)" : "var(--text-secondary)", border: "1px solid " + (v[d.id] ? nmTint(40) : "var(--border-2)") } }, v[d.id] ? "✓ بله" : "خیر"),
+            d.type === "select" && RE("div", { className: "flex flex-wrap gap-1.5" }, (d.options || []).map(opt => RE("button", { key: opt, type: "button", onClick: () => set(d.id, opt), className: "px-3 py-1.5 rounded-lg text-[12px]", style: { background: v[d.id] === opt ? nmTint(15) : "var(--bg-card)", color: v[d.id] === opt ? "var(--accent-gold)" : "var(--text-secondary)", border: "1px solid " + (v[d.id] === opt ? nmTint(40) : "var(--border-2)") } }, opt))))));
+}
+function NmCustomFieldsChips({ trade }) {
+    const defs = useCustomFieldDefs();
+    const v = trade.customFields || {};
+    const items = defs.filter(d => v[d.id] !== undefined && v[d.id] !== "" && v[d.id] !== false);
+    if (!items.length) return null;
+    return RE(React.Fragment, null, items.map(d => RE("span", { key: d.id, className: "text-[10px] px-2 py-0.5 rounded-full", style: { background: "var(--bg-card2)", color: "var(--text-secondary)" } }, d.label + ": " + (d.type === "checkbox" ? "بله" : v[d.id]))));
+}
+
+/* ---------------- خروجی خام JSON/CSV (قابلیت توسعه: ادغام با ابزارهای دیگر) ---------------- */
+function nmToCsvValue(v) {
+    if (v === null || v === undefined) return "";
+    const s = typeof v === "object" ? JSON.stringify(v) : String(v);
+    return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+}
+function nmTradesToCsv(trades) {
+    const cols = new Set(["id"]);
+    trades.forEach(t => Object.keys(t).forEach(k => cols.add(k)));
+    cols.delete("photoBefore"); cols.delete("voiceNoteBefore"); // فایل باینری در CSV جا نمی‌شود
+    const colArr = Array.from(cols);
+    const lines = [colArr.join(",")];
+    trades.forEach(t => lines.push(colArr.map(c => nmToCsvValue(t[c])).join(",")));
+    return lines.join("\r\n");
+}
+function nmDownloadText(name, mime, text) {
+    const blob = new Blob([text], { type: mime });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = name; a.style.display = "none";
+    document.body.appendChild(a); a.click();
+    setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 4000);
+}
+function NmDeveloperExportCard({ trades, accountCode }) {
+    const today = new Date().toISOString().slice(0, 10);
+    const exportJson = () => nmDownloadText(`namello-trades-${accountCode || "all"}-${today}.json`, "application/json", JSON.stringify(trades, null, 2));
+    const exportCsv = () => nmDownloadText(`namello-trades-${accountCode || "all"}-${today}.csv`, "text/csv", "\uFEFF" + nmTradesToCsv(trades));
+    return RE(NmCollapsible, { title: "خروجی خام برای توسعه‌دهندگان", subtitle: "JSON یا CSV کامل معاملات، برای اتصال به اکسل/Python/ابزارهای دیگر", icon: "🧑‍💻" },
+        RE("p", { className: "text-[11px] leading-6 mb-3", style: { color: "var(--text-secondary)" } }, "برخلاف خروجی اکسل که برای خواندن انسانی است، این خروجی همه‌ی فیلدها (از جمله فیلدهای سفارشی) را عیناً و بدون قالب‌بندی می‌دهد؛ مناسب وارد کردن به اسپردشیت، پایگاه‌داده یا اسکریپت‌های تحلیلی."),
+        RE("div", { className: "flex gap-2" },
+            RE("button", { type: "button", onClick: exportJson, className: "flex-1 py-2.5 rounded-xl text-[12px] font-semibold", style: { background: "var(--accent-gold)", color: "var(--bg-page)" } }, "⬇ JSON"),
+            RE("button", { type: "button", onClick: exportCsv, className: "flex-1 py-2.5 rounded-xl text-[12px] font-semibold", style: { background: "var(--bg-card2)", color: "var(--accent-gold)", border: "1px solid " + nmTint(40) } }, "⬇ CSV")),
+        RE("p", { className: "text-[10px] mt-2", style: { color: "var(--text-muted)" } }, trades.length + " معامله در این خروجی قرار می‌گیرد."));
+}
+
+/* ---------------- همگام‌سازی استیتمنت MT5 با ژورنال ----------------
+   استیتمنت MT5 نتیجه‌ی واقعی معامله را می‌دهد (سود/زیان، قیمت خروج، زمان بسته‌شدن)، ولی جزئیات کیفی
+   (ستاپ، دلیل ورود، روانشناسی) فقط در ژورنال ثبت می‌شود. این بخش دو کار را خودکار می‌کند:
+     ۱) اگر یک معامله‌ی «باز» در ژورنال دارید که با یک ردیف استیتمنت هم‌خوانی دارد (نماد+جهت+لات+قیمت ورود نزدیک به هم)،
+        نتیجه‌ی واقعی MT5 را با یک لمس روی همان معامله اعمال می‌کند و آن را می‌بندد — دیگر لازم نیست نتیجه دستی وارد شود.
+     ۲) معاملاتی که در MT5 هستند ولی هیچ ردیف بازی در ژورنال ندارند را به‌عنوان معامله‌ی جدید (بدون جزئیات کیفی) پیشنهاد می‌کند.
+   معیار تطبیق نزدیک بودن قیمت ورود (۰.۳٪) است، نه برابری دقیق، چون اسپرد/اسلیپیج ممکن است باعث اختلاف جزئی شود. */
+function nmNum(v) { const n = typeof v === "string" ? parseFloat(v) : v; return isNaN(n) ? null : n; }
+function nmNearPct(a, b, pct) { if (a === null || b === null || a === 0) return false; return Math.abs(a - b) / Math.abs(a) <= pct; }
+function nmSameSide(a, b) { const norm = s => /buy|خرید/i.test(s || "") ? "buy" : /sell|فروش/i.test(s || "") ? "sell" : ""; return norm(a) && norm(a) === norm(b); }
+function nmMatchStatementToJournal(statementTrades, journalTrades, dismissed) {
+    const linkedTickets = new Set(journalTrades.map(t => t.ticket).filter(Boolean));
+    const usedJournalIds = new Set();
+    const toClose = [], toCreate = [];
+    (statementTrades || []).forEach(stmt => {
+        if (!stmt.ticket || linkedTickets.has(stmt.ticket)) return; // قبلاً لینک شده
+        const openMatch = journalTrades.find(t =>
+            t.status === "open" && !usedJournalIds.has(t.id) &&
+            String(t.pair || "").toUpperCase() === String(stmt.pair || "").toUpperCase() &&
+            nmSameSide(t.direction, stmt.direction) &&
+            nmNearPct(nmNum(t.entry), nmNum(stmt.entry), 0.003));
+        if (openMatch) { usedJournalIds.add(openMatch.id); toClose.push({ stmt, journalTrade: openMatch }); return; }
+        if (!(dismissed || {})[stmt.ticket]) toCreate.push({ stmt });
+    });
+    return { toClose, toCreate };
+}
+function nmBuildTradeFromStatement(stmt) {
+    const pnl = Math.round((stmt.pnl || 0) * 100) / 100;
+    return {
+        id: "j" + Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
+        status: "closed", ticket: stmt.ticket, source: "mt5-auto",
+        date: stmt.date || stmt.closedDate, time: stmt.time || "",
+        closeDate: stmt.closedDate || stmt.date, closeTime: stmt.closedTime || stmt.time || "",
+        pair: stmt.pair, direction: stmt.direction, lots: stmt.lot, entry: stmt.entry, exit: stmt.exit, sl: "", tp: "",
+        pnl, profit: pnl, result: pnl > 0 ? "win" : pnl < 0 ? "loss" : "breakeven",
+        systems: [], entryTimeSystems: [], mainGuideLevels: [], entryGuideLevels: [], customFields: {}, tags: [],
+        note: "این معامله به‌صورت خودکار از استیتمنت MT5 ایمپورت شده. جزئیات کیفی (ستاپ، دلیل ورود، روانشناسی) ثبت نشده — برای تکمیل، ویرایش کنید.",
+    };
+}
+function useDismissedStatementTickets(activeAccount) {
+    const key = "namello_dismissed_stmt_" + (activeAccount || "none");
+    const [dismissed, setDismissed] = useState({});
+    useEffect(() => { let alive = true; (async () => { try { const r = await window.storage.get(key); const o = JSON.parse(r.value); if (alive) setDismissed(o || {}); } catch (e) { if (alive) setDismissed({}); } })(); return () => { alive = false; }; }, [key]);
+    const dismiss = async (ticket) => { const next = { ...dismissed, [ticket]: Date.now() }; setDismissed(next); try { await window.storage.set(key, JSON.stringify(next)); } catch (e) { } };
+    return [dismissed, dismiss];
+}
+function NmStatementSyncCard({ statementTrades, journalTrades, persistTrades, activeAccount, showToast }) {
+    const [dismissed, dismiss] = useDismissedStatementTickets(activeAccount);
+    const [busy, setBusy] = useState(null);
+    const { toClose, toCreate } = useMemo(() => nmMatchStatementToJournal(statementTrades, journalTrades, dismissed), [statementTrades, journalTrades, dismissed]);
+    if (!statementTrades.length) return null;
+    const closeWithStatement = async ({ stmt, journalTrade }) => {
+        setBusy(stmt.ticket);
+        const next = journalTrades.map(t => t.id === journalTrade.id ? {
+            ...t, status: "closed", ticket: stmt.ticket,
+            exit: stmt.exit || t.exit, pnl: Math.round((stmt.pnl || 0) * 100) / 100, profit: Math.round((stmt.pnl || 0) * 100) / 100,
+            result: (stmt.pnl || 0) > 0 ? "win" : (stmt.pnl || 0) < 0 ? "loss" : "breakeven",
+            closeDate: stmt.closedDate || stmt.date, closeTime: stmt.closedTime || stmt.time || "",
+        } : t);
+        await persistTrades(next);
+        setBusy(null);
+        showToast("معامله با نتیجه‌ی واقعی MT5 بسته شد.");
+    };
+    const createFromStatement = async ({ stmt }) => {
+        setBusy(stmt.ticket);
+        await persistTrades([nmBuildTradeFromStatement(stmt), ...journalTrades]);
+        setBusy(null);
+        showToast("معامله به ژورنال اضافه شد؛ برای تکمیل جزئیات کیفی، آن را ویرایش کنید.");
+    };
+    if (toClose.length === 0 && toCreate.length === 0) return RE("div", { className: "rounded-xl p-3 mb-4", style: { background: "#34D39915", border: "1px solid #34D39940" } },
+        RE("div", { className: "text-[12px]", style: { color: "#34D399" } }, "✓ ژورنال با استیتمنت MT5 هماهنگ است؛ معامله‌ی جدیدی برای همگام‌سازی نیست."));
+    const row = (icon, title, sub, pnl, onAct, actLabel, primary, onDismiss, key) => RE("div", { key, className: "rounded-xl p-3 mb-2", style: { background: "var(--bg-card2)", border: "1px solid var(--border-2)" } },
+        RE("div", { className: "flex items-start justify-between gap-2 mb-2" },
+            RE("div", { className: "min-w-0" },
+                RE("div", { className: "text-[12px] font-semibold", style: { color: "var(--text-primary)" } }, icon + " " + title),
+                RE("div", { className: "text-[10px] mt-0.5", style: { color: "var(--text-muted)" } }, sub)),
+            pnl !== null && RE("span", { className: "text-[13px] font-bold mono shrink-0", style: { color: pnl >= 0 ? "#34D399" : "#F87171", fontFamily: "JetBrains Mono, monospace" } }, (pnl >= 0 ? "+" : "") + pnl)),
+        RE("div", { className: "flex gap-2" },
+            RE("button", { type: "button", disabled: busy, onClick: onAct, className: "flex-1 py-2 rounded-lg text-[12px] font-semibold", style: primary ? { background: "var(--accent-gold)", color: "var(--bg-page)", opacity: busy ? 0.6 : 1 } : { background: nmTint(15), color: "var(--accent-gold)", border: "1px solid " + nmTint(40), opacity: busy ? 0.6 : 1 } }, actLabel),
+            onDismiss && RE("button", { type: "button", disabled: busy, onClick: onDismiss, className: "px-3 py-2 rounded-lg text-[12px]", style: { background: "var(--bg-card)", color: "var(--text-muted)" } }, "نادیده بگیر")));
+    return RE(NmCollapsible, { title: "همگام‌سازی با ژورنال", subtitle: "معاملات باز را با نتیجه‌ی واقعی MT5 ببندید یا موارد جامانده را اضافه کنید", icon: "🔗", defaultOpen: true, badge: String(toClose.length + toCreate.length) },
+        toClose.length > 0 && RE("div", { className: "mb-3" },
+            RE("div", { className: "text-[11px] font-semibold mb-2", style: { color: "var(--accent-gold)" } }, "معاملات باز قابل بستن با نتیجه‌ی MT5 (" + toClose.length + ")"),
+            toClose.map(m => row("🎯", m.stmt.pair + " · " + (m.stmt.direction === "buy" ? "خرید" : "فروش"),
+                "ژورنال: ورود " + m.journalTrade.entry + "  ←  MT5: خروج " + m.stmt.exit + " در " + (m.stmt.closedDate || m.stmt.date),
+                Math.round((m.stmt.pnl || 0) * 100) / 100, () => closeWithStatement(m), "بستن با نتیجه‌ی MT5", true, null, m.stmt.ticket))),
+        toCreate.length > 0 && RE("div", null,
+            RE("div", { className: "text-[11px] font-semibold mb-2", style: { color: "var(--text-primary)" } }, "معاملات MT5 بدون ثبت در ژورنال (" + toCreate.length + ")"),
+            toCreate.map(m => row("➕", m.stmt.pair + " · " + (m.stmt.direction === "buy" ? "خرید" : "فروش"),
+                (m.stmt.date || "") + " " + (m.stmt.time || "") + " — بدون ستاپ/دلیل ورود ثبت‌شده",
+                Math.round((m.stmt.pnl || 0) * 100) / 100, () => createFromStatement(m), "افزودن به ژورنال", false, () => dismiss(m.stmt.ticket), m.stmt.ticket))));
 }
 
 function App() {
@@ -4832,7 +5340,7 @@ function App() {
         setOpenForm({
             date: todayStr, time: `${pad2(now.hh)}:${pad2(now.mi)}`,
             pair: d.pair || pairs[0] || "XAUUSD", direction: d.direction, tradeDirectionRel: d.tradeDirectionRel,
-            system: (d.systems && d.systems[0]) || systems[0] || "", systems: d.systems || [], entryTimeSystems: d.entryTimeSystems || [], mainGuideLevels: [], entryGuideLevels: [], fractal: d.fractal || "M15-M5",
+            system: (d.systems && d.systems[0]) || systems[0] || "", systems: d.systems || [], entryTimeSystems: d.entryTimeSystems || [], mainGuideLevels: [], entryGuideLevels: [], customFields: {}, fractal: d.fractal || "M15-M5",
             dailyCandleDirection: d.dailyCandleDirection, dailyTrendDirection: d.dailyTrendDirection,
             mainTrendDirection: d.mainTrendDirection, entry: "", lot: String(derived.nextLot),
             rrReward: "", riskDollar: "",
@@ -4859,6 +5367,7 @@ function App() {
             systems: openForm.systems || [], system: (openForm.systems && openForm.systems[0]) || "",
             entryTimeSystems: openForm.entryTimeSystems || [],
             mainGuideLevels: openForm.mainGuideLevels || [], entryGuideLevels: openForm.entryGuideLevels || [],
+            customFields: openForm.customFields || {},
             divergenceMain: openForm.divergenceMain || [], divergenceEntry: openForm.divergenceEntry || [],
             fractal: openForm.fractal, dailyCandleDirection: openForm.dailyCandleDirection, dailyTrendDirection: openForm.dailyTrendDirection,
             mainTrendDirection: openForm.mainTrendDirection,
@@ -4962,6 +5471,7 @@ function App() {
             systems: (t.systems && t.systems.length) ? t.systems : (t.system ? [t.system] : []),
             entryTimeSystems: t.entryTimeSystems || [],
             mainGuideLevels: t.mainGuideLevels || [], entryGuideLevels: t.entryGuideLevels || [],
+            customFields: t.customFields || {},
             fractal: t.fractal || "", dailyCandleDirection: t.dailyCandleDirection || "", dailyTrendDirection: t.dailyTrendDirection || "",
             mainTrendDirection: t.mainTrendDirection || "bullish", marketBias: t.marketBias || "bullish", marketCondition: t.marketCondition || "trend",
             wave: t.wave || "",
@@ -5021,6 +5531,7 @@ function App() {
                 systems: editForm.systems || [], system: (editForm.systems && editForm.systems[0]) || "",
                 entryTimeSystems: editForm.entryTimeSystems || [],
                 mainGuideLevels: editForm.mainGuideLevels || [], entryGuideLevels: editForm.entryGuideLevels || [],
+                customFields: editForm.customFields || {},
                 fractal: editForm.fractal, dailyCandleDirection: editForm.dailyCandleDirection, dailyTrendDirection: editForm.dailyTrendDirection,
                 mainTrendDirection: editForm.mainTrendDirection, marketBias: editForm.marketBias, marketCondition: editForm.marketCondition,
                 wave: editForm.wave,
@@ -6327,6 +6838,7 @@ function App() {
                         "\u0633\u06CC\u0633\u062A\u0645: ",
                         s))),
                     (t.mainGuideLevels || []).map((g, i) => (React.createElement("span", { key: "mg" + i, className: "text-[10px] px-2 py-0.5 rounded-full", style: { background: "var(--bg-card2)", color: "var(--text-secondary)" } }, "سطح اصلی: ", g))),
+                    RE(NmCustomFieldsChips, { trade: t }),
                     (t.entryGuideLevels || []).map((g, i) => (React.createElement("span", { key: "eg" + i, className: "text-[10px] px-2 py-0.5 rounded-full", style: { background: "var(--bg-card2)", color: "var(--text-secondary)" } }, "سطح ورود: ", g))),
                     (t.tags || []).map((tg, i) => (React.createElement("span", { key: i, className: "text-[10px] px-2 py-0.5 rounded-full", style: { background: `${tg.color}33`, color: tg.color } }, tg.label)))),
                 t.note && React.createElement("p", { className: "text-[12px] leading-5 mb-2", style: { color: "var(--text-muted)" } }, t.note),
@@ -6624,9 +7136,16 @@ function App() {
             onClear: clearStatementTrades,
             importing: statementImporting,
             importError: statementImportError,
+            journalTrades: trades,
+            persistTrades: persistTrades,
+            activeAccount: activeAccount,
+            showToast: showToast,
         }))),
         tab === "analysis" && (React.createElement("div", { className: "px-4 mt-4" },
             RE(NmPriceExtremesAnalysis, null),
+            RE(NmDrawdownChart, { trades: closedTrades, startingBalance: accSettings.startingBalance }),
+            RE(NmRMultipleCard, { trades: closedTrades }),
+            RE(NmEntryVsExtremesCard, { trades: closedTrades }),
             React.createElement("h2", { className: "text-sm font-semibold mb-2", style: { color: "var(--text-primary)" } }, "\u062A\u062D\u0644\u06CC\u0644 \u0622\u0645\u0627\u0631\u06CC \u2014 \u0633\u0648\u062F\u0622\u0648\u0631\u062A\u0631\u06CC\u0646 \u067E\u0627\u0631\u0627\u0645\u062A\u0631\u0647\u0627"),
             React.createElement("div", { className: "flex gap-2 mb-4" },
                 React.createElement("button", { onClick: () => setAnalysisSource("journal"), className: "flex-1 py-2.5 rounded-lg text-[12px] font-medium", style: { background: analysisSource === "journal" ? "color-mix(in srgb, var(--accent-gold) 13%, transparent)" : "var(--bg-card2)", color: analysisSource === "journal" ? "var(--accent-gold)" : "var(--text-secondary)" } }, "معاملات ژورنال"),
@@ -6783,6 +7302,7 @@ function App() {
                 React.createElement("button", { onClick: exportAll, className: "flex-1 flex items-center justify-center gap-2 py-4 rounded-xl text-sm font-semibold", style: { background: "var(--accent-gold)", color: "var(--bg-page)" } },
                     React.createElement(FileSpreadsheet, { size: 18 }),
                     " \u0627\u06A9\u0633\u0644"),
+                RE(NmDeveloperExportCard, { trades: closedTrades, accountCode: activeAccount }),
                 React.createElement("button", { onClick: exportAllPdf, className: "flex-1 flex items-center justify-center gap-2 py-4 rounded-xl text-sm font-semibold", style: { background: "var(--bg-card)", color: "var(--accent-gold)", border: "1px solid var(--accent-gold)" } },
                     React.createElement(FileSpreadsheet, { size: 18 }),
                     " PDF"))))),
@@ -6851,6 +7371,8 @@ function App() {
                     React.createElement("span", { className: "shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold", style: { background: "color-mix(in srgb, var(--accent-gold) 13%, transparent)", color: "var(--accent-gold)" } }, i + 1),
                     React.createElement("p", { className: "text-[11px] leading-5", style: { color: "var(--text-secondary)" } }, step))))))),
             RE(NmBackupCard, { showToast }),
+            RE(NmStorageCard, { showToast }),
+            RE(NmCustomFieldsManager, null),
             React.createElement("div", { className: "rounded-xl p-3 mb-3", style: { background: "var(--bg-card)", border: "1px solid var(--border-1)" } },
                 React.createElement("h3", { className: "text-[13px] font-semibold mb-2", style: { color: "var(--text-primary)" } }, "فونت برنامه"),
                 React.createElement("div", { className: "flex flex-wrap gap-1.5" }, FONT_OPTIONS.map(f => (React.createElement("button", { key: f.key, onClick: () => changeAppFont(f.key), className: "px-3 py-2 rounded-lg text-[12px]", style: { background: appFont === f.key ? "color-mix(in srgb, var(--accent-gold) 13%, transparent)" : "var(--bg-card2)", color: appFont === f.key ? "var(--accent-gold)" : "var(--text-secondary)", border: `1px solid ${appFont === f.key ? "color-mix(in srgb, var(--accent-gold) 33%, transparent)" : "var(--border-2)"}`, fontFamily: f.css } }, f.label))))),
@@ -7458,6 +7980,7 @@ function App() {
                     React.createElement(ChartImageField, { label: "چارت تایم ورود - شروع", value: openForm.chartImageEntryStart || "", onChange: v => setOpenForm({ ...openForm, chartImageEntryStart: v }) })),
                 React.createElement(Field, { label: numLabel(33, appLanguage === "en" ? "Pre-Trade Voice Chart Review" : "ارزیابی صوتی چارت قبل از معامله") },
                     React.createElement(VoiceNoteField, { label: "ضبط رویت صوتی از وضعیت چارت", value: openForm.voiceNoteBefore || "", onChange: v => setOpenForm({ ...openForm, voiceNoteBefore: v }) })),
+                RE(NmCustomFieldsFormSection, { values: openForm.customFields, onChange: v => setOpenForm({ ...openForm, customFields: v }) }),
                 React.createElement("button", { onClick: saveOpenTrade, className: "w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-medium mt-2 mb-2", style: { background: "var(--accent-gold)", color: "var(--bg-page)" } },
                     React.createElement(Check, { size: 16 }),
                     " ", appLanguage === "en" ? "Log Entry" : "\u062B\u0628\u062A \u0648\u0631\u0648\u062F")))),
@@ -7681,6 +8204,7 @@ function App() {
                                 onEditFieldChange("tradeManagement", next);
                             }, className: "px-3 py-2 rounded-lg text-[12px]", style: { background: active ? "color-mix(in srgb, var(--accent-gold) 13%, transparent)" : "var(--bg-card2)", color: active ? "var(--accent-gold)" : "var(--text-muted)" } }, opt));
                     }))),
+                RE(NmCustomFieldsFormSection, { values: editForm.customFields, onChange: v => onEditFieldChange("customFields", v) }),
                 React.createElement(Field, { label: "\u06CC\u0627\u062F\u062F\u0627\u0634\u062A" },
                     React.createElement("textarea", { rows: 2, value: editForm.note, onChange: e => onEditFieldChange("note", e.target.value), className: "w-full bg-transparent outline-none text-sm resize-none", style: { color: "var(--text-primary)" } })),
                 React.createElement("button", { onClick: saveEditTrade, className: "w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-medium mt-2 mb-2", style: { background: "var(--accent-gold)", color: "var(--bg-page)" } },
