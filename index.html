@@ -321,7 +321,7 @@ function makeIcon(emoji) {
     return /* @__PURE__ */ React.createElement("span", { className, style: { fontSize: size, color, lineHeight: 1, display: "inline-flex", ...style } }, emoji);
   };
 }
-const Clock = makeIcon("⏱"), TrendingUp = makeIcon("📈"), TrendingDown = makeIcon("📉"), Plus = makeIcon("➕"), Trash2 = makeIcon("🗑️"), ChevronDown = makeIcon("▾"), ChevronUp = makeIcon("▴"), Target = makeIcon("🎯"), X = makeIcon("✕"), Check = makeIcon("✓"), Wallet = makeIcon("💰"), Hash = makeIcon("#️⃣"), Flame = makeIcon("🔥"), Snowflake = makeIcon("❄️"), AlertTriangle = makeIcon("⚠️"), SettingsIcon = makeIcon("⚙️"), Download = makeIcon("⬇️"), Bell = makeIcon("🔔"), BellOff = makeIcon("🔕"), PiggyBank = makeIcon("🐖"), Coffee = makeIcon("☕"), MoreHorizontal = makeIcon("⋯"), LineChartIcon = makeIcon("📈"), ListChecks = makeIcon("☑️"), Flag = makeIcon("🚩"), BarChart3 = makeIcon("📊"), FileSpreadsheet = makeIcon("📑"), Newspaper = makeIcon("📰"), Edit3 = makeIcon("✏️"), Heart = makeIcon("🙏"), User = makeIcon("👤"), Info = makeIcon("ℹ️"), ImagePlus = makeIcon("🖼️"), Mic = makeIcon("🎙️"), Sun = makeIcon("☀️"), Moon = makeIcon("🌙"), CalendarIcon = makeIcon("📅"), Brain = makeIcon("🧠"), UploadIcon = makeIcon("📤"), IdCard = makeIcon("🪪");
+const Clock = makeIcon("⏱"), TrendingUp = makeIcon("📈"), TrendingDown = makeIcon("📉"), Plus = makeIcon("➕"), Trash2 = makeIcon("🗑️"), ChevronDown = makeIcon("▾"), ChevronUp = makeIcon("▴"), Target = makeIcon("🎯"), X = makeIcon("✕"), Check = makeIcon("✓"), Wallet = makeIcon("💰"), Hash = makeIcon("#️⃣"), Flame = makeIcon("🔥"), Snowflake = makeIcon("❄️"), AlertTriangle = makeIcon("⚠️"), SettingsIcon = makeIcon("⚙️"), Download = makeIcon("⬇️"), Bell = makeIcon("🔔"), BellOff = makeIcon("🔕"), PiggyBank = makeIcon("🐖"), Coffee = makeIcon("☕"), MoreHorizontal = makeIcon("⋯"), LineChartIcon = makeIcon("📈"), ListChecks = makeIcon("☑️"), Flag = makeIcon("🚩"), TreeIcon = makeIcon("🌳"), BarChart3 = makeIcon("📊"), FileSpreadsheet = makeIcon("📑"), Newspaper = makeIcon("📰"), Edit3 = makeIcon("✏️"), Heart = makeIcon("🙏"), User = makeIcon("👤"), Info = makeIcon("ℹ️"), ImagePlus = makeIcon("🖼️"), Mic = makeIcon("🎙️"), Sun = makeIcon("☀️"), Moon = makeIcon("🌙"), CalendarIcon = makeIcon("📅"), Brain = makeIcon("🧠"), UploadIcon = makeIcon("📤"), IdCard = makeIcon("🪪");
 function findChild(children, Comp) {
   let found = null;
   React.Children.forEach(children, (c) => {
@@ -581,7 +581,7 @@ const WEEKDAY_LETTERS_GREG_EN = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
 const I18N = {
     fa: {
         tab_user: "پروفایل", tab_live: "نشست‌ها", tab_news: "اخبار", tab_prep: "آماده‌سازی",
-        tab_journal: "ژورنال", tab_marketeval: "ارزیابی بازار", tab_calendar: "تقویم معاملاتی", tab_finance: "مالی", tab_systems: "سیستم‌ها",
+        tab_journal: "ژورنال", tab_marketeval: "ارزیابی رفتار بازار", tab_calendar: "تقویم معاملاتی", tab_finance: "مالی", tab_systems: "سیستم‌ها",
         tab_strategy: "استراتژی", tab_goals: "اهداف معامله گری", tab_lifegoals: "اهداف زندگی",
         tab_gratitude: "شکر گزاری", tab_statement: "ارزیابی استیتمنت", tab_analysis: "تحلیل",
         tab_psychology: "روانشناسی", tab_exportall: "خروجی کل", tab_settings: "تنظیمات", tab_about: "درباره برنامه",
@@ -605,7 +605,7 @@ const I18N = {
     },
     en: {
         tab_user: "Profile", tab_live: "Sessions", tab_news: "News", tab_prep: "Preparation",
-        tab_journal: "Journal", tab_marketeval: "Market Evaluation", tab_calendar: "Trading Calendar", tab_finance: "Finance", tab_systems: "Systems",
+        tab_journal: "Journal", tab_marketeval: "Market Behavior Evaluation", tab_calendar: "Trading Calendar", tab_finance: "Finance", tab_systems: "Systems",
         tab_strategy: "Strategy", tab_goals: "Trading Goals", tab_lifegoals: "Life Goals",
         tab_gratitude: "Gratitude", tab_statement: "Statement Review", tab_analysis: "Analysis",
         tab_psychology: "Psychology", tab_exportall: "Full Export", tab_settings: "Settings", tab_about: "About",
@@ -2375,11 +2375,15 @@ const RE = React.createElement;
    Version Code = عدد صحیحِ افزایشی؛ با «هر» آپدیت یکی زیاد می‌شود (حتی PATCH).
    هنگام انتشار نسخه‌ی جدید فقط همین سه ثابت + فایل version.json را به‌روز کن. */
 const NM_APP_NAME = "Namello";
-const NM_VERSION_NAME = "1.4.0";
-const NM_VERSION_CODE = 14;
+const NM_VERSION_NAME = "1.5.0";
+const NM_VERSION_CODE = 15;
 const NM_VERSION_LABEL = NM_APP_NAME + " " + NM_VERSION_NAME;
-const NM_VERSION_DATE = "۳ مهر ۱۴۰۵";
+const NM_VERSION_DATE = "۴ مهر ۱۴۰۵";
 const NM_CHANGELOG = [
+    "دکمه‌ی شناور اجرای سریع MT5/تریدینگ‌ویو: دکمه‌ی کلی «فعال/غیرفعال» حذف شد و فقط دو دکمه‌ی جدا برای MT5 و تریدینگ‌ویو باقی ماند.",
+    "نماد لایه‌ی «اهداف زندگی» از پرچم به درخت با برگ سبز تغییر کرد.",
+    "لایه‌ی «ارزیابی بازار» به «ارزیابی رفتار بازار» تغییر نام داد.",
+    "تنظیمات: آخرین توضیح کمکیِ همیشه‌نمایان (بخش دکمه‌ی شناور) هم مثل بقیه‌ی بخش‌ها فقط با کلیک روی عنوان ظاهر/پنهان می‌شود.",
     "ارزیابی بازار: جای باکس «زمان» و «سشن/رویداد» در سقف/کف روزانه جابه‌جا شد؛ با تعیین زمان، سشن‌ها و رویدادهایی که در همان لحظه فعال‌اند به‌صورت خودکار (و چندتایی) انتخاب می‌شوند و باز هم قابل ویرایش دستی‌اند.",
     "تنظیمات ← تم آیکون برنامه: بعد از انتخاب هر تم، توضیح روشنی درباره‌ی زمان و نحوه‌ی به‌روزرسانی آیکون صفحه‌ی اصلی گوشی (نسخه‌ی PWA در برابر نسخه‌ی APK) نمایش داده می‌شود.",
     "ذخیره‌سازی داده‌ها از localStorage (سقف ۵ مگابایت) به IndexedDB منتقل شد؛ مهاجرت خودکار و بازبینی‌شده، بدون از دست رفتن داده. در تنظیمات، بخش «فضای ذخیره‌سازی» وضعیت و حجم مصرفی را نشان می‌دهد.",
@@ -2545,7 +2549,7 @@ function nmFmtBytes(n) {
     return (n / (1024 * 1024)).toFixed(1) + " MB";
 }
 function nmKeyLabel(k) {
-    var map = { namello_trades_: "معاملات حساب ", namello_statement_trades_: "استیتمنت حساب ", namello_market_eval_v1: "ارزیابی بازار", namello_backup_meta_v1: "تنظیمات پشتیبان‌گیری", namello_session_config_v3: "پیکربندی رویدادها/نشست‌ها" };
+    var map = { namello_trades_: "معاملات حساب ", namello_statement_trades_: "استیتمنت حساب ", namello_market_eval_v1: "ارزیابی رفتار بازار", namello_backup_meta_v1: "تنظیمات پشتیبان‌گیری", namello_session_config_v3: "پیکربندی رویدادها/نشست‌ها" };
     for (var p in map) if (k.indexOf(p) === 0) return map[p] + (p.slice(-1) === "_" ? k.slice(p.length) : "");
     return k.replace(/^namello_/, "").replace(/_v\d+$/, "");
 }
@@ -3182,7 +3186,7 @@ function NmMarketEvalLayer({ config, pairs, askDeleteConfirm }) {
         if (form.weekHigh || form.weekLow) next.weekly[wkKey] = { weekStart: wk, pair, highDay: form.weekHigh, lowDay: form.weekLow, updatedAt: Date.now() };
         else delete next.weekly[wkKey];
         setData(next);
-        try { await nmMeSave(next); setSavedMsg("✓ ارزیابی بازار برای " + nmJalaliText(date) + " ثبت شد."); }
+        try { await nmMeSave(next); setSavedMsg("✓ ارزیابی رفتار بازار برای " + nmJalaliText(date) + " ثبت شد."); }
         catch (e) { setSavedMsg("ذخیره‌سازی ناموفق بود."); }
     };
     const removeDaily = (k) => { const next = { ...data, daily: { ...data.daily } }; delete next.daily[k]; setData(next); nmMeSave(next); };
@@ -3195,7 +3199,7 @@ function NmMarketEvalLayer({ config, pairs, askDeleteConfirm }) {
         RE("option", { value: "", style: { background: "var(--bg-card2)" } }, "— انتخاب کنید —"),
         NM_TRADING_WEEKDAYS.map(d => RE("option", { key: d, value: d, style: { background: "var(--bg-card2)" } }, d)));
     return RE("div", { className: "px-4 mt-4" },
-        RE("h2", { className: "text-sm font-semibold mb-1", style: { color: "var(--text-primary)" } }, "ارزیابی بازار"),
+        RE("h2", { className: "text-sm font-semibold mb-1", style: { color: "var(--text-primary)" } }, "ارزیابی رفتار بازار"),
         RE("p", { className: "text-[11px] leading-5 mb-3", style: { color: "var(--text-muted)" } }, "برای هر روز، سشن/رویدادی که سقف و کف قیمتی روزانه در آن رخ داده و زمان دقیقش (به وقت نیویورک) و همچنین روز هفته‌ای که سقف/کف هفتگی رخ داده را ثبت کنید. نتیجه‌ی آماری در لایه‌ی «تحلیل ← ارزیابی سقف/کف قیمت» دیده می‌شود."),
         RE("div", { className: "grid grid-cols-2 gap-2 mb-1" },
             RE(Field, { label: "تاریخ (میلادی)" }, RE("input", { type: "date", value: date, onChange: e => e.target.value && setDate(e.target.value), className: "w-full bg-transparent outline-none text-sm", style: { color: "var(--text-primary)" } })),
@@ -4024,8 +4028,12 @@ function App() {
             catch (e) { }
             try {
                 const r = await window.storage.get("namello_quick_launch_settings_v1");
-                if (r)
-                    setQuickLaunchSettings({ ...DEFAULT_QUICK_LAUNCH_SETTINGS, ...JSON.parse(r.value) });
+                if (r) {
+                    const loaded = JSON.parse(r.value);
+                    // مهاجرت یک‌باره: قبلاً یک کلید کل «فعال/غیرفعال» هم وجود داشت؛ اگر کاربر آن را خاموش کرده بود، همان حالت خاموش برای هر دو دکمه حفظ می‌شود.
+                    if (loaded && loaded.enabled === false) { loaded.mt5Enabled = false; loaded.tvEnabled = false; delete loaded.enabled; }
+                    setQuickLaunchSettings({ ...DEFAULT_QUICK_LAUNCH_SETTINGS, ...loaded });
+                }
             }
             catch (e) { }
             try {
@@ -7419,8 +7427,7 @@ function App() {
                 React.createElement("div", { className: "flex items-center justify-between mb-2" },
                     React.createElement("button", { onClick: () => toggleSettingsSection("quickLaunch"), className: "flex items-center gap-1.5" },
                         React.createElement("h3", { className: "text-[13px] font-semibold", style: { color: "var(--text-primary)" } }, "\u062F\u06A9\u0645\u0647\u200C\u06CC \u0634\u0646\u0627\u0648\u0631 \u0627\u062C\u0631\u0627\u06CC \u0633\u0631\u06CC\u0639 MT5/\u062A\u0631\u06CC\u062F\u06CC\u0646\u06AF\u200C\u0648\u06CC\u0648"),
-                        openSettingsSection.quickLaunch ? React.createElement(ChevronUp, { size: 12, color: "var(--text-muted)" }) : React.createElement(ChevronDown, { size: 12, color: "var(--text-muted)" })),
-                    React.createElement("button", { onClick: () => persistQuickLaunchSettings({ ...quickLaunchSettings, enabled: !quickLaunchSettings.enabled }), className: "px-3 py-1 rounded-full text-[11px] font-medium", style: { background: quickLaunchSettings.enabled ? "#34D39922" : "var(--bg-card2)", color: quickLaunchSettings.enabled ? "#34D399" : "var(--text-muted)" } }, quickLaunchSettings.enabled ? "فعال" : "غیرفعال")),
+                        openSettingsSection.quickLaunch ? React.createElement(ChevronUp, { size: 12, color: "var(--text-muted)" }) : React.createElement(ChevronDown, { size: 12, color: "var(--text-muted)" })),),
                 openSettingsSection.quickLaunch && React.createElement("p", { className: "text-[11px] leading-5 mb-3", style: { color: "var(--text-muted)" } }, "دو دکمه‌ی شناور جدا روی صفحه ظاهر می‌شن: یکی برای MT5 و یکی برای TradingView (بدون منوی واسط). با لمس و نگه‌داشتنِ هرکدوم می‌تونی جاش رو هر جای صفحه ببری؛ جایگاه هرکدوم جدا ذخیره می‌شه. با یک ضربه‌ی ساده (بدون کشیدن)، همون اپ باز می‌شه."),
                 React.createElement("div", { className: "rounded-lg p-2.5 mb-2", style: { background: "var(--bg-card2)", border: "1px solid var(--border-2)" } },
                     React.createElement("div", { className: "flex items-center justify-between mb-1.5" },
@@ -7440,7 +7447,7 @@ function App() {
                     React.createElement("label", { className: "text-[10px] block mb-1", style: { color: "var(--text-muted)" } }, "اسکیم اختصاصی اپ (اختیاری — فقط اگه روش بالا جواب نداد)"),
                     React.createElement("input", { type: "text", value: quickLaunchSettings.tvScheme, onChange: e => persistQuickLaunchSettings({ ...quickLaunchSettings, tvScheme: e.target.value }), className: "w-full bg-transparent outline-none text-[12px] mono mb-2", style: { color: "var(--text-secondary)", fontFamily: "JetBrains Mono, monospace" }, placeholder: "مثلاً tradingview://..." }),
                     React.createElement("button", { onClick: () => persistQuickLaunchSettings({ ...quickLaunchSettings, tvPosXPercent: null, tvPosYPercent: null }), className: "w-full py-1.5 rounded-lg text-[11px]", style: { background: "var(--bg-page)", color: "var(--text-secondary)" } }, "بازنشانی جایگاه دکمه‌ی TradingView")),
-                React.createElement("p", { className: "text-[10px] leading-5", style: { color: "var(--text-muted)" } }, "چرا گاهی هنوز باز نمی‌شه: از نسخه‌های جدیدِ کروم/سامسونگ‌اینترنت به بعد، مرورگر یک اپ نصب‌شده را فقط وقتی مستقیم با intent باز می‌کند که همون اپ، اکتیویتیِ لانچرش را «قابل‌بازشدن از مرورگر» (BROWSABLE) اعلام کرده باشه؛ اکثر اپ‌های نصب‌شده (ازجمله معمولاً MT5/تریدینگ‌ویو) این را اعلام نمی‌کنن، پس این محدودیت از طرف خودِ مرورگره، نه Namello. با package name تلاش می‌کنیم و روی برخی مرورگرها (خصوصاً سامسونگ‌اینترنت) جواب می‌ده؛ اگه روی گوشی تو جواب نداد، اگه اپ مقصد یه لینک اختصاصی (اسکیم) داشته باشه، همون رو توی فیلد «اسکیم اختصاصی» بالا وارد کن تا اول آن امتحان بشه.")),
+                openSettingsSection.quickLaunch && React.createElement("p", { className: "text-[10px] leading-5", style: { color: "var(--text-muted)" } }, "چرا گاهی هنوز باز نمی‌شه: از نسخه‌های جدیدِ کروم/سامسونگ‌اینترنت به بعد، مرورگر یک اپ نصب‌شده را فقط وقتی مستقیم با intent باز می‌کند که همون اپ، اکتیویتیِ لانچرش را «قابل‌بازشدن از مرورگر» (BROWSABLE) اعلام کرده باشه؛ اکثر اپ‌های نصب‌شده (ازجمله معمولاً MT5/تریدینگ‌ویو) این را اعلام نمی‌کنن، پس این محدودیت از طرف خودِ مرورگره، نه Namello. با package name تلاش می‌کنیم و روی برخی مرورگرها (خصوصاً سامسونگ‌اینترنت) جواب می‌ده؛ اگه روی گوشی تو جواب نداد، اگه اپ مقصد یه لینک اختصاصی (اسکیم) داشته باشه، همون رو توی فیلد «اسکیم اختصاصی» بالا وارد کن تا اول آن امتحان بشه.")),
             React.createElement("div", { className: "rounded-xl p-3 mb-3", style: { background: "var(--bg-card)", border: "1px solid var(--border-1)" } },
                 React.createElement("div", { className: "flex items-center justify-between mb-2" },
                     React.createElement("button", { onClick: () => toggleSettingsSection("namelloReturn"), className: "flex items-center gap-1.5" },
@@ -7499,7 +7506,7 @@ function App() {
             { key: "systems", label: t("tab_systems"), Icon: BarChart3 },
             { key: "strategy", label: t("tab_strategy"), Icon: ListChecks },
             { key: "goals", label: t("tab_goals"), Icon: Flag },
-            { key: "lifegoals", label: t("tab_lifegoals"), Icon: Flag },
+            { key: "lifegoals", label: t("tab_lifegoals"), Icon: TreeIcon },
             { key: "gratitude", label: t("tab_gratitude"), Icon: Heart },
             { key: "statement", label: t("tab_statement"), Icon: UploadIcon },
             { key: "analysis", label: t("tab_analysis"), Icon: LineChartIcon },
@@ -8285,9 +8292,9 @@ function App() {
                 React.createElement("div", { className: "flex gap-2" },
                     React.createElement("button", { onClick: () => persistCalcProbWeights(DEFAULT_CALC_PROB_WEIGHTS), className: "flex-1 py-2.5 rounded-xl text-sm", style: { background: "var(--bg-card2)", color: "var(--text-primary)" } }, "\u0628\u0627\u0632\u06AF\u0634\u062A \u0628\u0647 \u067E\u06CC\u0634\u200C\u0641\u0631\u0636"),
                     React.createElement("button", { onClick: () => setShowCalcProbWeights(false), className: "flex-1 py-2.5 rounded-xl text-sm font-medium", style: { background: "var(--accent-gold)", color: "var(--bg-page)" } }, "\u0628\u0627\u0634\u0647"))))),
-        quickLaunchSettings.enabled && quickLaunchSettings.mt5Enabled && (React.createElement(DraggableFab, { posXPercent: quickLaunchSettings.mt5PosXPercent, posYPercent: quickLaunchSettings.mt5PosYPercent, defaultCorner: "bottom-left", defaultOffsetY: 0, onDrop: (x, y) => persistQuickLaunchSettings({ ...quickLaunchSettings, mt5PosXPercent: x, mt5PosYPercent: y }), onClick: () => launchInstalledApp(quickLaunchSettings.mt5Package, quickLaunchSettings.mt5Label, quickLaunchSettings.mt5Scheme) },
+        quickLaunchSettings.mt5Enabled && (React.createElement(DraggableFab, { posXPercent: quickLaunchSettings.mt5PosXPercent, posYPercent: quickLaunchSettings.mt5PosYPercent, defaultCorner: "bottom-left", defaultOffsetY: 0, onDrop: (x, y) => persistQuickLaunchSettings({ ...quickLaunchSettings, mt5PosXPercent: x, mt5PosYPercent: y }), onClick: () => launchInstalledApp(quickLaunchSettings.mt5Package, quickLaunchSettings.mt5Label, quickLaunchSettings.mt5Scheme) },
             React.createElement("button", { className: "w-12 h-12 rounded-full overflow-hidden flex items-center justify-center", style: { background: "var(--bg-card)", border: "1px solid var(--border-2)", boxShadow: "0 4px 12px #00000066", padding: 0 }, "aria-label": quickLaunchSettings.mt5Label || "اجرای سریع متاتریدر ۵" }, React.createElement("img", { src: "icon-mt5.jpg", alt: "MT5", className: "w-full h-full object-cover" })))),
-        quickLaunchSettings.enabled && quickLaunchSettings.tvEnabled && (React.createElement(DraggableFab, { posXPercent: quickLaunchSettings.tvPosXPercent, posYPercent: quickLaunchSettings.tvPosYPercent, defaultCorner: "bottom-left", defaultOffsetY: 64, onDrop: (x, y) => persistQuickLaunchSettings({ ...quickLaunchSettings, tvPosXPercent: x, tvPosYPercent: y }), onClick: () => launchInstalledApp(quickLaunchSettings.tvPackage, quickLaunchSettings.tvLabel, quickLaunchSettings.tvScheme) },
+        quickLaunchSettings.tvEnabled && (React.createElement(DraggableFab, { posXPercent: quickLaunchSettings.tvPosXPercent, posYPercent: quickLaunchSettings.tvPosYPercent, defaultCorner: "bottom-left", defaultOffsetY: 64, onDrop: (x, y) => persistQuickLaunchSettings({ ...quickLaunchSettings, tvPosXPercent: x, tvPosYPercent: y }), onClick: () => launchInstalledApp(quickLaunchSettings.tvPackage, quickLaunchSettings.tvLabel, quickLaunchSettings.tvScheme) },
             React.createElement("button", { className: "w-12 h-12 rounded-full overflow-hidden flex items-center justify-center", style: { background: "var(--bg-card)", border: "1px solid var(--border-2)", boxShadow: "0 4px 12px #00000066", padding: 0 }, "aria-label": quickLaunchSettings.tvLabel || "اجرای سریع تریدینگ‌ویو" }, React.createElement("img", { src: "icon-tradingview.png", alt: "TradingView", className: "w-full h-full object-cover" })))),
         viewImageSrc && (React.createElement("div", { className: "fixed inset-0 z-50 flex items-center justify-center p-4", style: { background: "#000000EE" }, onClick: () => setViewImageSrc(null) },
             React.createElement("img", { src: viewImageSrc, alt: "\u0686\u0627\u0631\u062A", className: "max-w-full max-h-full rounded-lg", style: { objectFit: "contain" } }),
