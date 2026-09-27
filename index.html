@@ -2375,11 +2375,14 @@ const RE = React.createElement;
    Version Code = عدد صحیحِ افزایشی؛ با «هر» آپدیت یکی زیاد می‌شود (حتی PATCH).
    هنگام انتشار نسخه‌ی جدید فقط همین سه ثابت + فایل version.json را به‌روز کن. */
 const NM_APP_NAME = "Namello";
-const NM_VERSION_NAME = "1.5.0";
-const NM_VERSION_CODE = 15;
+const NM_VERSION_NAME = "1.6.0";
+const NM_VERSION_CODE = 16;
 const NM_VERSION_LABEL = NM_APP_NAME + " " + NM_VERSION_NAME;
-const NM_VERSION_DATE = "۴ مهر ۱۴۰۵";
+const NM_VERSION_DATE = "۵ مهر ۱۴۰۵";
 const NM_CHANGELOG = [
+    "ارزیابی رفتار بازار: نام روز هفته (مثل سه‌شنبه) کنار تاریخ سقف/کف روزانه نشان داده می‌شود.",
+    "تحلیل ← ارزیابی سقف/کف قیمت: فیلتر «روز هفته» اضافه شد؛ می‌توانید ببینید مثلاً در روزهای سه‌شنبه سقف/کف روزانه بیشتر در چه بازه‌ی زمانی یا سشنی رخ می‌دهد.",
+    "خروجی PDF (تکی و «خروجی کل») حرفه‌ای‌تر شد: شماره‌گذاری صفحات، سربرگ برندشده با لوگو، و رنگ زمینه‌ی متفاوت برای ردیف سربرگ هر بخش در خروجی کل.",
     "دکمه‌ی شناور اجرای سریع MT5/تریدینگ‌ویو: دکمه‌ی کلی «فعال/غیرفعال» حذف شد و فقط دو دکمه‌ی جدا برای MT5 و تریدینگ‌ویو باقی ماند.",
     "نماد لایه‌ی «اهداف زندگی» از پرچم به درخت با برگ سبز تغییر کرد.",
     "لایه‌ی «ارزیابی بازار» به «ارزیابی رفتار بازار» تغییر نام داد.",
@@ -3204,7 +3207,7 @@ function NmMarketEvalLayer({ config, pairs, askDeleteConfirm }) {
         RE("div", { className: "grid grid-cols-2 gap-2 mb-1" },
             RE(Field, { label: "تاریخ (میلادی)" }, RE("input", { type: "date", value: date, onChange: e => e.target.value && setDate(e.target.value), className: "w-full bg-transparent outline-none text-sm", style: { color: "var(--text-primary)" } })),
             RE(Field, { label: "جفت‌ارز" }, RE("select", { value: pair, onChange: e => setPair(e.target.value), className: "w-full bg-transparent outline-none text-sm", style: { color: "var(--text-primary)" } }, (pairs || []).map(p => RE("option", { key: p, value: p, style: { background: "var(--bg-card2)" } }, p))))),
-        RE("div", { className: "text-[10px] mb-3", style: { color: "var(--text-muted)" } }, "روز انتخاب‌شده: " + nmJalaliText(date) + " — هفته‌ی شروع‌شده از دوشنبه‌ی " + nmJalaliText(nmWeekStart(date))),
+        RE("div", { className: "text-[10px] mb-3", style: { color: "var(--text-muted)" } }, "روز انتخاب‌شده: " + nmJalaliText(date) + " (" + weekdayFromDateStr(date) + ") — هفته‌ی شروع‌شده از دوشنبه‌ی " + nmJalaliText(nmWeekStart(date))),
         RE(NmItemCard, { num: 1, title: "سقف روزانه", color: HI },
             RE(Field, { label: "زمان رخ‌دادن سقف قیمتی روزانه (NY) — دستی" }, timeBox("highTime", "highEvents")),
             RE(Field, { label: "سشن یا رویداد معاملاتی که سقف قیمتی روزانه در آن رخ داده" }, RE(NmEventMultiSelect, { config, value: form.highEvents, onChange: v => set("highEvents", v) }))),
@@ -3221,7 +3224,7 @@ function NmMarketEvalLayer({ config, pairs, askDeleteConfirm }) {
             RE("h3", { className: "text-[13px] font-semibold mb-2", style: { color: "var(--text-primary)" } }, "ارزیابی‌های ثبت‌شده"),
             dailyRows.map(([k, r]) => RE("div", { key: k, className: "rounded-xl p-2.5 mb-2 flex items-start justify-between gap-2", style: { background: "var(--bg-card)", border: "1px solid var(--border-1)" } },
                 RE("button", { type: "button", className: "min-w-0 flex-1", style: { textAlign: "start" }, onClick: () => { setDate(r.date); setPair(r.pair); } },
-                    RE("div", { className: "text-[12px] font-medium", style: { color: "var(--text-primary)" } }, nmJalaliText(r.date) + " · " + r.pair),
+                    RE("div", { className: "text-[12px] font-medium", style: { color: "var(--text-primary)" } }, nmJalaliText(r.date) + " (" + weekdayFromDateStr(r.date) + ") · " + r.pair),
                     RE("div", { className: "text-[11px] leading-5", style: { color: "var(--text-secondary)" } },
                         ((r.highEvents && r.highEvents.length) || r.highEvent || r.highTime) ? RE("div", null, RE("span", { style: { color: HI } }, "سقف: "), ((r.highEvents && r.highEvents.length) ? r.highEvents.join("، ") : (r.highEvent || "—")) + (r.highTime ? " — " + r.highTime : "")) : null,
                         ((r.lowEvents && r.lowEvents.length) || r.lowEvent || r.lowTime) ? RE("div", null, RE("span", { style: { color: LO } }, "کف: "), ((r.lowEvents && r.lowEvents.length) ? r.lowEvents.join("، ") : (r.lowEvent || "—")) + (r.lowTime ? " — " + r.lowTime : "")) : null)),
@@ -3263,6 +3266,7 @@ function NmBars({ rows, color, limit }) {
 function NmPriceExtremesAnalysis() {
     const [data, setData] = useState(null);
     const [pairF, setPairF] = useState("all");
+    const [wdF, setWdF] = useState("all");
     const [kind, setKind] = useState("both");
     const [bucket, setBucket] = useState(60);
     useEffect(() => {
@@ -3275,7 +3279,8 @@ function NmPriceExtremesAnalysis() {
     const stats = useMemo(() => {
         if (!data) return null;
         const okPair = r => pairF === "all" || r.pair === pairF;
-        const daily = Object.values(data.daily).filter(okPair);
+        const okDaily = r => okPair(r) && (wdF === "all" || weekdayFromDateStr(r.date) === wdF);
+        const daily = Object.values(data.daily).filter(okDaily);
         const weekly = Object.values(data.weekly).filter(okPair);
         const wantHigh = kind !== "low", wantLow = kind !== "high";
         const evList = [], timeList = [], dayList = [];
@@ -3290,7 +3295,7 @@ function NmPriceExtremesAnalysis() {
         const dy = nmRowsFromMap(nmCountBy(dayList, x => x));
         const pairsSeen = Array.from(new Set([...Object.values(data.daily), ...Object.values(data.weekly)].map(r => r.pair))).sort();
         return { ev, tm, dy, nDaily: daily.length, nWeekly: weekly.length, pairsSeen };
-    }, [data, pairF, kind, bucket]);
+    }, [data, pairF, wdF, kind, bucket]);
     const kindLabel = kind === "high" ? "سقف" : kind === "low" ? "کف" : "سقف یا کف";
     const kindColor = kind === "high" ? "#34D399" : kind === "low" ? "#F87171" : "var(--accent-gold)";
     const chip = (active, label, onClick, key) => RE("button", { key, type: "button", onClick, className: "flex-1 py-2 rounded-lg text-[12px]", style: { background: active ? nmTint(15) : "var(--bg-card2)", color: active ? "var(--accent-gold)" : "var(--text-secondary)", border: "1px solid " + (active ? nmTint(40) : "var(--border-2)"), fontWeight: active ? 700 : 400 } }, label);
@@ -3315,12 +3320,14 @@ function NmPriceExtremesAnalysis() {
                         RE("option", { value: "all", style: { background: "var(--bg-card2)" } }, "همه"), (stats ? stats.pairsSeen : []).map(p => RE("option", { key: p, value: p, style: { background: "var(--bg-card2)" } }, p)))),
                     RE(Field, { label: "اندازه‌ی بازه‌ی زمانی" }, RE("select", { value: bucket, onChange: e => setBucket(Number(e.target.value)), className: "w-full bg-transparent outline-none text-[12px]", style: { color: "var(--text-primary)" } },
                         [[30, "۳۰ دقیقه"], [60, "۱ ساعت"], [120, "۲ ساعت"], [180, "۳ ساعت"]].map(([v, l]) => RE("option", { key: v, value: v, style: { background: "var(--bg-card2)" } }, l))))),
+                RE(Field, { label: "روز هفته (فقط برای سقف/کف روزانه)" }, RE("select", { value: wdF, onChange: e => setWdF(e.target.value), className: "w-full bg-transparent outline-none text-[12px] mb-2", style: { color: "var(--text-primary)" } },
+                    RE("option", { value: "all", style: { background: "var(--bg-card2)" } }, "همه‌ی روزها"), WEEKDAYS_FA.map(w => RE("option", { key: w, value: w, style: { background: "var(--bg-card2)" } }, w)))),
                 empty ? RE("div", { className: "rounded-xl p-4 text-center text-[12px] leading-6", style: { background: "var(--bg-card2)", color: "var(--text-muted)" } }, "هنوز داده‌ای برای این فیلتر ثبت نشده. از لایه‌ی «ارزیابی بازار» سقف/کف روزانه و هفتگی را ثبت کنید.")
                     : RE(React.Fragment, null,
                         RE("div", { className: "rounded-xl p-3 mb-3", style: { background: nmTint(8), border: "1px solid " + nmTint(28) } },
                             RE("div", { className: "text-[12px] font-bold mb-1.5", style: { color: "var(--accent-gold)" } }, "پاسخ به سؤال‌ها (" + kindLabel + ")"),
-                            topSentence(stats.tm, kindLabel + " روزانه بیشتر در بازه‌ی زمانی"),
-                            topSentence(stats.ev, kindLabel + " روزانه بیشتر در سشن/رویداد"),
+                            topSentence(stats.tm, kindLabel + (wdF === "all" ? " روزانه" : " در روزهای " + wdF) + " بیشتر در بازه‌ی زمانی"),
+                            topSentence(stats.ev, kindLabel + (wdF === "all" ? " روزانه" : " در روزهای " + wdF) + " بیشتر در سشن/رویداد"),
                             topSentence(stats.dy, kindLabel + " هفتگی بیشتر در روز"),
                             RE("div", { className: "text-[10px] mt-1", style: { color: "var(--text-muted)" } }, stats.nDaily + " روز و " + stats.nWeekly + " هفته ثبت‌شده" + (stats.nDaily < 20 ? " — برای نتیجه‌ی قابل‌اعتماد، حداقل ۲۰ روز داده لازم است." : ""))),
                         stats.tm.rows.length > 0 && RE("div", { className: "mb-3" },
@@ -5642,23 +5649,36 @@ function App() {
         const extraHtml = (extraLines || []).map(l => `<p class="extra">${esc(l)}</p>`).join("");
         const html = `<!DOCTYPE html><html lang="fa" dir="rtl"><head><meta charset="UTF-8" />
             <style>
-                @import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;600;700&display=swap');
+                @import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700&display=swap');
                 * { font-family: 'Vazirmatn', sans-serif; box-sizing: border-box; }
-                body { padding: 16px; color: #111; }
-                h1 { font-size: 16px; margin: 0 0 4px; }
-                .meta { font-size: 10px; color: #666; margin-bottom: 12px; }
+                html, body { padding: 0; margin: 0; color: #17131a; }
+                .nm-header { display: flex; align-items: center; gap: 10px; padding: 12px 16px; background: linear-gradient(135deg, #1a1610, #2b2013); border-bottom: 3px solid #D4A64A; }
+                .nm-header img { width: 26px; height: 26px; border-radius: 6px; display: block; }
+                .nm-header .nm-brand { font-size: 13px; font-weight: 700; color: #D4A64A; letter-spacing: .3px; }
+                .nm-body { padding: 14px 16px 4px; }
+                h1 { font-size: 16px; margin: 0 0 3px; color: #17131a; }
+                .meta { font-size: 9.5px; color: #8a8a8a; margin-bottom: 12px; }
                 table { width: 100%; border-collapse: collapse; font-size: 9px; }
-                th, td { border: 1px solid #ccc; padding: 4px 6px; text-align: right; white-space: nowrap; }
-                th { background: #f0f0f0; font-weight: 700; }
-                tr:nth-child(even) td { background: #fafafa; }
-                .extra { font-size: 11px; margin: 4px 0; font-weight: 600; }
-                @media print { @page { size: A4 landscape; margin: 10mm; } }
+                th, td { padding: 5px 7px; text-align: right; white-space: nowrap; }
+                th { background: #D4A64A; color: #1a1610; font-weight: 700; border-bottom: 2px solid #a9812f; }
+                td { border-bottom: 1px solid #e9e9e9; }
+                tr:nth-child(even) td { background: #faf7ef; }
+                .extra { font-size: 11px; margin: 4px 0; font-weight: 600; color: #333; }
+                @page {
+                    size: A4 landscape;
+                    margin: 8mm 10mm 16mm 10mm;
+                    @bottom-center { content: "صفحه " counter(page) " از " counter(pages); font-size: 8.5pt; color: #999; font-family: 'Vazirmatn', sans-serif; }
+                    @bottom-left { content: "Namello"; font-size: 8pt; color: #bbb; font-family: 'Vazirmatn', sans-serif; }
+                }
             </style></head>
             <body>
-                <h1>${esc(title)}</h1>
-                <div class="meta">Namello — ${esc(new Date().toLocaleDateString("fa-IR"))}</div>
-                ${extraHtml}
-                <table><thead>${theadHtml}</thead><tbody>${tbodyHtml}</tbody></table>
+                <div class="nm-header"><img src="icon-192.png" alt="" /><span class="nm-brand">Namello</span></div>
+                <div class="nm-body">
+                    <h1>${esc(title)}</h1>
+                    <div class="meta">تاریخ تهیه: ${esc(new Date().toLocaleDateString("fa-IR"))}</div>
+                    ${extraHtml}
+                    <table><thead>${theadHtml}</thead><tbody>${tbodyHtml}</tbody></table>
+                </div>
             </body></html>`;
         const iframe = document.createElement("iframe");
         iframe.style.position = "fixed";
@@ -6315,24 +6335,49 @@ function App() {
     const rows3d = useMemo(() => get3DRows(closedTrades, param3dX, param3dY), [trades, param3dX, param3dY]);
     function exportMultiTablesAsPdf(title, sections) {
         const esc = (v) => String(v ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-        const sectionsHtml = sections.map(s => `
-            <h2>${esc(s.name)}</h2>
-            <table><thead><tr>${s.header.map(h => `<th>${esc(h)}</th>`).join("")}</tr></thead>
-            <tbody>${s.rows.map(r => `<tr>${s.header.map((_, i) => `<td>${esc(r[i])}</td>`).join("")}</tr>`).join("")}</tbody></table>`).join("");
+        const NM_PDF_PALETTE = [
+            ["#D4A64A", "#1a1610"], ["#3B82F6", "#ffffff"], ["#10B981", "#ffffff"], ["#8B5CF6", "#ffffff"],
+            ["#14B8A6", "#062421"], ["#F97316", "#2b1200"], ["#F43F5E", "#ffffff"], ["#6366F1", "#ffffff"],
+            ["#64748B", "#ffffff"], ["#92400E", "#ffffff"],
+        ];
+        const sectionsHtml = sections.map((s, idx) => {
+            const [bg, fg] = NM_PDF_PALETTE[idx % NM_PDF_PALETTE.length];
+            const theadHtml = `<tr style="background:${bg};">${s.header.map(h => `<th style="color:${fg};">${esc(h)}</th>`).join("")}</tr>`;
+            const tbodyHtml = s.rows.map((r, ri) => `<tr${ri % 2 === 1 ? ' style="background:#faf7ef;"' : ""}>${s.header.map((_, i) => `<td>${esc(r[i])}</td>`).join("")}</tr>`).join("");
+            return `<h2 style="border-right: 4px solid ${bg};">${esc(s.name)}</h2>
+            <table><thead>${theadHtml}</thead><tbody>${tbodyHtml}</tbody></table>`;
+        }).join("");
         const html = `<!DOCTYPE html><html lang="fa" dir="rtl"><head><meta charset="UTF-8" />
             <style>
-                @import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;600;700&display=swap');
+                @import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700&display=swap');
                 * { font-family: 'Vazirmatn', sans-serif; box-sizing: border-box; }
-                body { padding: 16px; color: #111; }
-                h1 { font-size: 16px; margin: 0 0 12px; }
-                h2 { font-size: 12px; margin: 16px 0 4px; page-break-inside: avoid; }
-                .meta { font-size: 10px; color: #666; margin-bottom: 12px; }
-                table { width: 100%; border-collapse: collapse; font-size: 9px; page-break-inside: avoid; }
-                th, td { border: 1px solid #ccc; padding: 3px 5px; text-align: right; }
-                th { background: #f0f0f0; font-weight: 700; }
-                @media print { @page { size: A4; margin: 10mm; } }
+                html, body { padding: 0; margin: 0; color: #17131a; }
+                .nm-header { display: flex; align-items: center; gap: 10px; padding: 12px 16px; background: linear-gradient(135deg, #1a1610, #2b2013); border-bottom: 3px solid #D4A64A; }
+                .nm-header img { width: 26px; height: 26px; border-radius: 6px; display: block; }
+                .nm-header .nm-brand { font-size: 13px; font-weight: 700; color: #D4A64A; letter-spacing: .3px; }
+                .nm-body { padding: 14px 16px 4px; }
+                h1 { font-size: 16px; margin: 0 0 3px; color: #17131a; }
+                h2 { font-size: 12px; margin: 16px 0 5px; padding-right: 8px; page-break-inside: avoid; color: #17131a; }
+                .meta { font-size: 9.5px; color: #8a8a8a; margin-bottom: 12px; }
+                table { width: 100%; border-collapse: collapse; font-size: 9px; page-break-inside: avoid; margin-bottom: 4px; }
+                th, td { padding: 4px 6px; text-align: right; }
+                th { font-weight: 700; }
+                td { border-bottom: 1px solid #e9e9e9; }
+                @page {
+                    size: A4;
+                    margin: 8mm 10mm 16mm 10mm;
+                    @bottom-center { content: "صفحه " counter(page) " از " counter(pages); font-size: 8.5pt; color: #999; font-family: 'Vazirmatn', sans-serif; }
+                    @bottom-left { content: "Namello"; font-size: 8pt; color: #bbb; font-family: 'Vazirmatn', sans-serif; }
+                }
             </style></head>
-            <body><h1>${esc(title)}</h1><div class="meta">Namello — ${esc(new Date().toLocaleDateString("fa-IR"))}</div>${sectionsHtml}</body></html>`;
+            <body>
+                <div class="nm-header"><img src="icon-192.png" alt="" /><span class="nm-brand">Namello</span></div>
+                <div class="nm-body">
+                    <h1>${esc(title)}</h1>
+                    <div class="meta">تاریخ تهیه: ${esc(new Date().toLocaleDateString("fa-IR"))}</div>
+                    ${sectionsHtml}
+                </div>
+            </body></html>`;
         const iframe = document.createElement("iframe");
         iframe.style.position = "fixed";
         iframe.style.left = "-9999px";
