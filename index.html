@@ -321,7 +321,7 @@ function makeIcon(emoji) {
     return /* @__PURE__ */ React.createElement("span", { className, style: { fontSize: size, color, lineHeight: 1, display: "inline-flex", ...style } }, emoji);
   };
 }
-const Clock = makeIcon("⏱"), TrendingUp = makeIcon("📈"), TrendingDown = makeIcon("📉"), Plus = makeIcon("➕"), Trash2 = makeIcon("🗑️"), ChevronDown = makeIcon("▾"), ChevronUp = makeIcon("▴"), Target = makeIcon("🎯"), X = makeIcon("✕"), Check = makeIcon("✓"), Wallet = makeIcon("💰"), Hash = makeIcon("#️⃣"), Flame = makeIcon("🔥"), Snowflake = makeIcon("❄️"), AlertTriangle = makeIcon("⚠️"), SettingsIcon = makeIcon("⚙️"), Download = makeIcon("⬇️"), Bell = makeIcon("🔔"), BellOff = makeIcon("🔕"), PiggyBank = makeIcon("🐖"), Coffee = makeIcon("☕"), MoreHorizontal = makeIcon("⋯"), LineChartIcon = makeIcon("📈"), ListChecks = makeIcon("☑️"), Flag = makeIcon("🚩"), TreeIcon = makeIcon("🌳"), BarChart3 = makeIcon("📊"), FileSpreadsheet = makeIcon("📑"), Newspaper = makeIcon("📰"), Edit3 = makeIcon("✏️"), Heart = makeIcon("🙏"), User = makeIcon("👤"), Info = makeIcon("ℹ️"), ImagePlus = makeIcon("🖼️"), Mic = makeIcon("🎙️"), Sun = makeIcon("☀️"), Moon = makeIcon("🌙"), CalendarIcon = makeIcon("📅"), Brain = makeIcon("🧠"), UploadIcon = makeIcon("📤"), IdCard = makeIcon("🪪");
+const Clock = makeIcon("⏱"), TrendingUp = makeIcon("📈"), TrendingDown = makeIcon("📉"), Plus = makeIcon("➕"), Trash2 = makeIcon("🗑️"), ChevronDown = makeIcon("▾"), ChevronUp = makeIcon("▴"), Target = makeIcon("🎯"), X = makeIcon("✕"), Check = makeIcon("✓"), Wallet = makeIcon("💰"), Hash = makeIcon("#️⃣"), Flame = makeIcon("🔥"), Snowflake = makeIcon("❄️"), AlertTriangle = makeIcon("⚠️"), SettingsIcon = makeIcon("⚙️"), Download = makeIcon("⬇️"), Bell = makeIcon("🔔"), BellOff = makeIcon("🔕"), PiggyBank = makeIcon("🐖"), Coffee = makeIcon("☕"), MoreHorizontal = makeIcon("⋯"), LineChartIcon = makeIcon("📈"), ListChecks = makeIcon("☑️"), Flag = makeIcon("🚩"), TreeIcon = makeIcon("🌳"), BookOpen = makeIcon("📚"), BarChart3 = makeIcon("📊"), FileSpreadsheet = makeIcon("📑"), Newspaper = makeIcon("📰"), Edit3 = makeIcon("✏️"), Heart = makeIcon("🙏"), User = makeIcon("👤"), Info = makeIcon("ℹ️"), ImagePlus = makeIcon("🖼️"), Mic = makeIcon("🎙️"), Sun = makeIcon("☀️"), Moon = makeIcon("🌙"), CalendarIcon = makeIcon("📅"), Brain = makeIcon("🧠"), UploadIcon = makeIcon("📤"), IdCard = makeIcon("🪪");
 function findChild(children, Comp) {
   let found = null;
   React.Children.forEach(children, (c) => {
@@ -584,11 +584,11 @@ const I18N = {
         tab_journal: "ژورنال", tab_marketeval: "ارزیابی رفتار بازار", tab_calendar: "تقویم معاملاتی", tab_finance: "مالی", tab_systems: "سیستم‌ها",
         tab_strategy: "استراتژی", tab_goals: "اهداف معامله گری", tab_lifegoals: "اهداف زندگی",
         tab_gratitude: "شکر گزاری", tab_statement: "ارزیابی استیتمنت", tab_analysis: "تحلیل",
-        tab_psychology: "روانشناسی", tab_exportall: "خروجی کل", tab_settings: "تنظیمات", tab_about: "درباره برنامه",
+        tab_psychology: "روانشناسی", tab_exportall: "خروجی کل", tab_library: "کتابخانه", tab_settings: "تنظیمات", tab_about: "درباره برنامه",
         settings_title: "تنظیمات", settings_theme: "رنگ زمینه برنامه", settings_theme_dark: "تیره", settings_theme_light: "روشن",
         settings_font: "فونت برنامه", settings_language: "زبان برنامه", settings_storage: "منبع ذخیره‌سازی و بکاپ",
         common_save: "ذخیره", common_cancel: "انصراف", common_delete: "حذف", common_edit: "ویرایش",
-        common_add: "افزودن", common_close: "بستن", common_excel: "اکسل", common_pdf: "PDF",
+        common_add: "افزودن", common_close: "بستن", common_excel: "Excel", common_pdf: "PDF",
         live_active_now: "همین الان فعال هستند", live_no_active: "در حال حاضر هیچ سشن یا کیل‌زونی فعال نیست",
         live_main_sessions: "سشن‌های اصلی بازار", live_killzones: "Kill Zone های ICT", live_silverbullets: "Silver Bullet (ICT)",
         live_gold_priorities: "اولویت‌های معامله طلا (XAUUSD)", live_enable_alarms: "فعال‌سازی اعلان‌های آلارم سشن‌ها",
@@ -608,7 +608,7 @@ const I18N = {
         tab_journal: "Journal", tab_marketeval: "Market Behavior Evaluation", tab_calendar: "Trading Calendar", tab_finance: "Finance", tab_systems: "Systems",
         tab_strategy: "Strategy", tab_goals: "Trading Goals", tab_lifegoals: "Life Goals",
         tab_gratitude: "Gratitude", tab_statement: "Statement Review", tab_analysis: "Analysis",
-        tab_psychology: "Psychology", tab_exportall: "Full Export", tab_settings: "Settings", tab_about: "About",
+        tab_psychology: "Psychology", tab_exportall: "Full Export", tab_library: "Library", tab_settings: "Settings", tab_about: "About",
         settings_title: "Settings", settings_theme: "App Background", settings_theme_dark: "Dark", settings_theme_light: "Light",
         settings_font: "App Font", settings_language: "App Language", settings_storage: "Storage & Backup Source",
         common_save: "Save", common_cancel: "Cancel", common_delete: "Delete", common_edit: "Edit",
@@ -2013,7 +2013,7 @@ function GoalsLayer({ title, activeAccount, list, newText, setNewText, onAdd, on
             React.createElement("div", { className: "flex gap-2 mb-4" },
                 React.createElement("button", { onClick: onExport, className: "flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-medium", style: { background: "var(--bg-card)", color: "var(--text-primary)", border: "1px solid var(--border-1)" } },
                     React.createElement(Download, { size: 16 }),
-                    " \u0627\u06A9\u0633\u0644"),
+                    " Excel"),
                 React.createElement("button", { onClick: onExportPdf, className: "flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-medium", style: { background: "var(--bg-card)", color: "var(--accent-gold)", border: "1px solid var(--border-1)" } },
                     React.createElement(Download, { size: 16 }),
                     " PDF"))))));
@@ -2375,11 +2375,15 @@ const RE = React.createElement;
    Version Code = عدد صحیحِ افزایشی؛ با «هر» آپدیت یکی زیاد می‌شود (حتی PATCH).
    هنگام انتشار نسخه‌ی جدید فقط همین سه ثابت + فایل version.json را به‌روز کن. */
 const NM_APP_NAME = "Namello";
-const NM_VERSION_NAME = "1.6.0";
-const NM_VERSION_CODE = 16;
+const NM_VERSION_NAME = "1.7.0";
+const NM_VERSION_CODE = 17;
 const NM_VERSION_LABEL = NM_APP_NAME + " " + NM_VERSION_NAME;
-const NM_VERSION_DATE = "۵ مهر ۱۴۰۵";
+const NM_VERSION_DATE = "۶ مهر ۱۴۰۵";
 const NM_CHANGELOG = [
+    "لایه‌ی جدید «کتابخانه» (قبل از تنظیمات): کتاب‌های متنی و پادکست/کتاب صوتی با افزودن/حذف/تغییر نام و آپلود فایل؛ پخش‌کننده‌ی صوتی با پرش ۱۵ ثانیه‌ای، نوار جابه‌جایی و سرعت پخش؛ اپیزودهای هر پادکست با لمس عنوان آن باز/بسته می‌شوند.",
+    "تنظیمات ← چیدمان نمایش منوی لایه‌ها: افقی (کنونی) یا عمودی آبشاری؛ در حالت عمودی با لمس آیکون Namello (بالا سمت چپ) منوی لایه‌ها باز/بسته می‌شود.",
+    "دکمه‌های Excel/PDF لایه‌ی تحلیل حالا خروجی کامل همه‌ی لایه‌ها (به‌جز تنظیمات و درباره) را می‌دهند؛ «ارزیابی رفتار بازار» و «استراتژی» به خروجی کل اضافه شد.",
+    "در تمام خروجی‌ها و متن‌ها، کلمه‌ی «Excel» با «Excel» جایگزین شد.",
     "ارزیابی رفتار بازار: نام روز هفته (مثل سه‌شنبه) کنار تاریخ سقف/کف روزانه نشان داده می‌شود.",
     "تحلیل ← ارزیابی سقف/کف قیمت: فیلتر «روز هفته» اضافه شد؛ می‌توانید ببینید مثلاً در روزهای سه‌شنبه سقف/کف روزانه بیشتر در چه بازه‌ی زمانی یا سشنی رخ می‌دهد.",
     "خروجی PDF (تکی و «خروجی کل») حرفه‌ای‌تر شد: شماره‌گذاری صفحات، سربرگ برندشده با لوگو، و رنگ زمینه‌ی متفاوت برای ردیف سربرگ هر بخش در خروجی کل.",
@@ -2392,7 +2396,7 @@ const NM_CHANGELOG = [
     "ذخیره‌سازی داده‌ها از localStorage (سقف ۵ مگابایت) به IndexedDB منتقل شد؛ مهاجرت خودکار و بازبینی‌شده، بدون از دست رفتن داده. در تنظیمات، بخش «فضای ذخیره‌سازی» وضعیت و حجم مصرفی را نشان می‌دهد.",
     "لایه‌ی تحلیل: نمودار افت سرمایه (Underwater)، توزیع R-multiple واقعی (بر اساس ریسک هر معامله)، و «هم‌خوانی ورود با سقف/کف روزانه» (با داده‌ی لایه‌ی ارزیابی بازار) اضافه شد.",
     "فیلدهای سفارشی معامله: در تنظیمات فیلد دلخواه (متنی/عددی/انتخابی/بله‌خیر) بسازید؛ خودش در فرم ثبت ورود، ویرایش و کارت معامله ظاهر می‌شود — بدون نیاز به تغییر کد.",
-    "خروجی خام JSON/CSV کامل معاملات (شامل فیلدهای سفارشی) برای اتصال به اکسل/Python/ابزارهای دیگر، در لایه‌ی «خروجی کل».",
+    "خروجی خام JSON/CSV کامل معاملات (شامل فیلدهای سفارشی) برای اتصال به Excel/Python/ابزارهای دیگر، در لایه‌ی «خروجی کل».",
     "همگام‌سازی استیتمنت MT5 با ژورنال: معاملات باز که با یک ردیف استیتمنت هم‌خوانی دارند با یک لمس با نتیجه‌ی واقعی بسته می‌شوند؛ معاملات MT5 بدون ثبت در ژورنال هم قابل افزودن خودکارند.",
     "رویداد پیش‌فرض «الگوی نقطه بهینه ورود (OTE) صبح نیویورک» (۷:۳۰ تا ۱۱:۰۰ به وقت EST) به لایه‌ی رویدادها اضافه شد.",
     "تنظیمات: بخش «تم لایه‌های برنامه» (۸ تم رنگی) و «تم آیکون برنامه» (۷ آیکون) اضافه شد.",
@@ -3579,8 +3583,8 @@ function NmDeveloperExportCard({ trades, accountCode }) {
     const today = new Date().toISOString().slice(0, 10);
     const exportJson = () => nmDownloadText(`namello-trades-${accountCode || "all"}-${today}.json`, "application/json", JSON.stringify(trades, null, 2));
     const exportCsv = () => nmDownloadText(`namello-trades-${accountCode || "all"}-${today}.csv`, "text/csv", "\uFEFF" + nmTradesToCsv(trades));
-    return RE(NmCollapsible, { title: "خروجی خام برای توسعه‌دهندگان", subtitle: "JSON یا CSV کامل معاملات، برای اتصال به اکسل/Python/ابزارهای دیگر", icon: "🧑‍💻" },
-        RE("p", { className: "text-[11px] leading-6 mb-3", style: { color: "var(--text-secondary)" } }, "برخلاف خروجی اکسل که برای خواندن انسانی است، این خروجی همه‌ی فیلدها (از جمله فیلدهای سفارشی) را عیناً و بدون قالب‌بندی می‌دهد؛ مناسب وارد کردن به اسپردشیت، پایگاه‌داده یا اسکریپت‌های تحلیلی."),
+    return RE(NmCollapsible, { title: "خروجی خام برای توسعه‌دهندگان", subtitle: "JSON یا CSV کامل معاملات، برای اتصال به Excel/Python/ابزارهای دیگر", icon: "🧑‍💻" },
+        RE("p", { className: "text-[11px] leading-6 mb-3", style: { color: "var(--text-secondary)" } }, "برخلاف خروجی Excel که برای خواندن انسانی است، این خروجی همه‌ی فیلدها (از جمله فیلدهای سفارشی) را عیناً و بدون قالب‌بندی می‌دهد؛ مناسب وارد کردن به اسپردشیت، پایگاه‌داده یا اسکریپت‌های تحلیلی."),
         RE("div", { className: "flex gap-2" },
             RE("button", { type: "button", onClick: exportJson, className: "flex-1 py-2.5 rounded-xl text-[12px] font-semibold", style: { background: "var(--accent-gold)", color: "var(--bg-page)" } }, "⬇ JSON"),
             RE("button", { type: "button", onClick: exportCsv, className: "flex-1 py-2.5 rounded-xl text-[12px] font-semibold", style: { background: "var(--bg-card2)", color: "var(--accent-gold)", border: "1px solid " + nmTint(40) } }, "⬇ CSV")),
@@ -3680,6 +3684,269 @@ function NmStatementSyncCard({ statementTrades, journalTrades, persistTrades, ac
                 Math.round((m.stmt.pnl || 0) * 100) / 100, () => createFromStatement(m), "افزودن به ژورنال", false, () => dismiss(m.stmt.ticket), m.stmt.ticket))));
 }
 
+/* ---------------- چیدمان نمایش منوی لایه‌ها (افقی/عمودی) ---------------- */
+function NmNavLayoutCard({ value, onChange }) {
+    return RE(NmCollapsible, { title: "چیدمان نمایش منوی لایه‌ها", subtitle: "افقی (وضعیت کنونی) یا آبشاری عمودی", icon: "📋" },
+        RE("p", { className: "text-[11px] leading-5 mb-3", style: { color: "var(--text-muted)" } }, "در حالت عمودی، نوار پایین صفحه پنهان می‌شود و به‌جایش با لمس آیکون Namello (بالا سمت چپ) یک منوی آبشاری از همه‌ی لایه‌ها باز/بسته می‌شود."),
+        RE(NmRadioRow, {
+            selected: value === "horizontal", onClick: () => onChange("horizontal"), title: "افقی (وضعیت کنونی)", desc: "نوار اسکرول‌شونده‌ی آیکون‌ها پایین صفحه، همیشه در دسترس.",
+            preview: RE("span", { className: "shrink-0 rounded-xl flex items-end justify-center gap-1 p-2", style: { width: 54, height: 54, background: "var(--bg-card2)", border: "1px solid var(--border-2)" } },
+                [1, 2, 3, 4].map(i => RE("span", { key: i, className: "rounded", style: { width: 6, height: i === 2 ? 16 : 10, background: i === 2 ? "var(--accent-gold)" : "var(--border-2)" } }))),
+        }),
+        RE(NmRadioRow, {
+            selected: value === "vertical", onClick: () => onChange("vertical"), title: "عمودی (آبشاری)", desc: "با لمس آیکون Namello، فهرست عمودی لایه‌ها باز می‌شود؛ نوار پایین صفحه پنهان است.",
+            preview: RE("span", { className: "shrink-0 rounded-xl flex flex-col justify-center gap-1 p-2", style: { width: 54, height: 54, background: "var(--bg-card2)", border: "1px solid var(--border-2)" } },
+                [1, 2, 3].map(i => RE("span", { key: i, className: "rounded", style: { width: i === 1 ? 34 : 24, height: 6, background: i === 1 ? "var(--accent-gold)" : "var(--border-2)" } }))),
+        }));
+}
+
+/* ---------------- کتابخانه: کتاب‌های متنی و پادکست/کتاب‌های صوتی ----------------
+   فایل واقعی (PDF/EPUB/متن یا MP3/صوت) در یک پایگاه‌داده‌ی IndexedDB جداگانه («namello_library_db»)
+   به‌صورت Blob نگه‌داری می‌شود (نه در window.storage که فقط رشته می‌پذیرد). فقط عنوان/نام‌فایل/حجم/تاریخ
+   در namello_library_books_v1 و namello_library_podcasts_v1 ذخیره می‌شود. */
+const NM_LIB_BOOKS_KEY = "namello_library_books_v1";
+const NM_LIB_PODCASTS_KEY = "namello_library_podcasts_v1";
+
+function nmLibDb() {
+    return new Promise((resolve, reject) => {
+        if (!window.indexedDB) { reject(new Error("no-idb")); return; }
+        const rq = indexedDB.open("namello_library_db", 1);
+        rq.onupgradeneeded = () => { if (!rq.result.objectStoreNames.contains("files")) rq.result.createObjectStore("files"); };
+        rq.onsuccess = () => resolve(rq.result);
+        rq.onerror = () => reject(rq.error);
+    });
+}
+async function nmLibPut(key, blob) {
+    const db = await nmLibDb();
+    return new Promise((resolve, reject) => { const tx = db.transaction("files", "readwrite"); tx.objectStore("files").put(blob, key); tx.oncomplete = () => resolve(true); tx.onerror = () => reject(tx.error); });
+}
+async function nmLibGet(key) {
+    const db = await nmLibDb();
+    return new Promise((resolve, reject) => { const rq = db.transaction("files", "readonly").objectStore("files").get(key); rq.onsuccess = () => resolve(rq.result); rq.onerror = () => reject(rq.error); });
+}
+async function nmLibDelete(key) {
+    const db = await nmLibDb();
+    return new Promise((resolve) => { const tx = db.transaction("files", "readwrite"); tx.objectStore("files").delete(key); tx.oncomplete = () => resolve(true); tx.onerror = () => resolve(false); });
+}
+async function nmLibLoad(key) { try { const r = await window.storage.get(key); const a = JSON.parse(r.value); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
+async function nmLibSave(key, list) { await window.storage.set(key, JSON.stringify(list)); }
+function nmLibId() { return "lib" + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+function nmLibPickFile(accept, onPick) {
+    const input = document.createElement("input");
+    input.type = "file"; input.accept = accept || ""; input.style.display = "none";
+    input.onchange = () => { const f = input.files && input.files[0]; input.remove(); if (f) onPick(f); };
+    document.body.appendChild(input);
+    input.click();
+}
+function nmLibTitleFromFileName(name) { return String(name || "").replace(/\.[^.]+$/, "") || name; }
+function nmLibFmtDate(iso) { try { return new Date(iso).toLocaleDateString("fa-IR"); } catch (e) { return ""; } }
+
+/* ---------------- پخش‌کننده‌ی حرفه‌ای صوت (پخش/توقف، جابه‌جایی، پرش ۱۵ ثانیه‌ای، سرعت پخش) ---------------- */
+function nmFmtTime(sec) {
+    if (!isFinite(sec) || sec < 0) return "۰۰:۰۰";
+    const m = Math.floor(sec / 60), s = Math.floor(sec % 60);
+    return String(m).padStart(2, "0") + ":" + String(s).padStart(2, "0");
+}
+function NmAudioPlayer({ track, onClose }) {
+    const audioRef = useRef(null);
+    const [url, setUrl] = useState(null);
+    const [playing, setPlaying] = useState(false);
+    const [cur, setCur] = useState(0);
+    const [dur, setDur] = useState(0);
+    const [rate, setRate] = useState(1);
+    const [err, setErr] = useState(false);
+
+    useEffect(() => {
+        let alive = true; let objUrl = null;
+        setErr(false); setCur(0); setDur(0); setPlaying(false);
+        (async () => {
+            try {
+                const blob = await nmLibGet(track.blobKey);
+                if (!blob) { if (alive) setErr(true); return; }
+                objUrl = URL.createObjectURL(blob);
+                if (alive) setUrl(objUrl);
+            } catch (e) { if (alive) setErr(true); }
+        })();
+        return () => { alive = false; if (objUrl) URL.revokeObjectURL(objUrl); };
+    }, [track.blobKey]);
+
+    useEffect(() => { if (audioRef.current) audioRef.current.playbackRate = rate; }, [rate, url]);
+
+    if (!track) return null;
+    const toggle = () => { const a = audioRef.current; if (!a) return; if (playing) a.pause(); else a.play().catch(() => setErr(true)); };
+    const skip = (d) => { const a = audioRef.current; if (a) a.currentTime = Math.max(0, Math.min(dur || 0, a.currentTime + d)); };
+    const seek = (v) => { const a = audioRef.current; if (a) a.currentTime = v; };
+    return RE("div", { className: "fixed left-0 right-0 z-40 px-3", style: { bottom: 78 } },
+        RE("div", { className: "rounded-2xl p-3", style: { background: "var(--bg-card)", border: "1px solid var(--border-2)", boxShadow: "0 8px 28px #000000AA" } },
+            url && RE("audio", {
+                ref: audioRef, src: url, onPlay: () => setPlaying(true), onPause: () => setPlaying(false),
+                onTimeUpdate: e => setCur(e.target.currentTime), onLoadedMetadata: e => setDur(e.target.duration || 0),
+                onEnded: () => setPlaying(false), onError: () => setErr(true),
+            }),
+            RE("div", { className: "flex items-center justify-between gap-2 mb-1.5" },
+                RE("div", { className: "min-w-0" },
+                    RE("div", { className: "text-[12px] font-semibold truncate", style: { color: "var(--text-primary)" } }, track.title),
+                    RE("div", { className: "text-[10px] truncate", style: { color: "var(--text-muted)" } }, track.subtitle || "")),
+                RE("button", { type: "button", onClick: onClose, className: "shrink-0" }, RE(X, { size: 16, color: "var(--text-muted)" }))),
+            err ? RE("div", { className: "text-[11px] py-2", style: { color: "#F87171" } }, "پخش این فایل ممکن نشد.")
+                : RE(React.Fragment, null,
+                    RE("input", { type: "range", min: 0, max: dur || 0, step: 0.5, value: cur, onChange: e => seek(Number(e.target.value)), className: "w-full", style: { accentColor: "var(--accent-gold)" } }),
+                    RE("div", { className: "flex items-center justify-between text-[10px] mb-1.5", style: { color: "var(--text-muted)", fontFamily: "JetBrains Mono, monospace", direction: "ltr" } },
+                        RE("span", null, nmFmtTime(cur)), RE("span", null, nmFmtTime(dur))),
+                    RE("div", { className: "flex items-center justify-center gap-3" },
+                        RE("select", { value: rate, onChange: e => setRate(Number(e.target.value)), className: "text-[11px] rounded-lg px-1.5 py-1 bg-transparent outline-none", style: { color: "var(--text-secondary)", border: "1px solid var(--border-2)" } },
+                            [0.75, 1, 1.25, 1.5, 2].map(r => RE("option", { key: r, value: r, style: { background: "var(--bg-card2)" } }, r + "x"))),
+                        RE("button", { type: "button", onClick: () => skip(-15), className: "p-2" }, RE("span", { style: { fontSize: 15 } }, "⏪")),
+                        RE("button", { type: "button", onClick: toggle, className: "w-11 h-11 rounded-full flex items-center justify-center", style: { background: "var(--accent-gold)", color: "var(--bg-page)", fontSize: 17 } }, playing ? "⏸" : "▶"),
+                        RE("button", { type: "button", onClick: () => skip(15), className: "p-2" }, RE("span", { style: { fontSize: 15 } }, "⏩")),
+                        RE("span", { style: { width: 40 } })))));
+}
+
+/* ---------------- کتاب‌های متنی ---------------- */
+function NmLibraryBooksSection({ showToast }) {
+    const [books, setBooks] = useState([]);
+    const [ready, setReady] = useState(false);
+    const [editId, setEditId] = useState(null);
+    const [editText, setEditText] = useState("");
+    const load = useCallback(async () => { setBooks(await nmLibLoad(NM_LIB_BOOKS_KEY)); setReady(true); }, []);
+    useEffect(() => { load(); }, [load]);
+
+    const addBook = () => {
+        nmLibPickFile(".pdf,.epub,.txt,.doc,.docx,application/pdf,application/epub+zip,text/plain", async (file) => {
+            const id = nmLibId();
+            try { await nmLibPut(id, file); }
+            catch (e) { showToast("ذخیره‌ی فایل ناموفق بود (احتمالاً فضای ذخیره‌سازی پر است)."); return; }
+            const next = [{ id, title: nmLibTitleFromFileName(file.name), fileName: file.name, mimeType: file.type, sizeBytes: file.size, addedAt: new Date().toISOString() }, ...books];
+            setBooks(next); await nmLibSave(NM_LIB_BOOKS_KEY, next);
+            showToast("کتاب اضافه شد.");
+        });
+    };
+    const startRename = (b) => { setEditId(b.id); setEditText(b.title); };
+    const saveRename = async () => {
+        const next = books.map(b => b.id === editId ? { ...b, title: editText.trim() || b.title } : b);
+        setBooks(next); setEditId(null); await nmLibSave(NM_LIB_BOOKS_KEY, next);
+    };
+    const remove = async (b) => {
+        const next = books.filter(x => x.id !== b.id);
+        setBooks(next); await nmLibSave(NM_LIB_BOOKS_KEY, next);
+        nmLibDelete(b.id);
+    };
+    const open = async (b) => {
+        try {
+            const blob = await nmLibGet(b.id);
+            if (!blob) { showToast("فایل پیدا نشد."); return; }
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a"); a.href = url; a.download = b.fileName || b.title; a.target = "_blank";
+            document.body.appendChild(a); a.click(); a.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 10000);
+        } catch (e) { showToast("باز کردن فایل ناموفق بود."); }
+    };
+    return RE("div", { className: "mb-5" },
+        RE("div", { className: "flex items-center justify-between mb-2" },
+            RE("h3", { className: "text-[14px] font-bold flex items-center gap-1.5", style: { color: "var(--text-primary)" } }, RE("span", null, "📖"), "کتاب‌های متنی"),
+            RE("button", { type: "button", onClick: addBook, className: "flex items-center gap-1 px-3 py-1.5 rounded-lg text-[12px] font-medium", style: { background: "var(--accent-gold)", color: "var(--bg-page)" } }, RE(Plus, { size: 13 }), "افزودن کتاب")),
+        !ready ? null : books.length === 0 ? RE("div", { className: "rounded-xl p-5 text-center text-[12px]", style: { background: "var(--bg-card)", color: "var(--text-muted)" } }, "هنوز کتابی اضافه نشده. فایل PDF, EPUB یا متنی خود را اضافه کنید.")
+            : books.map(b => RE("div", { key: b.id, className: "rounded-xl p-3 mb-2 flex items-center gap-2", style: { background: "var(--bg-card)", border: "1px solid var(--border-1)" } },
+                RE("span", { style: { fontSize: 22 } }, "📘"),
+                RE("div", { className: "flex-1 min-w-0" },
+                    editId === b.id
+                        ? RE("input", { type: "text", value: editText, autoFocus: true, onChange: e => setEditText(e.target.value), onKeyDown: e => e.key === "Enter" && saveRename(), onBlur: saveRename, className: "w-full bg-transparent outline-none text-[13px] font-semibold", style: { color: "var(--text-primary)", borderBottom: "1px solid var(--accent-gold)" } })
+                        : RE("div", { className: "text-[13px] font-semibold truncate", style: { color: "var(--text-primary)" } }, b.title),
+                    RE("div", { className: "text-[10px] truncate", style: { color: "var(--text-muted)" } }, (b.fileName || "") + " · " + nmFmtBytes(b.sizeBytes || 0) + " · " + nmLibFmtDate(b.addedAt))),
+                RE("button", { type: "button", onClick: () => open(b), className: "p-2 shrink-0", "aria-label": "باز کردن" }, RE("span", { style: { fontSize: 16 } }, "⬇️")),
+                RE("button", { type: "button", onClick: () => startRename(b), className: "p-2 shrink-0", "aria-label": "تغییر نام" }, RE(Edit3, { size: 14, color: "var(--text-muted)" })),
+                RE("button", { type: "button", onClick: () => remove(b), className: "p-2 shrink-0", "aria-label": "حذف" }, RE(Trash2, { size: 14, color: "#F87171" })))));
+}
+
+/* ---------------- پادکست / کتاب صوتی (چند اپیزودی، آکاردئونی) ---------------- */
+function NmPodcastRow({ podcast, onChange, onRemove, onPlay, activeEpisodeId }) {
+    const [open, setOpen] = useState(false);
+    const [editingTitle, setEditingTitle] = useState(false);
+    const [titleText, setTitleText] = useState(podcast.title);
+    const [editEpId, setEditEpId] = useState(null);
+    const [epText, setEpText] = useState("");
+
+    const saveTitle = () => { onChange({ ...podcast, title: titleText.trim() || podcast.title }); setEditingTitle(false); };
+    const addEpisode = () => {
+        nmLibPickFile("audio/*", async (file) => {
+            const id = nmLibId();
+            try { await nmLibPut(id, file); } catch (e) { return; }
+            const ep = { id, title: nmLibTitleFromFileName(file.name), fileName: file.name, mimeType: file.type, sizeBytes: file.size, addedAt: new Date().toISOString() };
+            onChange({ ...podcast, episodes: [...(podcast.episodes || []), ep] });
+            setOpen(true);
+        });
+    };
+    const saveEpRename = () => {
+        onChange({ ...podcast, episodes: podcast.episodes.map(e => e.id === editEpId ? { ...e, title: epText.trim() || e.title } : e) });
+        setEditEpId(null);
+    };
+    const removeEpisode = (epId) => onChange({ ...podcast, episodes: podcast.episodes.filter(e => e.id !== epId) });
+
+    const episodes = podcast.episodes || [];
+    return RE("div", { className: "rounded-xl mb-2 overflow-hidden", style: { background: "var(--bg-card)", border: "1px solid var(--border-1)" } },
+        RE("div", { className: "flex items-center gap-2 p-3" },
+            RE("button", { type: "button", onClick: () => setOpen(o => !o), className: "flex-1 flex items-center gap-2 min-w-0", style: { textAlign: "start" } },
+                RE("span", { style: { fontSize: 20 } }, "🎙️"),
+                RE("div", { className: "flex-1 min-w-0" },
+                    editingTitle
+                        ? RE("input", { type: "text", value: titleText, autoFocus: true, onClick: e => e.stopPropagation(), onChange: e => setTitleText(e.target.value), onKeyDown: e => e.key === "Enter" && saveTitle(), onBlur: saveTitle, className: "w-full bg-transparent outline-none text-[13px] font-semibold", style: { color: "var(--text-primary)", borderBottom: "1px solid var(--accent-gold)" } })
+                        : RE("div", { className: "text-[13px] font-semibold truncate", style: { color: "var(--text-primary)" } }, podcast.title),
+                    RE("div", { className: "text-[10px]", style: { color: "var(--text-muted)" } }, episodes.length + " اپیزود")),
+                open ? RE(ChevronUp, { size: 14, color: "var(--text-muted)" }) : RE(ChevronDown, { size: 14, color: "var(--text-muted)" })),
+            RE("button", { type: "button", onClick: () => { setEditingTitle(true); setTitleText(podcast.title); }, "aria-label": "تغییر نام" }, RE(Edit3, { size: 13, color: "var(--text-muted)" })),
+            RE("button", { type: "button", onClick: onRemove, "aria-label": "حذف پادکست" }, RE(Trash2, { size: 13, color: "#F87171" }))),
+        open && RE("div", { className: "px-3 pb-3", style: { borderTop: "1px solid var(--border-1)" } },
+            episodes.length === 0 && RE("div", { className: "text-[11px] py-2", style: { color: "var(--text-muted)" } }, "هنوز اپیزودی اضافه نشده."),
+            episodes.map((ep, i) => RE("div", { key: ep.id, className: "flex items-center gap-2 py-2", style: { borderBottom: i < episodes.length - 1 ? "1px solid var(--border-1)" : "none" } },
+                RE("button", { type: "button", onClick: () => onPlay(podcast, ep), className: "w-8 h-8 rounded-full flex items-center justify-center shrink-0", style: { background: activeEpisodeId === ep.id ? "var(--accent-gold)" : "var(--bg-card2)", color: activeEpisodeId === ep.id ? "var(--bg-page)" : "var(--text-secondary)" } }, activeEpisodeId === ep.id ? "⏸" : "▶"),
+                RE("div", { className: "flex-1 min-w-0" },
+                    editEpId === ep.id
+                        ? RE("input", { type: "text", value: epText, autoFocus: true, onChange: e => setEpText(e.target.value), onKeyDown: e => e.key === "Enter" && saveEpRename(), onBlur: saveEpRename, className: "w-full bg-transparent outline-none text-[12px]", style: { color: "var(--text-primary)", borderBottom: "1px solid var(--accent-gold)" } })
+                        : RE("div", { className: "text-[12px] truncate", style: { color: "var(--text-primary)" } }, (i + 1) + ". " + ep.title),
+                    RE("div", { className: "text-[10px]", style: { color: "var(--text-muted)" } }, nmFmtBytes(ep.sizeBytes || 0) + " · " + nmLibFmtDate(ep.addedAt))),
+                RE("button", { type: "button", onClick: () => { setEditEpId(ep.id); setEpText(ep.title); } }, RE(Edit3, { size: 12, color: "var(--text-muted)" })),
+                RE("button", { type: "button", onClick: () => removeEpisode(ep.id) }, RE(X, { size: 13, color: "#F87171" })))),
+            RE("button", { type: "button", onClick: addEpisode, className: "w-full flex items-center justify-center gap-1.5 py-2 rounded-lg text-[12px] mt-1", style: { background: "var(--bg-card2)", color: "var(--accent-gold)" } }, RE(Plus, { size: 12 }), "افزودن اپیزود")));
+}
+function NmLibraryPodcastsSection({ showToast }) {
+    const [podcasts, setPodcasts] = useState([]);
+    const [ready, setReady] = useState(false);
+    const [nowPlaying, setNowPlaying] = useState(null); // { podcastId, episode }
+    const load = useCallback(async () => { setPodcasts(await nmLibLoad(NM_LIB_PODCASTS_KEY)); setReady(true); }, []);
+    useEffect(() => { load(); }, [load]);
+
+    const persist = async (next) => { setPodcasts(next); await nmLibSave(NM_LIB_PODCASTS_KEY, next); };
+    const addPodcast = () => {
+        const title = (window.prompt("نام پادکست یا کتاب صوتی:") || "").trim();
+        if (!title) return;
+        persist([{ id: nmLibId(), title, episodes: [], addedAt: new Date().toISOString() }, ...podcasts]);
+    };
+    const updatePodcast = (p) => persist(podcasts.map(x => x.id === p.id ? p : x));
+    const removePodcast = (p) => {
+        (p.episodes || []).forEach(ep => nmLibDelete(ep.id));
+        persist(podcasts.filter(x => x.id !== p.id));
+        if (nowPlaying && nowPlaying.podcastId === p.id) setNowPlaying(null);
+    };
+    const playEpisode = (podcast, ep) => {
+        if (nowPlaying && nowPlaying.episode.id === ep.id) { setNowPlaying(null); return; }
+        setNowPlaying({ podcastId: podcast.id, episode: ep, podcastTitle: podcast.title });
+    };
+    return RE("div", { className: "mb-5" },
+        RE("div", { className: "flex items-center justify-between mb-2" },
+            RE("h3", { className: "text-[14px] font-bold flex items-center gap-1.5", style: { color: "var(--text-primary)" } }, RE("span", null, "🎧"), "پادکست و کتاب‌های صوتی"),
+            RE("button", { type: "button", onClick: addPodcast, className: "flex items-center gap-1 px-3 py-1.5 rounded-lg text-[12px] font-medium", style: { background: "var(--accent-gold)", color: "var(--bg-page)" } }, RE(Plus, { size: 13 }), "پادکست جدید")),
+        !ready ? null : podcasts.length === 0 ? RE("div", { className: "rounded-xl p-5 text-center text-[12px]", style: { background: "var(--bg-card)", color: "var(--text-muted)" } }, "هنوز پادکستی اضافه نشده. یک پادکست بسازید و اپیزودهایش را اضافه کنید.")
+            : podcasts.map(p => RE(NmPodcastRow, { key: p.id, podcast: p, onChange: updatePodcast, onRemove: () => removePodcast(p), onPlay: playEpisode, activeEpisodeId: nowPlaying && nowPlaying.podcastId === p.id ? nowPlaying.episode.id : null })),
+        nowPlaying && RE(NmAudioPlayer, { track: { title: nowPlaying.episode.title, subtitle: nowPlaying.podcastTitle, blobKey: nowPlaying.episode.id }, onClose: () => setNowPlaying(null) }));
+}
+function NmLibraryLayer({ showToast }) {
+    return RE("div", { className: "px-4 mt-4 pb-16" },
+        RE("h2", { className: "text-sm font-semibold mb-1", style: { color: "var(--text-primary)" } }, "کتابخانه"),
+        RE("p", { className: "text-[11px] leading-5 mb-4", style: { color: "var(--text-muted)" } }, "کتاب‌های متنی و پادکست/کتاب‌های صوتی خود را اینجا نگه دارید. فایل‌ها داخل خودِ برنامه ذخیره می‌شوند؛ برای فایل‌های حجیم به فضای ذخیره‌سازی دستگاه توجه کنید (تنظیمات ← فضای ذخیره‌سازی)."),
+        RE(NmLibraryBooksSection, { showToast }),
+        RE(NmLibraryPodcastsSection, { showToast }));
+}
+
 function App() {
     const [, forceTick] = useState(0);
     const [tab, setTab] = useState("live");
@@ -3716,6 +3983,8 @@ function App() {
     const [themeMode, setThemeMode] = useState("dark");
     const [appTheme, setAppTheme] = useState(() => { try { return localStorage.getItem("ns_namello_app_theme_v1") || "classic"; } catch (e) { return "classic"; } });
     const [iconTheme, setIconTheme] = useState(() => { try { return localStorage.getItem("ns_namello_icon_theme_v1") || "default"; } catch (e) { return "default"; } });
+    const [navLayout, setNavLayout] = useState(() => { try { return localStorage.getItem("ns_namello_nav_layout_v1") || "horizontal"; } catch (e) { return "horizontal"; } });
+    const [navMenuOpen, setNavMenuOpen] = useState(false);
     const [appLanguage, setAppLanguage] = useState("fa");
     const [storageMode, setStorageMode] = useState("local");
     const [googleClientId, setGoogleClientId] = useState("");
@@ -4446,6 +4715,11 @@ function App() {
     catch (e) { } }, []);
     const persistAppTheme = useCallback(async (next) => { setAppTheme(next); try {
         await window.storage.set("namello_app_theme_v1", next);
+    }
+    catch (e) { } }, []);
+    const persistNavLayout = useCallback(async (next) => { setNavLayout(next); setNavMenuOpen(false); try {
+        await window.storage.set("namello_nav_layout_v1", next);
+        try { localStorage.setItem("ns_namello_nav_layout_v1", next); } catch (e2) { }
     }
     catch (e) { } }, []);
     const persistIconTheme = useCallback(async (next) => { setIconTheme(next); try {
@@ -5701,7 +5975,7 @@ function App() {
         };
         iframe.srcdoc = html;
     }
-    /* ---------------- خروجی اکسل ژورنال — همه‌ی آیتم‌های «ثبت ورود» و «ثبت نتیجه معامله» ---------------- */
+    /* ---------------- خروجی Excel ژورنال — همه‌ی آیتم‌های «ثبت ورود» و «ثبت نتیجه معامله» ---------------- */
     const JOIN_FA = (arr) => (arr && arr.length ? arr.join("، ") : "");
     const JOIN_OR_SINGLE = (arr, single) => (arr && arr.length ? JOIN_FA(arr) : (single || ""));
     const BULLBEAR_FA = (v) => (v === "bullish" ? "صعودی" : v === "bearish" ? "نزولی" : "");
@@ -6432,7 +6706,8 @@ function App() {
         ]);
     }
     /* ---------------- combined full export ---------------- */
-    function exportAll() {
+    async function exportAll() {
+        const __nmMe = await nmMeLoad();
         const wb = XLSX.utils.book_new();
         const sessAoa = [["دسته", "نام", "شروع (DST)", "پایان (DST)", "شروع (STD)", "پایان (STD)"]];
         ["sessions", "killzones", "silverbullets"].forEach(cat => (config[cat] || []).forEach(ev => sessAoa.push([cat, ev.name, minToHHMM(ev.dst.s), minToHHMM(ev.dst.e), minToHHMM(ev.std.s), minToHHMM(ev.std.e)])));
@@ -6478,9 +6753,12 @@ function App() {
             ...psych.strengths.map(s => ["نقطه قوت", s]), ...psych.weaknesses.map(s => ["نقطه ضعف", s]),
             ...psych.threats.map(s => ["تهدید", s]), ...psych.opportunities.map(s => ["فرصت", s])];
         XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(psychAoa), "روانشناسی");
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([["تاریخ", "روز هفته", "جفت‌ارز", "سقف: سشن/رویداد", "سقف: زمان", "کف: سشن/رویداد", "کف: زمان"], ...Object.values(__nmMe.daily || {}).sort((a, b) => a.date < b.date ? -1 : 1).map(r => [r.date, weekdayFromDateStr(r.date), r.pair, (r.highEvents && r.highEvents.length ? r.highEvents.join("، ") : (r.highEvent || "")), r.highTime || "", (r.lowEvents && r.lowEvents.length ? r.lowEvents.join("، ") : (r.lowEvent || "")), r.lowTime || ""])]), "رفتار بازار-روزانه");
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([["شروع هفته", "جفت‌ارز", "روز سقف هفتگی", "روز کف هفتگی"], ...Object.values(__nmMe.weekly || {}).sort((a, b) => a.weekStart < b.weekStart ? -1 : 1).map(r => [r.weekStart, r.pair, r.highDay || "", r.lowDay || ""])]), "رفتار بازار-هفتگی");
         XLSX.writeFile(wb, `namello-full-export-${activeAccount}-${todayStr}.xlsx`);
     }
-    function exportAllPdf() {
+    async function exportAllPdf() {
+        const __nmMe = await nmMeLoad();
         const allClosedAsc = sortAsc(closedTrades);
         const { header: jHeader, rows: jRows } = buildJournalAoa(allClosedAsc);
         const allTimeMetrics = computeFinancialMetrics(allClosedAsc, accSettings.startingBalance);
@@ -6503,6 +6781,9 @@ function App() {
             { name: "شکر گزاری", header: ["تاریخ ثبت", "مورد", "پیشرفت (%)"], rows: gratitude.map(g => [g.date, g.text, g.progress || 0]) },
             { name: "ارزیابی استیتمنت", header: ["تاریخ", "نماد", "جهت", "لات", "سود/زیان"], rows: statementTrades.map(t => [t.date, t.pair, t.direction === "sell" ? "فروش" : "خرید", t.lot, t.pnl]) },
             sec("تحلیل-سیستم", bySystem), sec("تحلیل-سشن", bySession), sec("تحلیل-روند", byTrend),
+            { name: "استراتژی", header: ["ردیف", "استراتژی"], rows: strategies.map((s, i) => [i + 1, s.text]) },
+            { name: "ارزیابی رفتار بازار - روزانه", header: ["تاریخ", "روز هفته", "جفت‌ارز", "سقف: سشن/رویداد", "سقف: زمان", "کف: سشن/رویداد", "کف: زمان"], rows: Object.values(__nmMe.daily || {}).sort((a, b) => a.date < b.date ? -1 : 1).map(r => [r.date, weekdayFromDateStr(r.date), r.pair, (r.highEvents && r.highEvents.length ? r.highEvents.join("، ") : (r.highEvent || "")), r.highTime || "", (r.lowEvents && r.lowEvents.length ? r.lowEvents.join("، ") : (r.lowEvent || "")), r.lowTime || ""]) },
+            { name: "ارزیابی رفتار بازار - هفتگی", header: ["شروع هفته", "جفت‌ارز", "روز سقف هفتگی", "روز کف هفتگی"], rows: Object.values(__nmMe.weekly || {}).sort((a, b) => a.weekStart < b.weekStart ? -1 : 1).map(r => [r.weekStart, r.pair, r.highDay || "", r.lowDay || ""]) },
             { name: "روانشناسی", header: ["دسته", "توضیح"], rows: psychRows },
         ]);
     }
@@ -6526,7 +6807,8 @@ function App() {
         React.createElement("div", { className: "px-4 pt-6 pb-4", style: { background: "linear-gradient(180deg, var(--bg-card) 0%, var(--bg-page) 100%)", borderBottom: "1px solid #1C2128" } },
             React.createElement("div", { className: "flex items-center justify-between mb-1" },
                 React.createElement("h1", { className: "text-lg font-bold flex items-center gap-2", style: { color: "var(--text-primary)" } },
-                    React.createElement("img", { src: iconTheme === "default" ? APP_LOGO : nmIconThemeInfo(iconTheme).icon192, alt: "Namello", className: "w-7 h-7 rounded-full object-cover", style: { border: "1px solid var(--border-2)" } }),
+                    React.createElement("button", { type: "button", onClick: () => { if (navLayout === "vertical") setNavMenuOpen(o => !o); }, style: { cursor: navLayout === "vertical" ? "pointer" : "default", lineHeight: 0, background: "none", border: "none", padding: 0 }, "aria-label": "منوی لایه‌ها" },
+                        React.createElement("img", { src: iconTheme === "default" ? APP_LOGO : nmIconThemeInfo(iconTheme).icon192, alt: "Namello", className: "w-7 h-7 rounded-full object-cover", style: { border: "1px solid var(--border-2)" } })),
                     "Namello"),
                 React.createElement("div", { className: "flex items-center gap-2" },
                     React.createElement("button", { onClick: () => persistThemeMode(themeMode === "dark" ? "light" : "dark"), className: "w-8 h-8 rounded-full flex items-center justify-center", style: { background: "var(--bg-card2)", border: "1px solid var(--border-2)" }, "aria-label": themeMode === "dark" ? "تغییر به زمینه‌ی روشن" : "تغییر به زمینه‌ی تیره" },
@@ -6943,7 +7225,7 @@ function App() {
                     t.voiceNoteAfter && React.createElement("audio", { src: t.voiceNoteAfter, controls: true, style: { height: 30, width: "100%" } })))))))),
             React.createElement("button", { onClick: () => doExport("all"), className: "w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-medium mb-4", style: { background: "var(--bg-card)", color: "var(--text-primary)", border: "1px solid var(--border-1)" } },
                 React.createElement(Download, { size: 16 }),
-                " \u062E\u0631\u0648\u062C\u06CC \u0627\u06A9\u0633\u0644 \u0698\u0648\u0631\u0646\u0627\u0644"))))),
+                " \u062E\u0631\u0648\u062C\u06CC Excel \u0698\u0648\u0631\u0646\u0627\u0644"))))),
         tab === "marketeval" && (RE(NmMarketEvalLayer, { config, pairs, askDeleteConfirm })),
         tab === "calendar" && (!activeAccount ? (React.createElement("div", { className: "px-4 mt-4" },
             React.createElement("div", { className: "rounded-xl p-4 text-center text-sm", style: { background: "var(--bg-card)", color: "var(--text-muted)" } }, appLanguage === "en" ? "First create an account from the Profile tab." : "\u0627\u0648\u0644 \u0627\u0632 \u062A\u0628 \u0698\u0648\u0631\u0646\u0627\u0644 \u06CC\u06A9 \u062D\u0633\u0627\u0628 \u0627\u06CC\u062C\u0627\u062F \u06A9\u0646."))) : (React.createElement(CalendarLayer, {
@@ -7194,7 +7476,7 @@ function App() {
             React.createElement("div", { className: "flex gap-2 mb-4" },
                 React.createElement("button", { onClick: exportSystems, className: "flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-medium", style: { background: "var(--bg-card)", color: "var(--text-primary)", border: "1px solid var(--border-1)" } },
                     React.createElement(Download, { size: 16 }),
-                    " \u0627\u06A9\u0633\u0644"),
+                    " Excel"),
                 React.createElement("button", { onClick: exportSystemsPdf, className: "flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-medium", style: { background: "var(--bg-card)", color: "var(--accent-gold)", border: "1px solid var(--border-1)" } },
                     React.createElement(Download, { size: 16 }),
                     " PDF")))),
@@ -7373,10 +7655,10 @@ function App() {
                                 React.createElement(Tooltip, { contentStyle: { background: "var(--bg-card2)", border: "1px solid var(--border-2)", fontSize: 11 }, labelStyle: { color: "var(--text-primary)" } }),
                                 React.createElement(Bar, { dataKey: "value", radius: [0, 4, 4, 0] }, chart.data.map((d, i) => React.createElement(Cell, { key: i, fill: d.value >= 0 ? "#34D399" : "#F87171" }))))))))),
                 React.createElement("div", { className: "flex gap-2 mb-4" },
-                    React.createElement("button", { onClick: exportAnalysis, className: "flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-medium", style: { background: "var(--bg-card)", color: "var(--text-primary)", border: "1px solid var(--border-1)" } },
+                    React.createElement("button", { onClick: exportAll, className: "flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-medium", style: { background: "var(--bg-card)", color: "var(--text-primary)", border: "1px solid var(--border-1)" } },
                         React.createElement(Download, { size: 16 }),
-                        " \u0627\u06A9\u0633\u0644"),
-                    React.createElement("button", { onClick: exportAnalysisPdf, className: "flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-medium", style: { background: "var(--bg-card)", color: "var(--accent-gold)", border: "1px solid var(--border-1)" } },
+                        " Excel"),
+                    React.createElement("button", { onClick: exportAllPdf, className: "flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-medium", style: { background: "var(--bg-card)", color: "var(--accent-gold)", border: "1px solid var(--border-1)" } },
                         React.createElement(Download, { size: 16 }),
                         " PDF"))))))),
         tab === "psychology" && (!activeAccount ? (React.createElement("div", { className: "px-4 mt-4" },
@@ -7388,16 +7670,17 @@ function App() {
             psychOptions: psychOptions,
         }))),
         tab === "exportall" && (React.createElement("div", { className: "px-4 mt-4" },
-            React.createElement("h2", { className: "text-sm font-semibold mb-2", style: { color: "var(--text-primary)" } }, "\u062E\u0631\u0648\u062C\u06CC \u06A9\u0627\u0645\u0644 \u0627\u06A9\u0633\u0644"),
-            React.createElement("p", { className: "text-[12px] leading-6 mb-4", style: { color: "var(--text-secondary)" } }, "\u0628\u0627 \u0632\u062F\u0646 \u062F\u06A9\u0645\u0647\u200C\u06CC \u0632\u06CC\u0631\u060C \u06CC\u06A9 \u0641\u0627\u06CC\u0644 \u0627\u06A9\u0633\u0644 \u0633\u0627\u062E\u062A\u0647 \u0645\u06CC\u200C\u0634\u0648\u062F \u06A9\u0647 \u062A\u0645\u0627\u0645 \u0644\u0627\u06CC\u0647\u200C\u0647\u0627 (\u0698\u0648\u0631\u0646\u0627\u0644\u060C \u0645\u062F\u06CC\u0631\u06CC\u062A \u0645\u0627\u0644\u06CC\u060C \u0633\u06CC\u0633\u062A\u0645\u200C\u0647\u0627\u06CC \u0645\u0639\u0627\u0645\u0644\u0627\u062A\u06CC\u060C \u0627\u0633\u062A\u0631\u0627\u062A\u0698\u06CC\u060C \u0627\u0647\u062F\u0627\u0641\u060C \u062A\u062D\u0644\u06CC\u0644 \u0622\u0645\u0627\u0631\u06CC) \u0647\u0631\u06A9\u062F\u0627\u0645 \u062F\u0631 \u06CC\u06A9 \u0634\u06CC\u062A \u062C\u062F\u0627\u06AF\u0627\u0646\u0647 \u0642\u0631\u0627\u0631 \u0645\u06CC\u200C\u06AF\u06CC\u0631\u0646\u062F."),
+            React.createElement("h2", { className: "text-sm font-semibold mb-2", style: { color: "var(--text-primary)" } }, "\u062E\u0631\u0648\u062C\u06CC \u06A9\u0627\u0645\u0644 Excel"),
+            React.createElement("p", { className: "text-[12px] leading-6 mb-4", style: { color: "var(--text-secondary)" } }, "\u0628\u0627 \u0632\u062F\u0646 \u062F\u06A9\u0645\u0647\u200C\u06CC \u0632\u06CC\u0631\u060C \u06CC\u06A9 \u0641\u0627\u06CC\u0644 Excel \u0633\u0627\u062E\u062A\u0647 \u0645\u06CC\u200C\u0634\u0648\u062F \u06A9\u0647 \u062A\u0645\u0627\u0645 \u0644\u0627\u06CC\u0647\u200C\u0647\u0627 (\u0698\u0648\u0631\u0646\u0627\u0644\u060C \u0645\u062F\u06CC\u0631\u06CC\u062A \u0645\u0627\u0644\u06CC\u060C \u0633\u06CC\u0633\u062A\u0645\u200C\u0647\u0627\u06CC \u0645\u0639\u0627\u0645\u0644\u0627\u062A\u06CC\u060C \u0627\u0633\u062A\u0631\u0627\u062A\u0698\u06CC\u060C \u0627\u0647\u062F\u0627\u0641\u060C \u062A\u062D\u0644\u06CC\u0644 \u0622\u0645\u0627\u0631\u06CC) \u0647\u0631\u06A9\u062F\u0627\u0645 \u062F\u0631 \u06CC\u06A9 \u0634\u06CC\u062A \u062C\u062F\u0627\u06AF\u0627\u0646\u0647 \u0642\u0631\u0627\u0631 \u0645\u06CC\u200C\u06AF\u06CC\u0631\u0646\u062F."),
             !activeAccount ? (React.createElement("div", { className: "rounded-xl p-4 text-center text-sm", style: { background: "var(--bg-card)", color: "var(--text-muted)" } }, "\u0627\u0648\u0644 \u0627\u0632 \u062A\u0628 \u0698\u0648\u0631\u0646\u0627\u0644 \u06CC\u06A9 \u062D\u0633\u0627\u0628 \u0627\u06CC\u062C\u0627\u062F \u06A9\u0646.")) : (React.createElement("div", { className: "flex gap-2" },
                 React.createElement("button", { onClick: exportAll, className: "flex-1 flex items-center justify-center gap-2 py-4 rounded-xl text-sm font-semibold", style: { background: "var(--accent-gold)", color: "var(--bg-page)" } },
                     React.createElement(FileSpreadsheet, { size: 18 }),
-                    " \u0627\u06A9\u0633\u0644"),
+                    " Excel"),
                 RE(NmDeveloperExportCard, { trades: closedTrades, accountCode: activeAccount }),
                 React.createElement("button", { onClick: exportAllPdf, className: "flex-1 flex items-center justify-center gap-2 py-4 rounded-xl text-sm font-semibold", style: { background: "var(--bg-card)", color: "var(--accent-gold)", border: "1px solid var(--accent-gold)" } },
                     React.createElement(FileSpreadsheet, { size: 18 }),
                     " PDF"))))),
+        tab === "library" && RE(NmLibraryLayer, { showToast }),
         tab === "settings" && (React.createElement("div", { className: "px-4 mt-4" },
             React.createElement("h2", { className: "text-sm font-semibold mb-2", style: { color: "var(--text-primary)" } }, t("settings_title")),
             React.createElement("div", { className: "rounded-xl p-3 mb-3", style: { background: "var(--bg-card)", border: "1px solid var(--border-1)" } },
@@ -7411,6 +7694,7 @@ function App() {
                         " ", t("settings_theme_light")))),
             RE(NmAppThemeCard, { value: appTheme, onChange: persistAppTheme }),
             RE(NmIconThemeCard, { value: iconTheme, onChange: persistIconTheme, showToast }),
+            RE(NmNavLayoutCard, { value: navLayout, onChange: persistNavLayout }),
             React.createElement("div", { className: "rounded-xl p-3 mb-3", style: { background: "var(--bg-card)", border: "1px solid var(--border-1)" } },
                 React.createElement("button", { onClick: () => toggleSettingsSection("language"), className: "w-full flex items-center justify-between mb-2" },
                     React.createElement("h3", { className: "text-[13px] font-semibold", style: { color: "var(--text-primary)" } }, t("settings_language")),
@@ -7539,7 +7823,7 @@ function App() {
                 React.createElement("button", { onClick: addAboutSection, className: "w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium mt-1", style: { background: "var(--accent-gold)", color: "var(--bg-page)" } },
                     React.createElement(Plus, { size: 16 }),
                     " \u0627\u0641\u0632\u0648\u062F\u0646 \u0628\u062E\u0634")))),
-        React.createElement("div", { className: "fixed bottom-0 left-0 right-0 flex overflow-x-auto", style: { background: "var(--bg-card)", borderTop: "1px solid var(--border-1)" } }, [
+        navLayout !== "vertical" && (React.createElement("div", { className: "fixed bottom-0 left-0 right-0 flex overflow-x-auto", style: { background: "var(--bg-card)", borderTop: "1px solid var(--border-1)" } }, [
             { key: "user", label: t("tab_user"), Icon: User },
             { key: "live", label: t("tab_live"), Icon: Clock },
             { key: "news", label: t("tab_news"), Icon: Newspaper },
@@ -7557,11 +7841,38 @@ function App() {
             { key: "analysis", label: t("tab_analysis"), Icon: LineChartIcon },
             { key: "psychology", label: t("tab_psychology"), Icon: Brain },
             { key: "exportall", label: t("tab_exportall"), Icon: FileSpreadsheet },
+            { key: "library", label: t("tab_library"), Icon: BookOpen },
             { key: "settings", label: t("tab_settings"), Icon: SettingsIcon },
             { key: "about", label: t("tab_about"), Icon: Info },
         ].map(({ key, label, Icon }) => (React.createElement("button", { key: key, onClick: () => setTab(key), className: "flex flex-col items-center gap-1 py-2.5 shrink-0", style: { width: 68, color: tab === key ? "var(--accent-gold)" : "var(--text-muted)" } },
             React.createElement(Icon, { size: 17 }),
-            React.createElement("span", { className: "text-[10px] px-2 py-0.5 rounded-full", style: { background: tab === key ? "color-mix(in srgb, var(--accent-gold) 13%, transparent)" : "transparent", fontWeight: tab === key ? 700 : 400 } }, label))))),
+            React.createElement("span", { className: "text-[10px] px-2 py-0.5 rounded-full", style: { background: tab === key ? "color-mix(in srgb, var(--accent-gold) 13%, transparent)" : "transparent", fontWeight: tab === key ? 700 : 400 } }, label)))))),
+        navLayout === "vertical" && navMenuOpen && (React.createElement(React.Fragment, null,
+            React.createElement("div", { className: "fixed inset-0 z-40", style: { background: "#000000AA" }, onClick: () => setNavMenuOpen(false) }),
+            React.createElement("div", { className: "fixed top-16 z-50 rounded-2xl overflow-y-auto", style: { insetInlineStart: 12, background: "var(--bg-card)", border: "1px solid var(--border-2)", maxHeight: "70vh", minWidth: 220, boxShadow: "0 10px 40px #000000AA" } }, [
+                { key: "user", label: t("tab_user"), Icon: User },
+                { key: "live", label: t("tab_live"), Icon: Clock },
+                { key: "news", label: t("tab_news"), Icon: Newspaper },
+                { key: "prep", label: t("tab_prep"), Icon: Check },
+                { key: "journal", label: t("tab_journal"), Icon: TrendingUp },
+                { key: "marketeval", label: t("tab_marketeval"), Icon: Target },
+                { key: "calendar", label: t("tab_calendar"), Icon: CalendarIcon },
+                { key: "finance", label: t("tab_finance"), Icon: Wallet },
+                { key: "systems", label: t("tab_systems"), Icon: BarChart3 },
+                { key: "strategy", label: t("tab_strategy"), Icon: ListChecks },
+                { key: "goals", label: t("tab_goals"), Icon: Flag },
+                { key: "lifegoals", label: t("tab_lifegoals"), Icon: TreeIcon },
+                { key: "gratitude", label: t("tab_gratitude"), Icon: Heart },
+                { key: "statement", label: t("tab_statement"), Icon: UploadIcon },
+                { key: "analysis", label: t("tab_analysis"), Icon: LineChartIcon },
+                { key: "psychology", label: t("tab_psychology"), Icon: Brain },
+                { key: "exportall", label: t("tab_exportall"), Icon: FileSpreadsheet },
+                { key: "library", label: t("tab_library"), Icon: BookOpen },
+                { key: "settings", label: t("tab_settings"), Icon: SettingsIcon },
+                { key: "about", label: t("tab_about"), Icon: Info },
+            ].map(({ key, label, Icon }) => (React.createElement("button", { key: key, onClick: () => { setTab(key); setNavMenuOpen(false); }, className: "w-full flex items-center gap-3 px-4 py-3", style: { color: tab === key ? "var(--accent-gold)" : "var(--text-primary)", background: tab === key ? "color-mix(in srgb, var(--accent-gold) 10%, transparent)" : "transparent", borderBottom: "1px solid var(--border-1)" } },
+                React.createElement(Icon, { size: 17 }),
+                React.createElement("span", { className: "text-[13px]" }, label))))))),
         showSessionSettings && (React.createElement("div", { className: "fixed inset-0 z-50 flex items-end", style: { background: "#000000AA" }, onClick: () => setShowSessionSettings(false) },
             React.createElement("div", { className: "w-full rounded-t-2xl p-4 max-h-[85vh] overflow-y-auto", style: { background: "var(--bg-card)" }, onClick: e => e.stopPropagation() },
                 React.createElement("div", { className: "flex items-center justify-between mb-4" },
@@ -7691,12 +8002,12 @@ function App() {
         showExportPicker && (React.createElement("div", { className: "fixed inset-0 z-50 flex items-end", style: { background: "#000000AA" }, onClick: () => setShowExportPicker(false) },
             React.createElement("div", { className: "w-full rounded-t-2xl p-4", style: { background: "var(--bg-card)" }, onClick: e => e.stopPropagation() },
                 React.createElement("div", { className: "flex items-center justify-between mb-4" },
-                    React.createElement("h3", { className: "text-sm font-semibold", style: { color: "var(--text-primary)" } }, "\u0628\u0627\u0632\u0647\u200C\u06CC \u062E\u0631\u0648\u062C\u06CC \u0627\u06A9\u0633\u0644 \u0631\u0627 \u0627\u0646\u062A\u062E\u0627\u0628 \u06A9\u0646"),
+                    React.createElement("h3", { className: "text-sm font-semibold", style: { color: "var(--text-primary)" } }, "\u0628\u0627\u0632\u0647\u200C\u06CC \u062E\u0631\u0648\u062C\u06CC Excel \u0631\u0627 \u0627\u0646\u062A\u062E\u0627\u0628 \u06A9\u0646"),
                     React.createElement("button", { onClick: () => setShowExportPicker(false) },
                         React.createElement(X, { size: 18, color: "var(--text-muted)" }))),
                 React.createElement("div", { className: "flex flex-col gap-2 mb-2" }, ["daily", "weekly", "monthly", "all"].map(r => (React.createElement("div", { key: r, className: "flex items-center gap-2" },
                     React.createElement("span", { className: "flex-1 text-[12px]", style: { color: "var(--text-primary)" } }, RANGE_LABEL[r]),
-                    React.createElement("button", { onClick: () => doExport(r), className: "px-3 py-2 rounded-lg text-[11px]", style: { background: "var(--bg-card2)", color: "var(--text-primary)", border: "1px solid var(--border-2)" } }, "\u0627\u06A9\u0633\u0644"),
+                    React.createElement("button", { onClick: () => doExport(r), className: "px-3 py-2 rounded-lg text-[11px]", style: { background: "var(--bg-card2)", color: "var(--text-primary)", border: "1px solid var(--border-2)" } }, "Excel"),
                     React.createElement("button", { onClick: () => doExportPdf(r), className: "px-3 py-2 rounded-lg text-[11px]", style: { background: "var(--bg-card2)", color: "var(--accent-gold)", border: "1px solid var(--border-2)" } }, "PDF")))))))),
         showOpenForm && openForm && (React.createElement("div", { className: "fixed inset-0 z-50 flex items-end", style: { background: "#000000AA" }, onClick: () => setShowOpenForm(false) },
             React.createElement("div", { className: "w-full rounded-t-2xl p-4 max-h-[85vh] overflow-y-auto", style: { background: "var(--bg-card)" }, onClick: e => e.stopPropagation() },
