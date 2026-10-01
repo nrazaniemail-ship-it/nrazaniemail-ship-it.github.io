@@ -16,14 +16,14 @@
     display: flex; flex-direction: column; align-items: center; justify-content: center;
     min-height: 100vh; padding: calc(10px * var(--scale));
   }
-  .card { width: 100%; max-width: calc(320px * var(--scale)); text-align: center; }
-  .ring-wrap { position: relative; width: calc(46vw * var(--scale)); height: calc(46vw * var(--scale)); max-width: calc(220px * var(--scale)); max-height: calc(220px * var(--scale)); min-width: 110px; min-height: 110px; margin: 0 auto; }
+  .card { width: 100%; max-width: calc(380px * var(--scale)); text-align: center; }
+  .ring-wrap { position: relative; width: min(94vw, calc(340px * var(--scale))); aspect-ratio: 1 / 1; margin: 0 auto; }
   svg { width: 100%; height: 100%; display: block; }
-  .ring-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: calc(20px * var(--scale)); }
-  .clock-time { font-family: 'JetBrains Mono', monospace; font-size: calc(13px * var(--scale)); color: #8B93A1; letter-spacing: 0.5px; }
-  .focus-name { font-size: calc(11px * var(--scale)); color: #D4A64A; font-weight: 700; margin-top: 3px; text-align: center; line-height: 1.3; }
-  .focus-countdown { font-family: 'JetBrains Mono', monospace; font-size: calc(16px * var(--scale)); font-weight: 700; color: #E8EAED; }
-  .focus-sub { font-size: calc(9px * var(--scale)); color: #6B7280; }
+  .focus-box { display: flex; flex-direction: column; align-items: center; gap: 2px; margin-top: calc(8px * var(--scale)); }
+  .clock-time { font-family: 'JetBrains Mono', monospace; font-size: calc(14px * var(--scale)); color: #8B93A1; letter-spacing: 0.5px; }
+  .focus-name { font-size: calc(13px * var(--scale)); color: #D4A64A; font-weight: 700; margin-top: 3px; text-align: center; line-height: 1.3; }
+  .focus-countdown { font-family: 'JetBrains Mono', monospace; font-size: calc(20px * var(--scale)); font-weight: 700; color: #E8EAED; }
+  .focus-sub { font-size: calc(10px * var(--scale)); color: #6B7280; }
   .legend { display: flex; flex-wrap: wrap; gap: 5px; justify-content: center; margin-top: calc(10px * var(--scale)); }
   .legend-item { display: flex; align-items: center; gap: 4px; font-size: calc(10px * var(--scale)); padding: 3px 8px; border-radius: 999px; white-space: nowrap; background: #12161C; border: 1px solid #1F242C; }
   .legend-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
@@ -45,13 +45,13 @@
   <div class="card">
     <div class="logo-row"><span class="logo-dot"></span><span class="logo-text">Namello</span></div>
     <div class="ring-wrap">
-      <svg viewBox="0 0 120 120" id="sessionSvg"></svg>
-      <div class="ring-center">
-        <div class="clock-time" id="nyClock">--:--:--</div>
-        <div class="focus-name" id="focusName">—</div>
-        <div class="focus-countdown" id="focusCountdown">--:--:--</div>
-        <div class="focus-sub" id="focusSub"></div>
-      </div>
+      <svg viewBox="0 0 360 360" id="sessionSvg" preserveAspectRatio="xMidYMid meet"></svg>
+    </div>
+    <div class="focus-box">
+      <div class="clock-time" id="nyClock">--:--:--</div>
+      <div class="focus-name" id="focusName">—</div>
+      <div class="focus-countdown" id="focusCountdown">--:--:--</div>
+      <div class="focus-sub" id="focusSub"></div>
     </div>
     <div class="legend" id="legend"></div>
     <div class="chips" id="chips"></div>
@@ -152,37 +152,111 @@ function fmtDur(min) {
   return `${pad2(h)}:${pad2(m)}:00`;
 }
 
-/* ---------------- ریاضیِ رسم قطاع روی دایره (۰ دقیقه = بالای دایره، ساعت‌گرد) ---------------- */
+/* ---------------- رسم ساعت‌شمار؛ هم‌شکل و هم‌هندسه با ساعت‌شمار لایه‌ی «نشست‌ها» در برنامه ---------------- */
 const SVG_NS = "http://www.w3.org/2000/svg";
-function polarToXY(cx, cy, r, angleDeg) {
-  const rad = (angleDeg - 90) * Math.PI / 180;
-  return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
+function polar(cx, cy, r, angleDeg) { const rad = (angleDeg - 90) * (Math.PI / 180); return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) }; }
+function describeArc(cx, cy, r, a0, a1) {
+  if (a1 - a0 >= 359.9) a1 = a0 + 359.9;
+  const p0 = polar(cx, cy, r, a0), p1 = polar(cx, cy, r, a1);
+  return `M ${p0.x} ${p0.y} A ${r} ${r} 0 ${a1 - a0 > 180 ? 1 : 0} 1 ${p1.x} ${p1.y}`;
 }
-function arcPath(cx, cy, r, startDeg, endDeg) {
-  let sweep = endDeg - startDeg;
-  if (sweep <= 0) sweep += 360;
-  if (sweep >= 359.99) sweep = 359.99; // جلوگیری از دایره‌ی کامل که SVG آرک را اشتباه رسم می‌کند
-  const end = startDeg + sweep;
-  const p0 = polarToXY(cx, cy, r, startDeg);
-  const p1 = polarToXY(cx, cy, r, end);
-  const largeArc = sweep > 180 ? 1 : 0;
-  return `M ${p0.x} ${p0.y} A ${r} ${r} 0 ${largeArc} 1 ${p1.x} ${p1.y}`;
+function arcSegments(startMin, endMin) {
+  const toAngle = m => (m / 1440) * 360;
+  if (endMin > startMin) return [[toAngle(startMin), toAngle(endMin)]];
+  return [[toAngle(startMin), 360], [0, toAngle(endMin)]];
 }
-function svgEl(tag, attrs) {
+function minuteSegments(startMin, endMin) { return endMin > startMin ? [[startMin, endMin]] : [[startMin, 1440], [0, endMin]]; }
+function computeOverlaps(sessions) {
+  const w = sessions.map(s => minuteSegments(s.startMin, s.endMin));
+  const out = [];
+  for (let i = 0; i < w.length; i++) for (let j = i + 1; j < w.length; j++)
+    w[i].forEach(a => w[j].forEach(b => { const s = Math.max(a[0], b[0]), e = Math.min(a[1], b[1]); if (s < e) out.push([s, e]); }));
+  return out;
+}
+function svgEl(tag, attrs, text) {
   const el = document.createElementNS(SVG_NS, tag);
-  Object.keys(attrs).forEach(k => el.setAttribute(k, attrs[k]));
+  Object.keys(attrs || {}).forEach(k => { if (attrs[k] !== undefined && attrs[k] !== null) el.setAttribute(k, attrs[k]); });
+  if (text !== undefined) el.textContent = text;
   return el;
 }
+const SHORTS = { sydney: "SYDNEY", tokyo: "TOKYO", london: "LONDON", newyork: "NEW YORK", asiakz: "ASIA KZ", londonkz: "LONDON KZ", nykz: "NY KZ", otemorning: "NY OTE", londonclosekz: "LDN CLOSE", sb1: "SB 1", sb2: "SB 2", sb3: "SB 3" };
+function labelOf(ev) { return String(ev.short || SHORTS[ev.key] || ev.name || "").slice(0, 10).toUpperCase(); }
+const OVERLAP_COLOR = "#FDE047";
+const F_PAGE = "#0B0E11", F_CARD = "#12161C", F_BORDER = "#1F242C";
 
-const CX = 60, CY = 60;
-const RING_STROKE = 7;
-// از بیرون به داخل: سیدنی، توکیو، لندن، نیویورک
-const RING_DEFS = [
-  { key: "sydney", r: 54 },
-  { key: "tokyo", r: 45 },
-  { key: "london", r: 36 },
-  { key: "newyork", r: 27 },
-];
+function drawClock(root, sessionsEval, kzEval, sbEval, nowMin) {
+  const size = 360, cx = 180, cy = 180;
+  root.innerHTML = "";
+  const defs = svgEl("defs");
+  const grad = svgEl("radialGradient", { id: "namelloClockFace", cx: "50%", cy: "50%", r: "65%" });
+  [["0%", "#141922"], ["80%", "#0D1015"], ["100%", "#090B0E"]].forEach(([o, c]) => grad.appendChild(svgEl("stop", { offset: o, "stop-color": c })));
+  defs.appendChild(grad); root.appendChild(defs);
+  root.appendChild(svgEl("circle", { cx, cy, r: 177, fill: "url(#namelloClockFace)" }));
+  root.appendChild(svgEl("circle", { cx, cy, r: 177, fill: "none", stroke: F_BORDER, "stroke-width": 1.5 }));
+  root.appendChild(svgEl("circle", { cx, cy, r: 176, fill: "none", stroke: "#1C2128", "stroke-width": 1 }));
+  for (let h = 0; h < 24; h++) {
+    const a = (h / 24) * 360, major = h % 3 === 0;
+    const p1 = polar(cx, cy, major ? 159 : 161, a), p2 = polar(cx, cy, 168, a), lp = polar(cx, cy, 172, a);
+    root.appendChild(svgEl("line", { x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y, stroke: major ? "#4A5260" : "#333A44", "stroke-width": major ? 1.5 : 1 }));
+    root.appendChild(svgEl("text", { x: lp.x, y: lp.y, fill: major ? "#9CA3AF" : "#6B7280", "font-size": major ? 10.5 : 8.5, "font-weight": 700, "font-family": "JetBrains Mono, monospace", "text-anchor": "middle", "dominant-baseline": "middle" }, pad2(h)));
+  }
+  for (let m = 0; m < 60; m++) {
+    const a = (m / 60) * 360, major = m % 5 === 0;
+    const p1 = polar(cx, cy, major ? 141 : 143, a), p2 = polar(cx, cy, 148, a), lp = polar(cx, cy, 153.5, a);
+    root.appendChild(svgEl("line", { x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y, stroke: major ? "#5B6472" : "#333A44", "stroke-width": major ? 1.2 : 0.75 }));
+    if (major) root.appendChild(svgEl("text", { x: lp.x, y: lp.y, fill: "#5B6472", "font-size": 7, "font-weight": 600, "font-family": "JetBrains Mono, monospace", "text-anchor": "middle", "dominant-baseline": "middle" }, m === 0 ? 60 : m));
+  }
+  const glow = (c, px) => `drop-shadow(0 0 ${px}px ${c}cc)`;
+  // حلقه‌ی نشست‌ها
+  const sessR = 128, sessW = 19;
+  root.appendChild(svgEl("circle", { cx, cy, r: sessR, fill: "none", stroke: F_CARD, "stroke-width": sessW }));
+  sessionsEval.forEach(ev => arcSegments(ev.startMin, ev.endMin).forEach(seg => {
+    const el = svgEl("path", { d: describeArc(cx, cy, sessR, seg[0], seg[1]), stroke: ev.color, "stroke-width": sessW, fill: "none", "stroke-linecap": "butt", opacity: ev.active ? 1 : 0.32 });
+    if (ev.active) el.style.filter = glow(ev.color, 5);
+    root.appendChild(el);
+  }));
+  computeOverlaps(sessionsEval).forEach(ov => {
+    const active = nowMin >= ov[0] && nowMin < ov[1];
+    const el = svgEl("path", { d: describeArc(cx, cy, sessR, (ov[0] / 1440) * 360, (ov[1] / 1440) * 360), stroke: OVERLAP_COLOR, "stroke-width": sessW, fill: "none", "stroke-linecap": "butt", opacity: active ? 1 : 0.5 });
+    if (active) el.style.filter = glow(OVERLAP_COLOR, 4);
+    root.appendChild(el);
+  });
+  let pid = 0;
+  const addLabel = (ev, r, fontSize, w) => {
+    const segs = arcSegments(ev.startMin, ev.endMin);
+    let best = 0; segs.forEach((sg, i) => { if (sg[1] - sg[0] > segs[best][1] - segs[best][0]) best = i; });
+    const seg = segs[best];
+    const label = labelOf(ev);
+    const arcLen = ((seg[1] - seg[0]) / 360) * 2 * Math.PI * r;
+    if (!(arcLen > label.length * (fontSize * 0.62) + 6)) return;
+    const id = "arc-lbl-" + (pid++);
+    root.appendChild(svgEl("path", { id, d: describeArc(cx, cy, r, seg[0], seg[1]), fill: "none", stroke: "none" }));
+    const t = svgEl("text", { "font-size": fontSize + (r === sessR ? 0 : 1), "font-family": "Arial, Helvetica, sans-serif", "font-weight": 800, "letter-spacing": r === sessR ? 0.5 : 0.3, fill: F_PAGE, stroke: "#F5F6F7", "stroke-width": r === sessR ? 2.6 : 2.2, "paint-order": "stroke", opacity: ev.active ? 1 : 0.75 });
+    const tp = svgEl("textPath", { startOffset: "50%", "text-anchor": "middle" }, label);
+    tp.setAttribute("href", "#" + id);
+    t.appendChild(tp); root.appendChild(t);
+  };
+  sessionsEval.forEach(ev => addLabel(ev, sessR, 9));
+  // حلقه‌های کیل‌زون و سیلور بولت
+  [{ r: 100, w: 13, items: kzEval, fs: 8, label: true }, { r: 78, w: 9, items: sbEval, fs: 7, label: false }].forEach(ring => {
+    root.appendChild(svgEl("circle", { cx, cy, r: ring.r, fill: "none", stroke: F_CARD, "stroke-width": ring.w }));
+    ring.items.forEach(ev => {
+      arcSegments(ev.startMin, ev.endMin).forEach(seg => {
+        const el = svgEl("path", { d: describeArc(cx, cy, ring.r, seg[0], seg[1]), stroke: ev.color, "stroke-width": ring.w, fill: "none", "stroke-linecap": "butt", opacity: ev.active ? 1 : 0.32 });
+        if (ev.active) el.style.filter = glow(ev.color, 4);
+        root.appendChild(el);
+      });
+      if (ring.label) addLabel(ev, ring.r, ring.fs);
+    });
+  });
+  // عقربه‌ها (ساعت = موقعیت روی ۲۴ ساعت، دقیقه = سبز)
+  const hourPt = polar(cx, cy, 150, (nowMin / 1440) * 360);
+  const minutePt = polar(cx, cy, 150, ((nowMin % 60) / 60) * 360);
+  const hl = svgEl("line", { x1: cx, y1: cy, x2: hourPt.x, y2: hourPt.y, stroke: "#E8EAED", "stroke-width": 3, "stroke-linecap": "round" }); hl.style.filter = "drop-shadow(0 0 2px #00000099)"; root.appendChild(hl);
+  const ml = svgEl("line", { x1: cx, y1: cy, x2: minutePt.x, y2: minutePt.y, stroke: "#34D399", "stroke-width": 1.6, "stroke-linecap": "round" }); ml.style.filter = "drop-shadow(0 0 2px #34D39988)"; root.appendChild(ml);
+  root.appendChild(svgEl("circle", { cx, cy, r: 6, fill: "#D4A64A", stroke: F_PAGE, "stroke-width": 1.5 }));
+  root.appendChild(svgEl("circle", { cx, cy, r: 2, fill: F_PAGE }));
+}
 
 const svgRoot = document.getElementById("sessionSvg");
 const nyClockEl = document.getElementById("nyClock");
@@ -209,55 +283,6 @@ function buildLegend(sessions) {
   });
 }
 
-function drawSessionRings(sessions, minutesOfDay, dst) {
-  svgRoot.innerHTML = "";
-  RING_DEFS.forEach(def => {
-    const s = sessions.find(x => x.key === def.key);
-    if (!s) return;
-    const ev = evalEvent(s, minutesOfDay, dst);
-    const startDeg = (ev.startMin / 1440) * 360;
-    const endDeg = startDeg + (ev.duration / 1440) * 360;
-    const color = s.color || "#D4A64A";
-    // حلقه‌ی زمینه (کم‌رنگ، کامل)
-    svgRoot.appendChild(svgEl("circle", {
-      cx: CX, cy: CY, r: def.r, fill: "none", stroke: color, "stroke-opacity": 0.08, "stroke-width": RING_STROKE,
-    }));
-    // قطاعِ بازه‌ی زمانیِ همین نشست
-    svgRoot.appendChild(svgEl("path", {
-      d: arcPath(CX, CY, def.r, startDeg, endDeg),
-      fill: "none", stroke: color, "stroke-width": RING_STROKE, "stroke-linecap": "round",
-      "stroke-opacity": ev.active ? 1 : 0.38,
-    }));
-  });
-}
-
-function drawEdgeTicks(events) {
-  const rOuter = 60, rInner = 57.5;
-  events.forEach(ev => {
-    const deg = (ev.startMin / 1440) * 360;
-    const p0 = polarToXY(CX, CY, rInner, deg);
-    const p1 = polarToXY(CX, CY, rOuter, deg);
-    svgRoot.appendChild(svgEl("line", {
-      x1: p0.x, y1: p0.y, x2: p1.x, y2: p1.y,
-      stroke: ev.color || "#39FF6E", "stroke-width": ev.active ? 2.4 : 1.2,
-      "stroke-opacity": ev.active ? 1 : 0.55, "stroke-linecap": "round",
-    }));
-  });
-}
-
-function drawNowMarker(minutesOfDay, seconds) {
-  const preciseMin = minutesOfDay + seconds / 60;
-  const deg = (preciseMin / 1440) * 360;
-  const p0 = polarToXY(CX, CY, 21, deg);
-  const p1 = polarToXY(CX, CY, 58.5, deg);
-  svgRoot.appendChild(svgEl("line", {
-    x1: p0.x, y1: p0.y, x2: p1.x, y2: p1.y,
-    stroke: "#E8EAED", "stroke-width": 1.3, "stroke-opacity": 0.9,
-  }));
-  const tip = polarToXY(CX, CY, 58.5, deg);
-  svgRoot.appendChild(svgEl("circle", { cx: tip.x, cy: tip.y, r: 2.1, fill: "#E8EAED" }));
-}
-
 function tick() {
   const now = getNYNow();
   nyClockEl.textContent = `${pad2(now.hh)}:${pad2(now.mi)}:${pad2(now.ss)} NY`;
@@ -270,9 +295,8 @@ function tick() {
   const sbEval = config.silverbullets.map(e => ({ ...evalEvent(e, now.minutesOfDay, now.dst), kind: "سیلور بولت" }));
   const all = [...sessionsEval, ...kzEval, ...sbEval];
 
-  drawSessionRings(config.sessions, now.minutesOfDay, now.dst);
-  drawEdgeTicks([...kzEval, ...sbEval]);
-  drawNowMarker(now.minutesOfDay, now.ss);
+  const withEnd = (e) => ({ ...e, endMin: (e.startMin + e.duration) % 1440 });
+  drawClock(svgRoot, sessionsEval.map(withEnd), kzEval.map(withEnd), sbEval.map(withEnd), now.minutesOfDay);
 
   // اولویتِ نمایش در مرکز: کیل‌زون/سیلور بولتِ فعال (چون بازه‌ی کوتاه‌تر و حساس‌تری دارن)، بعد سشن‌ها
   const activeSessions = sessionsEval.filter(e => e.active);
