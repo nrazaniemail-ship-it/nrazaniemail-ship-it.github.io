@@ -2432,22 +2432,15 @@ const RE = React.createElement;
    Version Code = عدد صحیحِ افزایشی؛ با «هر» آپدیت یکی زیاد می‌شود (حتی PATCH).
    هنگام انتشار نسخه‌ی جدید فقط همین سه ثابت + فایل version.json را به‌روز کن. */
 const NM_APP_NAME = "Namello";
-const NM_VERSION_NAME = "1.10.0";
-const NM_VERSION_CODE = 20;
+const NM_VERSION_NAME = "1.10.1";
+const NM_VERSION_CODE = 21;
 const NM_VERSION_LABEL = NM_APP_NAME + " " + NM_VERSION_NAME;
 const NM_VERSION_DATE = "۹ مهر ۱۴۰۵";
 const NM_CHANGELOG = [
-    "تحلیل ← سودآورترین شرایط معامله: انتخاب «حساب‌های مبنا» حالا نوع حساب را هم لحاظ می‌کند؛ دکمه‌های «فقط واقعی‌ها» و «فقط آزمایشی‌ها» و نشان واقعی/آزمایشی کنار هر حساب (با لمس نشان، نوع حساب قابل تغییر است). حساب‌های قدیمی بدون نوع، «واقعی» حساب می‌شوند.",
-    "تحلیل ← سودآورترین شرایط: برای هر پارامتر هم بهترین و هم بدترین حالت نمایش داده می‌شود.",
-    "تحلیل ← پارامترهای جاافتاده‌ی فرم ژورنال اضافه شد: جهت معامله (خرید/فروش)، جفت‌ارز، روز هفته، واگرایی تایم اصلی، واگرایی تایم ورود، خبر همزمان و فیلدهای سفارشی انتخابی/بله‌خیر. (وزن پیش‌فرض پارامترهای جدید برای احتمال موفقیت صفر است و از «وزن‌ها» قابل تنظیم است.)",
-    "کتابخانه: باکس کامل پخش‌کننده بالای همین لایه (چپ‌چین، پخش/توقف بین عقب و جلو) نمایش داده می‌شود.",
-    "پخش‌کننده در سایر لایه‌ها: ویجت کوچک کنار دکمه‌ی تیره/روشن بالای صفحه؛ با مثلث کوچک سمت چپ آن باکس کامل وسط صفحه باز/بسته می‌شود. پخش در پس‌زمینه ادامه دارد.",
-    "نشست‌ها ← تنظیمات: رنگ زمینه و رنگ کادر کارت‌های «همین الان فعال هستند» سفارشی‌شدنی است (با پیش‌نمایش و بازگشت به پیش‌فرض).",
-    "اخبار: دکمه‌ی بروزرسانی دو برابر شد و سمت راست لوگو/عنوان «اخبار اقتصادی» قرار گرفت؛ با کلیک، رنگ زمینه بین رنگ فعلی و سبز فسفری تغییر می‌کند و دو فلش می‌چرخد. بعد از دریافت: موفق ← سبز، ناموفق ← قرمز.",
-    "اخبار ← تنظیمات: یک کلید برای فعال/غیرفعال‌کردن آلارم صوتی همه‌ی خبرها با هم (کلید جداگانه‌ی هر خبر هم مثل قبل است).",
-    "ژورنال: ویرایش تصاویر چارت (قبل/بعد) و ارزیابی صوتی چارت (قبل/بعد) برای معاملات ثبت‌شده و معاملات باز در فرم ویرایش معامله.",
-    "کتابخانه: دکمه‌ی کتاب باز (📖) منوی انتخاب برنامه‌ی گوشی را برای باز کردن فایل نشان می‌دهد؛ دکمه‌ی 👁 فایل را داخل برنامه می‌خواند.",
-    "درباره برنامه ← آخرین تغییرات: فقط تغییرات همین نسخه نمایش داده می‌شود."
+    "کتابخانه ← پادکست: باکس پخش‌کننده دیگر بالای لایه نمی‌آید؛ هنگام پخش، مستقیم زیر نام همان پادکست (داخل باکس پادکست) و مثل ویجت استاندارد پلیرها ظاهر می‌شود.",
+    "پروفایل: توضیحات کمکی حالا پیش‌فرض مخفی‌اند و با دکمه‌ی «ℹ️ راهنما» باز/بسته می‌شوند.",
+    "اخبار: رنگ انیمیشن دکمه‌ی بروزرسانی از سبز فسفری به سبز ملایم و کم‌نور تغییر کرد (وضعیت موفق/ناموفق هم ملایم‌تر شد).",
+    "کتابخانه ← کتاب متنی: دکمه‌ی 👁 حذف شد و دکمه‌ی 📖 فایل را داخل خود برنامه اجرا می‌کند: TXT، MD، HTML، DOCX، EPUB و PDF (با تغییر اندازه‌ی متن/زوم). دکمه‌ی «ارسال به برنامه‌ی دیگر» داخل نمایشگر است."
 ];
 const nmTint = (pct) => `color-mix(in srgb, var(--accent-gold) ${pct}%, transparent)`;
 const nmFmtKB = (bytes) => Math.max(1, Math.round((bytes || 0) / 1024)) + " KB";
@@ -2514,6 +2507,12 @@ function nmApplyIconTheme(key) {
 }
 
 /* ---------------- اجزای مشترکِ رابط ---------------- */
+function NmHint({ children, className }) {
+    const [o, setO] = useState(false);
+    return RE("div", { className: "mb-2" },
+        RE("button", { type: "button", onClick: () => setO(v => !v), className: "text-[10px] px-2 py-0.5 rounded-full", style: { background: "var(--bg-card2)", color: "var(--text-muted)", border: "1px solid var(--border-2)" } }, o ? "▲ مخفی کردن راهنما" : "ℹ️ راهنما"),
+        o && RE("p", { className: (className || "") + " mt-1.5 leading-5", style: { color: "var(--text-muted)" } }, children));
+}
 function NmCollapsible({ title, subtitle, badge, defaultOpen, children, icon }) {
     const [open, setOpen] = useState(!!defaultOpen);
     return RE("div", { className: "rounded-xl p-3 mb-3", style: { background: "var(--bg-card)", border: "1px solid var(--border-1)" } },
@@ -3863,10 +3862,16 @@ function NmGlobalPlayer({ tab }) {
     const [libSlot, setLibSlot] = useState(null);
     const [centerOpen, setCenterOpen] = useState(false);
     useEffect(() => {
-        const m = document.getElementById("nm-player-mini-slot"), l = document.getElementById("nm-player-lib-slot");
-        if (m !== miniSlot) setMiniSlot(m);
-        if (l !== libSlot) setLibSlot(l);
-    });
+        const find = () => {
+            const m = document.getElementById("nm-player-mini-slot");
+            const l = trackRef.current && trackRef.current.podcastId ? document.getElementById("nm-player-pod-slot-" + trackRef.current.podcastId) : null;
+            setMiniSlot(prev => prev === m ? prev : m);
+            setLibSlot(prev => prev === l ? prev : l);
+        };
+        find();
+        const iv = setInterval(find, 400);
+        return () => clearInterval(iv);
+    }, [tab, track && track.podcastId, track && track.blobKey]);
     const audioRef = useRef(null);
     const trackRef = useRef(null);
     const [track, setTrack] = useState(null);
@@ -3948,8 +3953,9 @@ function NmGlobalPlayer({ tab }) {
         onError: () => setErr(true),
     });
     const inLibrary = tab === "library";
+    const showFloating = !(inLibrary && libSlot);
     const triBtn = (up) => RE("button", { type: "button", onClick: () => setCenterOpen(!up ? true : false), className: "shrink-0 w-6 h-6 rounded-full flex items-center justify-center", style: { background: "var(--bg-card2)", border: "1px solid var(--border-2)", color: "var(--accent-gold)", fontSize: 9, lineHeight: 1 }, "aria-label": up ? "کوچک کردن پخش‌کننده" : "نمایش پخش‌کننده در وسط صفحه" }, up ? "▲" : "▼");
-    const card = (withTri) => RE("div", { className: "rounded-2xl p-2.5", style: { background: "var(--bg-card)", border: "1px solid var(--border-2)", boxShadow: "0 8px 24px #000000AA", width: "100%", maxWidth: maxW, marginRight: "auto", direction: "ltr", textAlign: "left" } },
+    const card = (withTri, embedded) => RE("div", { className: embedded ? "p-3" : "rounded-2xl p-2.5", style: embedded ? { background: "var(--bg-card2)", width: "100%", direction: "ltr", textAlign: "left" } : { background: "var(--bg-card)", border: "1px solid var(--border-2)", boxShadow: "0 8px 24px #000000AA", width: "100%", maxWidth: maxW, marginRight: "auto", direction: "ltr", textAlign: "left" } },
         RE("div", { className: "flex items-center gap-2 mb-1" },
             withTri && triBtn(true),
             RE("div", { className: "min-w-0 flex-1" },
@@ -3974,14 +3980,29 @@ function NmGlobalPlayer({ tab }) {
     const createPortal = ReactDOM.createPortal;
     return RE(React.Fragment, null,
         audioEl,
-        inLibrary && libSlot ? createPortal(RE("div", { className: "sticky z-30 pb-2", style: { top: "env(safe-area-inset-top, 0px)", direction: "ltr" } }, card(false)), libSlot) : null,
-        !inLibrary && miniSlot ? createPortal(mini, miniSlot) : null,
-        !inLibrary && centerOpen ? RE("div", { className: "fixed left-0 right-0 z-[55] flex justify-center px-4", style: { top: "50%", transform: "translateY(-50%)", pointerEvents: "none" } }, RE("div", { style: { pointerEvents: "auto", width: "100%", maxWidth: maxW } }, card(true))) : null);
+        inLibrary && libSlot ? createPortal(card(false, true), libSlot) : null,
+        showFloating && miniSlot ? createPortal(mini, miniSlot) : null,
+        showFloating && centerOpen ? RE("div", { className: "fixed left-0 right-0 z-[55] flex justify-center px-4", style: { top: "50%", transform: "translateY(-50%)", pointerEvents: "none" } }, RE("div", { style: { pointerEvents: "auto", width: "100%", maxWidth: maxW } }, card(true))) : null);
 }
 
 /* ---------------- نمایشگر کتاب‌های متنی (داخل برنامه) ----------------
-   قبلاً فایل با لینکِ دانلود باز می‌شد که در PWA/WebView اندروید معمولاً کار نمی‌کند؛ حالا فایل‌های متنی
-   مستقیم داخل برنامه خوانده می‌شوند و PDF داخل یک قاب نمایش داده می‌شود. */
+   باز کردن فایل با «منوی اشتراک‌گذاری» فقط فایل را برای برنامه‌ی دیگری می‌فرستد و خودش اجرا نمی‌شود؛
+   پس فایل‌ها داخل خودِ برنامه خوانده می‌شوند: TXT/MD/HTML مستقیم، DOCX و EPUB و PDF با کتابخانه‌های
+   کمکی که در اولین باز کردن از اینترنت (cdn.jsdelivr.net) لود می‌شوند. */
+const NM_CDN = {
+    mammoth: "https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js",
+    jszip: "https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js",
+    pdfjs: "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js",
+    pdfworker: "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js",
+};
+const nmScriptCache = {};
+function nmLoadScript(url) {
+    if (!nmScriptCache[url]) nmScriptCache[url] = new Promise((res, rej) => {
+        const sc = document.createElement("script"); sc.src = url; sc.onload = () => res(); sc.onerror = () => { delete nmScriptCache[url]; rej(new Error("لود کتابخانه‌ی کمکی ناموفق بود؛ اینترنت را بررسی کنید.")); };
+        document.head.appendChild(sc);
+    });
+    return nmScriptCache[url];
+}
 function nmLibExt(name) { const m = /\.([^.]+)$/.exec(String(name || "")); return m ? m[1].toLowerCase() : ""; }
 async function nmLibBlobToText(blob) {
     const buf = await blob.arrayBuffer();
@@ -3989,24 +4010,111 @@ async function nmLibBlobToText(blob) {
     if ((txt.match(/\uFFFD/g) || []).length > 3) { try { txt = new TextDecoder("windows-1256").decode(buf); } catch (e) { } }
     return txt;
 }
+function nmSanitizeHtml(html) {
+    const d = new DOMParser().parseFromString("<body>" + html + "</body>", "text/html");
+    d.querySelectorAll("script,style,iframe,object,embed,link,meta,form,audio,video,svg").forEach(n => n.remove());
+    d.querySelectorAll("img").forEach(n => { const src = n.getAttribute("src") || ""; if (src.indexOf("data:image/") !== 0) n.remove(); });
+    d.querySelectorAll("*").forEach(n => {
+        [...n.attributes].forEach(a => { const nm = a.name.toLowerCase(); if (nm.indexOf("on") === 0 || nm === "style" || nm === "class" || ((nm === "href" || nm === "src") && /^\s*javascript:/i.test(a.value))) n.removeAttribute(a.name); });
+    });
+    return d.body.innerHTML;
+}
+function nmResolvePath(base, rel) {
+    const parts = (base + rel).split("/"), out = [];
+    parts.forEach(p => { if (p === "..") out.pop(); else if (p !== "." && p !== "") out.push(p); });
+    return out.join("/");
+}
+async function nmEpubToHtml(blob) {
+    await nmLoadScript(NM_CDN.jszip);
+    const zip = await window.JSZip.loadAsync(blob);
+    const cont = await zip.file("META-INF/container.xml").async("string");
+    const opfPath = /full-path="([^"]+)"/.exec(cont)[1];
+    const opf = new DOMParser().parseFromString(await zip.file(opfPath).async("string"), "application/xml");
+    const base = opfPath.indexOf("/") >= 0 ? opfPath.slice(0, opfPath.lastIndexOf("/") + 1) : "";
+    const manifest = {};
+    opf.querySelectorAll("manifest > item").forEach(it => { manifest[it.getAttribute("id")] = it.getAttribute("href"); });
+    const parts = [];
+    for (const ref of opf.querySelectorAll("spine > itemref")) {
+        const href = manifest[ref.getAttribute("idref")]; if (!href) continue;
+        const f = zip.file(nmResolvePath(base, decodeURIComponent(href).replace(/#.*$/, "")));
+        if (!f) continue;
+        const d = new DOMParser().parseFromString(await f.async("string"), "text/html");
+        parts.push(nmSanitizeHtml(d.body ? d.body.innerHTML : ""));
+    }
+    if (!parts.length) throw new Error("محتوای این EPUB خوانده نشد.");
+    return parts.join("<hr/>");
+}
+async function nmDocxToHtml(blob) {
+    await nmLoadScript(NM_CDN.mammoth);
+    const r = await window.mammoth.convertToHtml({ arrayBuffer: await blob.arrayBuffer() });
+    return nmSanitizeHtml(r.value || "");
+}
+function NmPdfPages({ pdf, zoom }) {
+    const hostRef = useRef(null);
+    useEffect(() => {
+        let alive = true; const host = hostRef.current; if (!host) return undefined;
+        host.innerHTML = "";
+        const width = Math.max(260, host.clientWidth || 340);
+        const rendered = new Set();
+        const io = new IntersectionObserver((entries) => {
+            entries.forEach(async (en) => {
+                if (!en.isIntersecting) return;
+                const wrap = en.target, n = Number(wrap.dataset.page);
+                if (rendered.has(n)) return; rendered.add(n);
+                try {
+                    const page = await pdf.getPage(n);
+                    const v0 = page.getViewport({ scale: 1 });
+                    const scale = (width / v0.width) * (window.devicePixelRatio > 1 ? 1.6 : 1.2) * zoom;
+                    const v = page.getViewport({ scale });
+                    const cv = document.createElement("canvas"); cv.width = v.width; cv.height = v.height;
+                    cv.style.width = "100%"; cv.style.height = "auto"; cv.style.display = "block";
+                    await page.render({ canvasContext: cv.getContext("2d"), viewport: v }).promise;
+                    if (alive) { wrap.innerHTML = ""; wrap.appendChild(cv); wrap.style.minHeight = "0"; }
+                } catch (e) { rendered.delete(n); }
+            });
+        }, { root: null, rootMargin: "600px 0px" });
+        (async () => {
+            const p1 = await pdf.getPage(1); const v1 = p1.getViewport({ scale: 1 });
+            const h = Math.round(width * (v1.height / v1.width));
+            for (let n = 1; n <= pdf.numPages; n++) {
+                const w = document.createElement("div"); w.dataset.page = String(n);
+                w.style.cssText = "background:#fff;margin:0 auto 8px;width:100%;min-height:" + h + "px;display:flex;align-items:center;justify-content:center;color:#888;font-size:11px";
+                w.textContent = "صفحه " + n; host.appendChild(w); io.observe(w);
+            }
+        })();
+        return () => { alive = false; io.disconnect(); };
+    }, [pdf, zoom]);
+    return RE("div", { ref: hostRef, className: "p-2" });
+}
 function NmBookViewer({ book, onClose, showToast }) {
     const [state, setState] = useState({ loading: true });
+    const [fs, setFs] = useState(15);
+    const [zoom, setZoom] = useState(1);
     useEffect(() => {
-        let alive = true, objUrl = null;
+        let alive = true;
         (async () => {
             try {
                 const blob = await nmLibGet(book.id);
                 if (!blob) { if (alive) setState({ error: "فایل پیدا نشد." }); return; }
                 const ext = nmLibExt(book.fileName);
-                const isText = ext === "txt" || ext === "md" || ext === "text" || (book.mimeType || "").indexOf("text/") === 0;
-                if (isText) { const text = await nmLibBlobToText(blob); if (alive) setState({ kind: "text", text, blob }); return; }
-                objUrl = URL.createObjectURL(ext === "pdf" ? new Blob([blob], { type: "application/pdf" }) : blob);
-                if (alive) setState({ kind: ext === "pdf" ? "pdf" : "other", url: objUrl, blob });
-            } catch (e) { if (alive) setState({ error: "باز کردن فایل ناموفق بود." }); }
+                const set = (v) => { if (alive) setState({ blob, ...v }); };
+                if (ext === "txt" || ext === "md" || ext === "text" || (book.mimeType || "").indexOf("text/plain") === 0) { set({ kind: "text", text: await nmLibBlobToText(blob) }); return; }
+                if (ext === "html" || ext === "htm") { set({ kind: "html", html: nmSanitizeHtml(await nmLibBlobToText(blob)) }); return; }
+                if (ext === "rtf") { set({ kind: "text", text: (await nmLibBlobToText(blob)).replace(/\\par[d]?/g, "\n").replace(/\\'[0-9a-f]{2}/gi, "").replace(/\\[a-z]+-?\d* ?/gi, "").replace(/[{}]/g, "") }); return; }
+                if (ext === "docx") { set({ kind: "html", html: await nmDocxToHtml(blob) }); return; }
+                if (ext === "epub") { set({ kind: "html", html: await nmEpubToHtml(blob) }); return; }
+                if (ext === "pdf") {
+                    await nmLoadScript(NM_CDN.pdfjs);
+                    window.pdfjsLib.GlobalWorkerOptions.workerSrc = NM_CDN.pdfworker;
+                    const pdf = await window.pdfjsLib.getDocument({ data: new Uint8Array(await blob.arrayBuffer()) }).promise;
+                    set({ kind: "pdf", pdf }); return;
+                }
+                set({ kind: "other" });
+            } catch (e) { if (alive) setState({ error: (e && e.message) ? e.message : "باز کردن فایل ناموفق بود." }); }
         })();
-        return () => { alive = false; if (objUrl) URL.revokeObjectURL(objUrl); };
+        return () => { alive = false; };
     }, [book.id]);
-    const externalOpen = async () => {
+    const shareFile = async () => {
         const blob = state.blob; if (!blob) return;
         try {
             const file = new File([blob], book.fileName || (book.title + ".bin"), { type: blob.type || book.mimeType || "application/octet-stream" });
@@ -4015,23 +4123,28 @@ function NmBookViewer({ book, onClose, showToast }) {
         try {
             const u = URL.createObjectURL(blob);
             const a = document.createElement("a"); a.href = u; a.download = book.fileName || book.title;
-            document.body.appendChild(a); a.click(); a.remove();
-            setTimeout(() => URL.revokeObjectURL(u), 15000);
+            document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(u), 15000);
             showToast("فایل در حال دانلود است.");
-        } catch (e) { showToast("باز کردن فایل ناموفق بود."); }
+        } catch (e) { showToast("ارسال فایل ناموفق بود."); }
     };
+    const sizeBtn = (label, onClick) => RE("button", { type: "button", onClick, className: "px-2 py-1 rounded-lg text-[12px] shrink-0 font-bold", style: { background: "var(--bg-card2)", color: "var(--text-primary)" } }, label);
     return RE("div", { className: "fixed inset-0 z-[70] flex flex-col", style: { background: "var(--bg-page)" } },
+        RE("style", null, ".nm-reader{line-height:2.1;word-break:break-word}.nm-reader *{color:inherit!important;background:transparent!important;max-width:100%}.nm-reader img{height:auto}.nm-reader h1,.nm-reader h2,.nm-reader h3{font-weight:700;margin:1em 0 .4em}.nm-reader p{margin:0 0 .8em}.nm-reader table{border-collapse:collapse}.nm-reader td,.nm-reader th{border:1px solid var(--border-2);padding:4px}"),
         RE("div", { className: "flex items-center gap-2 px-3 py-2.5", style: { background: "var(--bg-card)", borderBottom: "1px solid var(--border-1)", paddingTop: "calc(env(safe-area-inset-top, 0px) + 10px)" } },
             RE("button", { type: "button", onClick: onClose, className: "p-1.5 shrink-0", "aria-label": "بستن" }, RE(X, { size: 18, color: "var(--text-primary)" })),
             RE("div", { className: "flex-1 min-w-0 text-[13px] font-semibold truncate", style: { color: "var(--text-primary)" } }, book.title),
-            state.blob && RE("button", { type: "button", onClick: externalOpen, className: "px-2.5 py-1 rounded-lg text-[11px] shrink-0", style: { background: "var(--bg-card2)", color: "var(--accent-gold)" } }, "اشتراک/دانلود")),
+            (state.kind === "text" || state.kind === "html") && sizeBtn("A-", () => setFs(f => Math.max(11, f - 1))),
+            (state.kind === "text" || state.kind === "html") && sizeBtn("A+", () => setFs(f => Math.min(30, f + 1))),
+            state.kind === "pdf" && sizeBtn("−", () => setZoom(z => Math.max(0.7, Math.round((z - 0.2) * 10) / 10))),
+            state.kind === "pdf" && sizeBtn("+", () => setZoom(z => Math.min(2.5, Math.round((z + 0.2) * 10) / 10))),
+            state.blob && RE("button", { type: "button", onClick: shareFile, className: "px-2.5 py-1 rounded-lg text-[11px] shrink-0", style: { background: "var(--bg-card2)", color: "var(--accent-gold)" } }, "ارسال به برنامه‌ی دیگر")),
         RE("div", { className: "flex-1 overflow-auto" },
             state.loading ? RE("div", { className: "p-6 text-center text-[12px]", style: { color: "var(--text-muted)" } }, "در حال بارگذاری...")
-                : state.error ? RE("div", { className: "p-6 text-center text-[12px]", style: { color: "#F87171" } }, state.error)
-                    : state.kind === "text" ? RE("pre", { className: "p-4 text-[14px] leading-8", style: { color: "var(--text-primary)", whiteSpace: "pre-wrap", wordBreak: "break-word", fontFamily: "Vazirmatn, sans-serif", direction: "auto", unicodeBidi: "plaintext" } }, state.text)
-                        : state.kind === "pdf" ? RE("iframe", { src: state.url, title: book.title, className: "w-full h-full", style: { border: 0, minHeight: "80vh", background: "#fff" } })
-                            : RE("div", { className: "p-6 text-center text-[12px] leading-7", style: { color: "var(--text-secondary)" } }, "نمایش داخلی این نوع فایل (" + (nmLibExt(book.fileName) || "نامشخص").toUpperCase() + ") ممکن نیست. با دکمه‌ی «اشتراک/دانلود» آن را در برنامه‌ی خوانشگر گوشی (مثل خواننده‌ی EPUB یا Word) باز کنید.")),
-        state.kind === "pdf" && RE("div", { className: "px-3 py-1.5 text-[10px] text-center", style: { color: "var(--text-muted)", background: "var(--bg-card)" } }, "اگر PDF نمایش داده نشد، «اشتراک/دانلود» را بزنید و در برنامه‌ی PDF‌خوان باز کنید."));
+                : state.error ? RE("div", { className: "p-6 text-center text-[12px] leading-7", style: { color: "#F87171" } }, state.error)
+                    : state.kind === "text" ? RE("pre", { className: "p-4 nm-reader", dir: "auto", style: { fontSize: fs, color: "var(--text-primary)", whiteSpace: "pre-wrap", fontFamily: "Vazirmatn, sans-serif" } }, state.text)
+                        : state.kind === "html" ? RE("div", { className: "p-4 nm-reader", dir: "auto", style: { fontSize: fs, color: "var(--text-primary)", fontFamily: "Vazirmatn, sans-serif" }, dangerouslySetInnerHTML: { __html: state.html } })
+                            : state.kind === "pdf" ? RE(NmPdfPages, { pdf: state.pdf, zoom })
+                                : RE("div", { className: "p-6 text-center text-[12px] leading-7", style: { color: "var(--text-secondary)" } }, "فرمت «" + (nmLibExt(book.fileName) || "نامشخص").toUpperCase() + "» (مثل DOC قدیمی) داخل برنامه قابل نمایش نیست. آن را به DOCX یا PDF یا TXT تبدیل کنید، یا با دکمه‌ی «ارسال به برنامه‌ی دیگر» به یک برنامه‌ی خوانشگر بدهید.")));
 }
 /* ---------------- کتاب‌های متنی ---------------- */
 function NmLibraryBooksSection({ showToast, askDeleteConfirm }) {
@@ -4044,7 +4157,7 @@ function NmLibraryBooksSection({ showToast, askDeleteConfirm }) {
     useEffect(() => { load(); }, [load]);
 
     const addBook = () => {
-        nmLibPickFile(".pdf,.epub,.txt,.doc,.docx,application/pdf,application/epub+zip,text/plain", async (file) => {
+        nmLibPickFile(".pdf,.epub,.txt,.md,.html,.htm,.rtf,.doc,.docx,application/pdf,application/epub+zip,text/plain", async (file) => {
             const id = nmLibId();
             try { await nmLibPut(id, file); }
             catch (e) { showToast("ذخیره‌ی فایل ناموفق بود (احتمالاً فضای ذخیره‌سازی پر است)."); return; }
@@ -4063,28 +4176,7 @@ function NmLibraryBooksSection({ showToast, askDeleteConfirm }) {
         setBooks(next); await nmLibSave(NM_LIB_BOOKS_KEY, next);
         nmLibDelete(b.id);
     };
-    // «باز کردن با…»: فهرست برنامه‌های گوشی (برنامه‌های متنی‌خوان و…) از طریق منوی اشتراک‌گذاری اندروید
-    const open = async (b) => {
-        try {
-            const blob = await nmLibGet(b.id);
-            if (!blob) { showToast("فایل پیدا نشد."); return; }
-            const ext = nmLibExt(b.fileName);
-            const type = (ext === "txt" || ext === "md" || ext === "text") ? "text/plain" : (ext === "pdf" ? "application/pdf" : (blob.type || b.mimeType || "application/octet-stream"));
-            const name = b.fileName || (b.title + (ext ? "" : ".txt"));
-            const file = new File([blob], name, { type });
-            if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                await navigator.share({ files: [file], title: b.title });
-                return;
-            }
-            showToast("منوی انتخاب برنامه در این دستگاه پشتیبانی نمی‌شود؛ فایل داخل خود برنامه باز شد.");
-            setViewing(b);
-        }
-        catch (e) {
-            if (e && e.name === "AbortError") return; // کاربر منو را بست
-            showToast("منوی انتخاب برنامه باز نشد؛ فایل داخل خود برنامه باز شد.");
-            setViewing(b);
-        }
-    };
+    const open = (b) => setViewing(b);
     return RE("div", { className: "mb-5" },
         viewing && RE(NmBookViewer, { book: viewing, onClose: () => setViewing(null), showToast }),
         RE("div", { className: "flex items-center justify-between mb-2" },
@@ -4098,8 +4190,7 @@ function NmLibraryBooksSection({ showToast, askDeleteConfirm }) {
                         ? RE("input", { type: "text", value: editText, autoFocus: true, onChange: e => setEditText(e.target.value), onKeyDown: e => e.key === "Enter" && saveRename(), onBlur: saveRename, className: "w-full bg-transparent outline-none text-[13px] font-semibold", style: { color: "var(--text-primary)", borderBottom: "1px solid var(--accent-gold)" } })
                         : RE("div", { className: "text-[13px] font-semibold truncate", style: { color: "var(--text-primary)" } }, b.title),
                     RE("div", { className: "text-[10px] truncate", style: { color: "var(--text-muted)" } }, (b.fileName || "") + " · " + nmFmtBytes(b.sizeBytes || 0) + " · " + nmLibFmtDate(b.addedAt))),
-                RE("button", { type: "button", onClick: () => open(b), className: "p-2 shrink-0", "aria-label": "باز کردن با برنامه‌ی دلخواه" }, RE("span", { style: { fontSize: 16 } }, "📖")),
-                RE("button", { type: "button", onClick: () => setViewing(b), className: "p-2 shrink-0", "aria-label": "خواندن داخل برنامه" }, RE("span", { style: { fontSize: 15 } }, "👁")),
+                RE("button", { type: "button", onClick: () => open(b), className: "p-2 shrink-0", "aria-label": "خواندن" }, RE("span", { style: { fontSize: 16 } }, "📖")),
                 RE("button", { type: "button", onClick: () => startRename(b), className: "p-2 shrink-0", "aria-label": "تغییر نام" }, RE(Edit3, { size: 14, color: "var(--text-muted)" })),
                 RE("button", { type: "button", onClick: () => nmLibConfirmThen(askDeleteConfirm, "کتاب «" + b.title + "» حذف شود؟", () => remove(b)), className: "p-2 shrink-0", "aria-label": "حذف" }, RE(Trash2, { size: 14, color: "#F87171" })))));
 }
@@ -4148,6 +4239,7 @@ function NmPodcastRow({ podcast, onChange, onRemove, onPlay, askDeleteConfirm })
                 open ? RE(ChevronUp, { size: 14, color: "var(--text-muted)" }) : RE(ChevronDown, { size: 14, color: "var(--text-muted)" })),
             RE("button", { type: "button", onClick: () => { setEditingTitle(true); setTitleText(podcast.title); }, "aria-label": "تغییر نام" }, RE(Edit3, { size: 13, color: "var(--text-muted)" })),
             RE("button", { type: "button", onClick: () => nmLibConfirmThen(askDeleteConfirm, "پادکست «" + podcast.title + "» و همه‌ی اپیزودهایش حذف شود؟", onRemove), "aria-label": "حذف پادکست" }, RE(Trash2, { size: 13, color: "#F87171" }))),
+        episodes.some(e => e.id === activeEpisodeId) && RE("div", { id: "nm-player-pod-slot-" + podcast.id, style: { borderTop: "1px solid var(--border-1)" } }),
         open && RE("div", { className: "px-3 pb-3", style: { borderTop: "1px solid var(--border-1)" } },
             episodes.length === 0 && RE("div", { className: "text-[11px] py-2", style: { color: "var(--text-muted)" } }, "هنوز اپیزودی اضافه نشده."),
             episodes.map((ep, i) => RE("div", { key: ep.id, className: "flex items-center gap-2 py-2", style: { borderBottom: i < episodes.length - 1 ? "1px solid var(--border-1)" : "none" } },
@@ -4180,7 +4272,7 @@ function NmLibraryPodcastsSection({ showToast, askDeleteConfirm }) {
     };
     const playEpisode = (podcast, ep) => {
         if (nmPlayerState.episodeId === ep.id) { nmRequestCmd("toggle"); return; }
-        nmRequestPlay({ episodeId: ep.id, blobKey: ep.id, title: ep.title, subtitle: podcast.title });
+        nmRequestPlay({ episodeId: ep.id, blobKey: ep.id, podcastId: podcast.id, title: ep.title, subtitle: podcast.title });
     };
     return RE("div", { className: "mb-5", style: { direction: "ltr", textAlign: "left" } },
         RE("div", { className: "flex items-center justify-between mb-2" },
@@ -4207,7 +4299,6 @@ function NmLibrarySettingsCard({ open, onToggle }) {
 }
 function NmLibraryLayer({ showToast, askDeleteConfirm }) {
     return RE("div", { className: "px-4 mt-4 pb-16" },
-        RE("div", { id: "nm-player-lib-slot" }), // جایگاه باکس کامل پخش‌کننده در لایه‌ی کتابخانه
         RE("h2", { className: "text-sm font-semibold mb-1", style: { color: "var(--text-primary)" } }, "کتابخانه"),
         RE("p", { className: "text-[11px] leading-5 mb-4", style: { color: "var(--text-muted)" } }, "کتاب‌های متنی و پادکست/کتاب‌های صوتی خود را اینجا نگه دارید. فایل‌ها داخل خودِ برنامه ذخیره می‌شوند؛ برای فایل‌های حجیم به فضای ذخیره‌سازی دستگاه توجه کنید (تنظیمات ← فضای ذخیره‌سازی)."),
         RE(NmLibraryBooksSection, { showToast, askDeleteConfirm }),
@@ -7169,7 +7260,7 @@ function App() {
         input, select, textarea { font-family: 'Vazirmatn', sans-serif; }
         ::selection { background: color-mix(in srgb, var(--accent-gold) 33%, transparent); }
         @keyframes namelloAlarmSlideDown { from { transform: translateY(-120%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-        @keyframes namelloNewsBg { 0%, 100% { background: var(--bg-card); box-shadow: 0 0 0 0 #39FF1400; } 50% { background: #39FF14; box-shadow: 0 0 14px 2px #39FF1488; } }
+        @keyframes namelloNewsBg { 0%, 100% { background: var(--bg-card); box-shadow: 0 0 0 0 #3FA67200; } 50% { background: #3FA672; box-shadow: 0 0 10px 1px #3FA67255; } }
         @keyframes namelloNewsSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         @keyframes namelloPulseDot { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.45; transform: scale(1.3); } }
       `),
@@ -7229,11 +7320,11 @@ function App() {
                 React.createElement("h2", { className: "text-sm font-semibold mb-2", style: { color: "var(--text-primary)" } },
                     "\u062A\u0645\u067E\u0644\u06CC\u062A\u200C\u0647\u0627\u06CC \u062A\u0646\u0638\u06CC\u0645\u0627\u062A \u2014 ",
                     users.find(u => u.id === activeUserId)?.name),
-                React.createElement("p", { className: "text-[11px] mb-3 leading-5", style: { color: "var(--text-muted)" } }, "\u0647\u0631 \u062A\u0645\u067E\u0644\u06CC\u062A\u060C \u06CC\u06A9 \u0639\u06A9\u0633\u200C\u0641\u0648\u0631\u06CC \u06A9\u0627\u0645\u0644 \u0627\u0632 \u0627\u06CC\u0646 \u062D\u0633\u0627\u0628 \u06A9\u0627\u0631\u0628\u0631\u06CC\u0647: \u062A\u0646\u0638\u06CC\u0645\u0627\u062A \u0633\u0641\u0627\u0631\u0634\u06CC \u0647\u0645\u0647\u200C\u06CC \u0644\u0627\u06CC\u0647\u200C\u0647\u0627 (\u0646\u0634\u0633\u062A\u200C\u0647\u0627\u060C \u062C\u0641\u062A\u200C\u0627\u0631\u0632\u0647\u0627\u060C \u0633\u06CC\u0633\u062A\u0645\u200C\u0647\u0627\u06CC \u0645\u0639\u0627\u0645\u0644\u0627\u062A\u06CC\u060C \u0641\u0631\u0627\u06A9\u062A\u0627\u0644\u060C \u0646\u0642\u0637\u0647 \u0648\u0631\u0648\u062F\u060C TP/SL\u060C \u0627\u0644\u06AF\u0648\u0647\u0627\u06CC \u0628\u0631\u06AF\u0634\u062A\u06CC\u060C R:R\u060C \u0627\u062D\u062A\u0645\u0627\u0644 \u0645\u0648\u0641\u0642\u06CC\u062A\u060C \u0631\u0648\u0627\u0646\u0634\u0646\u0627\u0633\u06CC\u060C \u0648\u0632\u0646\u200C\u062F\u0647\u06CC \u0627\u062D\u062A\u0645\u0627\u0644 \u0645\u062D\u0627\u0633\u0628\u0627\u062A\u06CC\u060C \u0646\u0648\u0639 \u0628\u0633\u062A\u0646 \u0645\u0639\u0627\u0645\u0644\u0647\u060C \u0622\u0645\u0627\u062F\u0647\u200C\u0633\u0627\u0632\u06CC\u060C \u0645\u062F\u06CC\u0631\u06CC\u062A \u0645\u0627\u0644\u06CC \u0648 \u067E\u0627\u0631\u0627\u0645\u062A\u0631\u0647\u0627\u06CC \u0633\u0641\u0627\u0631\u0634\u06CC) \u0628\u0647\u200C\u0639\u0644\u0627\u0648\u0647\u200C\u06CC \u0645\u0639\u0627\u0645\u0644\u0627\u062A\u060C \u062D\u0633\u0627\u0628\u200C\u0647\u0627\u060C \u0627\u0633\u062A\u0631\u0627\u062A\u0698\u06CC\u200C\u0647\u0627\u060C \u0627\u0647\u062F\u0627\u0641 (\u0645\u0639\u0627\u0645\u0644\u0647\u200C\u06AF\u0631\u06CC/\u0632\u0646\u062F\u06AF\u06CC/\u0634\u06A9\u0631\u06AF\u0632\u0627\u0631\u06CC) \u0648 \u0627\u062E\u0628\u0627\u0631. \u062A\u0648\u062C\u0647: \u00AB\u0627\u0639\u0645\u0627\u0644\u00BB \u06CC\u06A9 \u062A\u0645\u067E\u0644\u06CC\u062A\u060C \u0647\u0645\u0647\u200C\u06CC \u0627\u06CC\u0646\u200C\u0647\u0627 \u0631\u0648 \u0628\u0627 \u0646\u0633\u062E\u0647\u200C\u06CC \u0630\u062E\u06CC\u0631\u0647\u200C\u0634\u062F\u0647 \u062C\u0627\u06CC\u06AF\u0632\u06CC\u0646 \u0645\u06CC\u200C\u06A9\u0646\u0647."),
+                RE(NmHint, { className: "text-[11px]" }, "\u0647\u0631 \u062A\u0645\u067E\u0644\u06CC\u062A\u060C \u06CC\u06A9 \u0639\u06A9\u0633\u200C\u0641\u0648\u0631\u06CC \u06A9\u0627\u0645\u0644 \u0627\u0632 \u0627\u06CC\u0646 \u062D\u0633\u0627\u0628 \u06A9\u0627\u0631\u0628\u0631\u06CC\u0647: \u062A\u0646\u0638\u06CC\u0645\u0627\u062A \u0633\u0641\u0627\u0631\u0634\u06CC \u0647\u0645\u0647\u200C\u06CC \u0644\u0627\u06CC\u0647\u200C\u0647\u0627 (\u0646\u0634\u0633\u062A\u200C\u0647\u0627\u060C \u062C\u0641\u062A\u200C\u0627\u0631\u0632\u0647\u0627\u060C \u0633\u06CC\u0633\u062A\u0645\u200C\u0647\u0627\u06CC \u0645\u0639\u0627\u0645\u0644\u0627\u062A\u06CC\u060C \u0641\u0631\u0627\u06A9\u062A\u0627\u0644\u060C \u0646\u0642\u0637\u0647 \u0648\u0631\u0648\u062F\u060C TP/SL\u060C \u0627\u0644\u06AF\u0648\u0647\u0627\u06CC \u0628\u0631\u06AF\u0634\u062A\u06CC\u060C R:R\u060C \u0627\u062D\u062A\u0645\u0627\u0644 \u0645\u0648\u0641\u0642\u06CC\u062A\u060C \u0631\u0648\u0627\u0646\u0634\u0646\u0627\u0633\u06CC\u060C \u0648\u0632\u0646\u200C\u062F\u0647\u06CC \u0627\u062D\u062A\u0645\u0627\u0644 \u0645\u062D\u0627\u0633\u0628\u0627\u062A\u06CC\u060C \u0646\u0648\u0639 \u0628\u0633\u062A\u0646 \u0645\u0639\u0627\u0645\u0644\u0647\u060C \u0622\u0645\u0627\u062F\u0647\u200C\u0633\u0627\u0632\u06CC\u060C \u0645\u062F\u06CC\u0631\u06CC\u062A \u0645\u0627\u0644\u06CC \u0648 \u067E\u0627\u0631\u0627\u0645\u062A\u0631\u0647\u0627\u06CC \u0633\u0641\u0627\u0631\u0634\u06CC) \u0628\u0647\u200C\u0639\u0644\u0627\u0648\u0647\u200C\u06CC \u0645\u0639\u0627\u0645\u0644\u0627\u062A\u060C \u062D\u0633\u0627\u0628\u200C\u0647\u0627\u060C \u0627\u0633\u062A\u0631\u0627\u062A\u0698\u06CC\u200C\u0647\u0627\u060C \u0627\u0647\u062F\u0627\u0641 (\u0645\u0639\u0627\u0645\u0644\u0647\u200C\u06AF\u0631\u06CC/\u0632\u0646\u062F\u06AF\u06CC/\u0634\u06A9\u0631\u06AF\u0632\u0627\u0631\u06CC) \u0648 \u0627\u062E\u0628\u0627\u0631. \u062A\u0648\u062C\u0647: \u00AB\u0627\u0639\u0645\u0627\u0644\u00BB \u06CC\u06A9 \u062A\u0645\u067E\u0644\u06CC\u062A\u060C \u0647\u0645\u0647\u200C\u06CC \u0627\u06CC\u0646\u200C\u0647\u0627 \u0631\u0648 \u0628\u0627 \u0646\u0633\u062E\u0647\u200C\u06CC \u0630\u062E\u06CC\u0631\u0647\u200C\u0634\u062F\u0647 \u062C\u0627\u06CC\u06AF\u0632\u06CC\u0646 \u0645\u06CC\u200C\u06A9\u0646\u0647."),
                 React.createElement("div", { className: "rounded-xl p-3 flex items-center justify-between mb-2", style: { background: "var(--bg-card)", border: "1px solid var(--border-1)" } },
                     React.createElement("div", null,
                         React.createElement("div", { className: "text-sm font-medium", style: { color: "var(--text-primary)" } }, "\u067E\u06CC\u0634\u200C\u0641\u0631\u0636"),
-                        React.createElement("div", { className: "text-[10px]", style: { color: "var(--text-muted)" } }, "\u0641\u0642\u0637 \u0628\u0627\u0632\u06AF\u0634\u062A \u062A\u0646\u0638\u06CC\u0645\u0627\u062A \u0633\u0641\u0627\u0631\u0634\u06CC \u0644\u0627\u06CC\u0647\u200C\u0647\u0627 \u0628\u0647 \u0645\u0642\u062F\u0627\u0631 \u0627\u0648\u0644\u06CC\u0647\u200C\u06CC \u06A9\u0627\u0631\u062E\u0627\u0646\u0647\u200C\u0627\u06CC (\u0645\u0639\u0627\u0645\u0644\u0627\u062A\u060C \u062D\u0633\u0627\u0628\u200C\u0647\u0627\u060C \u0627\u0633\u062A\u0631\u0627\u062A\u0698\u06CC\u060C \u0627\u0647\u062F\u0627\u0641 \u0648 \u0627\u062E\u0628\u0627\u0631 \u062F\u0633\u062A\u200C\u0646\u062E\u0648\u0631\u062F\u0647 \u0645\u06CC\u200C\u0645\u0648\u0646\u0646)")),
+                        RE(NmHint, { className: "text-[10px]" }, "\u0641\u0642\u0637 \u0628\u0627\u0632\u06AF\u0634\u062A \u062A\u0646\u0638\u06CC\u0645\u0627\u062A \u0633\u0641\u0627\u0631\u0634\u06CC \u0644\u0627\u06CC\u0647\u200C\u0647\u0627 \u0628\u0647 \u0645\u0642\u062F\u0627\u0631 \u0627\u0648\u0644\u06CC\u0647\u200C\u06CC \u06A9\u0627\u0631\u062E\u0627\u0646\u0647\u200C\u0627\u06CC (\u0645\u0639\u0627\u0645\u0644\u0627\u062A\u060C \u062D\u0633\u0627\u0628\u200C\u0647\u0627\u060C \u0627\u0633\u062A\u0631\u0627\u062A\u0698\u06CC\u060C \u0627\u0647\u062F\u0627\u0641 \u0648 \u0627\u062E\u0628\u0627\u0631 \u062F\u0633\u062A\u200C\u0646\u062E\u0648\u0631\u062F\u0647 \u0645\u06CC\u200C\u0645\u0648\u0646\u0646)")),
                     React.createElement("button", { onClick: () => askDeleteConfirm("تمام تنظیمات سفارشی لایه‌ها با مقادیر پیش‌فرض جایگزین بشه؟", applyDefaultTemplate), className: "px-3 py-1.5 rounded-lg text-[12px] font-medium", style: { background: "var(--accent-gold)", color: "var(--bg-page)" } }, "\u0627\u0639\u0645\u0627\u0644")),
                 React.createElement("div", { className: "grid grid-cols-1 gap-2 mb-4" }, (templatesByUser[activeUserId] || []).map(tpl => (React.createElement("div", { key: tpl.id, className: "rounded-xl p-3 flex items-center justify-between gap-2", style: { background: "var(--bg-card)", border: "1px solid var(--border-1)" } },
                     React.createElement("span", { className: "text-sm", style: { color: "var(--text-primary)", minWidth: 0, overflowWrap: "break-word", wordBreak: "break-word" } }, tpl.name),
@@ -7293,8 +7384,8 @@ function App() {
             React.createElement("div", { className: "flex items-center justify-between mb-3" },
                 React.createElement("div", { className: "flex items-center gap-3" },
                     React.createElement("button", { onClick: refreshNewsFromWeb, disabled: newsLoading, className: "rounded-2xl flex items-center justify-center shrink-0", "aria-label": "بروزرسانی اخبار",
-                        style: { width: 56, height: 56, border: "1px solid var(--border-1)", background: newsRefreshState === "ok" ? "#22C55E" : newsRefreshState === "fail" ? "#EF4444" : "var(--bg-card)", animation: newsRefreshState === "loading" ? "namelloNewsBg 0.9s ease-in-out infinite" : "none", transition: "background 0.3s" } },
-                        React.createElement("svg", { width: 30, height: 30, viewBox: "0 0 24 24", fill: "none", stroke: newsRefreshState === "ok" || newsRefreshState === "fail" ? "#FFFFFF" : newsRefreshState === "loading" ? "#0B0E11" : "var(--accent-gold)", strokeWidth: 2.2, strokeLinecap: "round", strokeLinejoin: "round", style: { animation: newsRefreshState === "loading" ? "namelloNewsSpin 0.9s linear infinite" : "none" } },
+                        style: { width: 56, height: 56, border: "1px solid var(--border-1)", background: newsRefreshState === "ok" ? "#2F9E66" : newsRefreshState === "fail" ? "#D9534F" : "var(--bg-card)", animation: newsRefreshState === "loading" ? "namelloNewsBg 0.9s ease-in-out infinite" : "none", transition: "background 0.3s" } },
+                        React.createElement("svg", { width: 30, height: 30, viewBox: "0 0 24 24", fill: "none", stroke: newsRefreshState === "ok" || newsRefreshState === "fail" ? "#FFFFFF" : newsRefreshState === "loading" ? "#F4FFF8" : "var(--accent-gold)", strokeWidth: 2.2, strokeLinecap: "round", strokeLinejoin: "round", style: { animation: newsRefreshState === "loading" ? "namelloNewsSpin 0.9s linear infinite" : "none" } },
                             React.createElement("path", { d: "M21 12a9 9 0 0 0-15.5-6.2L3 8" }),
                             React.createElement("path", { d: "M3 3v5h5" }),
                             React.createElement("path", { d: "M3 12a9 9 0 0 0 15.5 6.2L21 16" }),
